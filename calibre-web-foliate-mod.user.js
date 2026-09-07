@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.3.0
+// @version      0.4.0
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -32,6 +32,14 @@
     //   繞過 CSP 插入東西；實際去操作 foliate-view（開書、翻頁）的邏輯，
     //   包裝成另一段程式碼，一樣用 GM_addElement 插入，但那段程式碼本身在
     //   「頁面本身的環境」執行，完全不會經過沙盒，也就不會撞到 Xray Vision。
+    // v0.4.0（這版）：v0.3.0 的兩段式分工，實測後同樣的錯誤還是出現在第二段
+    //   （理論上該在頁面環境跑的）程式碼裡，代表問題可能不是（單純）Xray
+    //   Vision，也可能是 GM_addElement 插入的內容本身就帶著某種跟 Tampermonkey
+    //   有關的執行環境，不是乾淨的頁面環境——這部分還沒有查證到明確定論。
+    //   這版先收斂成「只用一次 GM_addElement，把 foliate-js 本體跟我們自己的
+    //   應用邏輯合併成同一段程式碼」，排除「兩段程式碼分屬不同執行環境」
+    //   這個變數，並在關鍵呼叫前加了診斷輸出，方便下一輪直接看到當下環境的
+    //   實際狀態，不用再猜。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
@@ -91,20 +99,19 @@
         });
     }
 
-    // 產生要塞進「頁面本身環境」執行的應用邏輯（開書、翻頁）。
-    // 刻意寫成字串、透過 GM_addElement 當一般（非沙盒）inline script 插入，
-    // 不要在這支沙盒化的主腳本裡直接操作 foliate-view，理由見檔案開頭的沿革說明。
-    function buildAppScriptSource(bookId) {
-        return `
-(async () => {
+    // 產生要一起塞進頁面的完整程式碼：foliate-js 本體 + 我們自己的應用邏輯，
+    // 合併成同一段、用同一次 GM_addElement 呼叫插入 —— 這樣不管 GM_addElement
+    // 插入的程式碼實際上跑在哪種環境，至少「本體」跟「使用本體的程式碼」
+    // 一定在同一個執行環境裡，排除跨腳本邊界不一致這個變數。
+    function buildCombinedScriptSource(bundleCode, bookId) {
+        return bundleCode + `
+;(async () => {
     const viewerContainer = document.querySelector(${JSON.stringify(VIEWER_SELECTOR)});
     if (!viewerContainer) {
         console.error('[cwfm] 找不到 #viewer 容器');
         return;
     }
 
-    // 兩段注入的執行先後順序不保證（type="module" 是延遲執行的），
-    // 保險起見等自訂元素真的註冊完成再動手。
     await customElements.whenDefined('foliate-view');
 
     const view = document.createElement('foliate-view');
@@ -121,6 +128,14 @@
         if (!res.ok) throw new Error('下載 epub 失敗：HTTP ' + res.status);
         const blob = await res.blob();
         const file = new File([blob], ${JSON.stringify(`${bookId}.epub`)}, { type: 'application/epub+zip' });
+
+        // 診斷用：在真正呼叫 view.open() 之前，先確認 renderer 這一步的
+        // 自訂元素在「這次實際執行的當下」到底能不能正確升級，不要等出錯了再回頭猜。
+        const probe = document.createElement('foliate-paginator');
+        console.log('[cwfm][diag] foliate-paginator 探測 - 建構子:', probe.constructor.name,
+            ' 有 open 方法:', typeof probe.open === 'function',
+            ' instanceof HTMLUnknownElement:', probe instanceof HTMLUnknownElement);
+
         await view.open(file);
     } catch (e) {
         console.error('[cwfm] 開啟書籍失敗：', e);
@@ -152,15 +167,11 @@
         try {
             const bundleCode = await fetchBundleText();
 
-            // 第一段注入：foliate-js 本體，負責註冊 <foliate-view> 等自訂元素
+            // 合併成單一段程式碼、單一次 GM_addElement 呼叫插入，
+            // 排除「兩段各自環境不一致」這個變數（見檔案開頭沿革說明）。
             GM_addElement('script', {
                 type: 'module',
-                textContent: bundleCode,
-            });
-
-            // 第二段注入：我們自己的應用邏輯，在頁面本身環境執行（不經過沙盒）
-            GM_addElement('script', {
-                textContent: buildAppScriptSource(bookId),
+                textContent: buildCombinedScriptSource(bundleCode, bookId),
             });
         } catch (e) {
             console.error('[cwfm] 初始化失敗：', e);
