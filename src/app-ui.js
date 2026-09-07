@@ -246,14 +246,24 @@
             '  hyphens: ' + (settings.hyphenate ? 'auto' : 'manual') + ';',
             '}',
             'pre { white-space: pre-wrap !important; }',
-            // [cwfm] 有些書的封面圖片本身沒有設定保持長寬比（直接整張拉伸
-            // 填滿容器），容器尺寸只要因為邊界調整而改變一點點，圖片就會
-            // 明顯變形。強制用 object-fit: contain，保持原始比例、多餘
-            // 空間留白，不再整張硬拉伸。
+            // [cwfm] 查證 EPUB 封面圖片的業界標準做法（Pandoc/Calibre/Sigil
+            // 實際採用的方案）後確認：標準包法是用 <svg> 包住 <image>，靠
+            // SVG 自己內建的 viewBox + preserveAspectRatio（預設值就是
+            // xMidYMid meet，會自動保持比例）機制縮放，不需要外部 CSS 介入。
+            // 先前用 object-fit: contain 對內嵌 <svg> 標籤本來就不適用
+            // （object-fit 只對 <img>/<video> 這類替換元素有效），方向選
+            // 錯了。正確做法是「不要去干擾 SVG 原本正確的機制」——不強制
+            // width/height: 100%（那樣會把 SVG 自己的方框硬拉伸變形，即使
+            // 內部圖片透過 preserveAspectRatio 想維持比例，方框本身已經
+            // 被拉走樣），改用 max-width/max-height 搭配 width/height: auto，
+            // 讓瀏覽器依照圖片（不論是 img 還是內嵌 svg）原始比例自己決定
+            // 顯示尺寸，只用「最大不超過容器」這個限制圈住它。
             'img, svg {',
-            '  object-fit: contain !important;',
+            '  width: auto !important;',
+            '  height: auto !important;',
             '  max-width: 100% !important;',
             '  max-height: 100% !important;',
+            '  object-fit: contain;',
             '}',
         ].join('\n');
     }
@@ -283,26 +293,40 @@
         view.renderer.setAttribute('max-inline-size', Math.round(contentWidth / (columnCount || 1)) + 'px');
     }
 
+    // [cwfm] 垂直方向（上下留白）跟水平方向犯的是同一種疏失：只設定了
+    // margin（保底最小值），完全忘記設定 max-block-size（內容欄的高度
+    // 上限，會直接影響剩餘空間怎麼分配給上下留白）。max-block-size 停在
+    // CSS 預設的 1440px 完全沒被動過，跟左右留白當初漏掉 max-inline-size
+    // 是同一類問題，這裡比照同樣的邏輯補上。
+    function applyVerticalPadding(desiredPx) {
+        const rect = view.renderer.getBoundingClientRect();
+        const totalHeight = rect.height || 1;
+        view.renderer.setAttribute('margin', desiredPx);
+        const contentHeight = Math.max(100, totalHeight - desiredPx * 2);
+        view.renderer.setAttribute('max-block-size', Math.round(contentHeight) + 'px');
+    }
+
     function applySettings(settings) {
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error('[cwfm:settings] 套用字體樣式失敗', e); }
         try {
             view.renderer.setAttribute('flow', settings.flow);
-            view.renderer.setAttribute('margin', settings.topBottomPadding);
             view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
+            applyVerticalPadding(settings.topBottomPadding);
             applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         window.__cwfm.settings = settings;
     }
 
-    // 視窗尺寸改變時，gap／max-inline-size 都需要根據新的容器寬度重新
-    // 換算，否則實際留白像素值會跟著視窗大小漂移。
+    // 視窗尺寸改變時，margin/max-block-size 與 gap/max-inline-size 都需要
+    // 根據新的容器尺寸重新換算。
     window.addEventListener('resize', () => {
         if (window.__cwfm.settings) {
             try {
+                applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
                 applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
-            } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用左右留白失敗', e); }
+            } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
         }
     });
 
