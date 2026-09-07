@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.4.1
+// @version      0.5.0
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -47,6 +47,14 @@
     //   晚一步完成自己的初始化，把 #viewer 的內容蓋掉。改成成功路徑不再主動
     //   停止監看，讓它永久持續（只會清掉非我們標記的節點，不影響 foliate-view
     //   元素內部自己的渲染內容，留著跑沒有副作用）。
+    // v0.5.0（這版）：v0.4.1 之後畫面仍然完全空白（連閃一下都沒有）。用檢查器
+    //   直接看 foliate-paginator 內部（它用 closed shadow DOM，JS 完全存取
+    //   不到，只能用檢查器的特殊權限看），發現外層骨架（top/header/footer）
+    //   都正常建立，但放內容的 #container 是空的。回頭查證 foliate-js 官方
+    //   範例 reader.js 的原始碼，確認 view.open() 只負責解析書籍、建好 renderer
+    //   骨架，並不會自動觸發顯示第一頁 —— 官方範例在 open() 之後另外呼叫了
+    //   view.renderer.next()，這一步我們的程式碼漏掉了。補上後應該就能真正
+    //   顯示內容；移除已經確認過的診斷探測。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
@@ -136,14 +144,13 @@
         const blob = await res.blob();
         const file = new File([blob], ${JSON.stringify(`${bookId}.epub`)}, { type: 'application/epub+zip' });
 
-        // 診斷用：在真正呼叫 view.open() 之前，先確認 renderer 這一步的
-        // 自訂元素在「這次實際執行的當下」到底能不能正確升級，不要等出錯了再回頭猜。
-        const probe = document.createElement('foliate-paginator');
-        console.log('[cwfm][diag] foliate-paginator 探測 - 建構子:', probe.constructor.name,
-            ' 有 open 方法:', typeof probe.open === 'function',
-            ' instanceof HTMLUnknownElement:', probe instanceof HTMLUnknownElement);
-
         await view.open(file);
+
+        // 查證 foliate-js 官方範例（reader.js）後確認：view.open() 只負責
+        // 解析書籍、把 renderer 骨架建好，並「不會」自動觸發顯示第一頁 ——
+        // 這一步要另外呼叫 view.renderer.next() 才會真的把內容渲染進去
+        // （對照官方範例：await this.view.open(file); this.view.renderer.next();）。
+        view.renderer.next();
     } catch (e) {
         console.error('[cwfm] 開啟書籍失敗：', e);
         viewerContainer.innerHTML = '';
