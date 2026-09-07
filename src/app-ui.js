@@ -255,18 +255,16 @@
         ].join('\n');
     }
 
-    // [cwfm] gap 屬性吃的是「相對於容器寬度的百分比」，不是純像素，但我們
-    // 希望使用者調整時看到的是直覺的像素數字。這裡即時把「想要的左右留白
-    // 像素」換算成對應的百分比字串。算式反推自 paginator.js 內部：
-    // 實際 gap 像素 = -g/(g-1) * size，其中 g 是百分比（0~1）、size 是容器寬度；
-    // 外側留白 = gap 像素 / 2，所以 gap 像素 = desiredPx * 2，
-    // 反解 g = gapPx / (gapPx + size)。
-    function computeGapPercent(desiredOuterPx) {
+    // [cwfm] 左右留白真正的主控權在 max-inline-size（決定內容最大寬度，
+    // 螢幕比這個寬多少，兩側就自動留白多少），不是 gap（那個只控制多欄
+    // 模式下「頁與頁中間那條窄窄的裝訂線」，實測影響非常小，一開始
+    // 誤把左右留白的控制權接到這裡，數字才會對不上使用者調整的像素值）。
+    // max-inline-size 本身單位就是 px，不需要像 gap 那樣額外換算百分比。
+    function computeMaxInlineSize(desiredOuterPx, columnCount) {
         const rect = view.renderer.getBoundingClientRect();
-        const size = rect.width || 1;
-        const gapPx = desiredOuterPx * 2;
-        const g = gapPx / (gapPx + size);
-        return (g * 100).toFixed(2) + '%';
+        const totalWidth = rect.width || 1;
+        const contentWidth = Math.max(100, totalWidth - desiredOuterPx * 2);
+        return Math.round(contentWidth / (columnCount || 1));
     }
 
     function applySettings(settings) {
@@ -276,18 +274,24 @@
         try {
             view.renderer.setAttribute('flow', settings.flow);
             view.renderer.setAttribute('margin', settings.topBottomPadding);
-            view.renderer.setAttribute('gap', computeGapPercent(settings.leftRightPadding));
             view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
+            view.renderer.setAttribute(
+                'max-inline-size',
+                computeMaxInlineSize(settings.leftRightPadding, settings.maxColumnCount) + 'px'
+            );
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         window.__cwfm.settings = settings;
     }
 
-    // 視窗尺寸改變時，左右留白的百分比需要重新換算，否則實際像素值會跟著
-    // 視窗大小漂移，不再是使用者原本調整的那個像素值。
+    // 視窗尺寸改變時，max-inline-size 需要重新換算，否則實際留白像素值
+    // 會跟著視窗大小漂移，不再是使用者原本調整的那個像素值。
     window.addEventListener('resize', () => {
         if (window.__cwfm.settings) {
             try {
-                view.renderer.setAttribute('gap', computeGapPercent(window.__cwfm.settings.leftRightPadding));
+                view.renderer.setAttribute(
+                    'max-inline-size',
+                    computeMaxInlineSize(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount) + 'px'
+                );
             } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用左右留白失敗', e); }
         }
     });
