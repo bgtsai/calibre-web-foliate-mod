@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.5.0
+// @version      0.6.0
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -55,6 +55,16 @@
     //   骨架，並不會自動觸發顯示第一頁 —— 官方範例在 open() 之後另外呼叫了
     //   view.renderer.next()，這一步我們的程式碼漏掉了。補上後應該就能真正
     //   顯示內容；移除已經確認過的診斷探測。
+    // v0.6.0（這版）：v0.5.0 之後畫面終於顯示出來，但 Console 又冒出新的 CSP
+    //   違規——這次是 frame-src，因為 foliate-paginator 內部用 blob: 網址
+    //   當 iframe 的 src 顯示每一頁內容，而頁面 CSP 不允許 blob: 當 frame
+    //   來源。回頭查證知識庫 10_CSP與跨分頁內容渲染，裡面記載 Calibre-Web
+    //   原本的 epub.js 用的是 srcdoc（不是 src），而 srcdoc 在這個網站上已經
+    //   實測過不會被擋。既然我們自己打包 foliate-js，直接動手 patch 了
+    //   paginator.js 與 fixed-layout.js 的原始碼：blob: 網址改用 fetch() 讀出
+    //   內容文字（blob: 的 fetch 屬於本地記憶體讀取，不受 CSP 管轄），再用
+    //   srcdoc 塞給 iframe，並補上 <base href> 保留原本的相對路徑解析。
+    //   這個 patch 只存在於我們自己 vendor 的打包版本裡，不影響上游 foliate-js。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
