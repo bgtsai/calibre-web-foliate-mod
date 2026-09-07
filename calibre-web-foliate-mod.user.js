@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.9.1
+// @version      0.9.2
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -99,6 +99,12 @@
     //   物件當成字串去呼叫不存在的 .split()。改成直接把原始 href 字串交給
     //   goTo()。同時幫工具列的翻頁按鈕、進度條跳轉都補上錯誤攔截與記錄，
     //   如果還有其他翻頁相關的問題，下次能直接從 Console 看到，不用再猜。
+    // v0.9.2（這版）：新增的 attachShadow 攔截機制（window.__cwfmShadowMap）
+    //   實測完全不存在，即使 bundle 原始碼裡確實有這段，追查後發現是
+    //   raw.githubusercontent.com 本身有快取，這幾輪改動速度比快取過期時間
+    //   還快，導致抓到的其實是舊版 bundle。改成抓取網址加上時間戳記當快取
+    //   破壞參數，確保開發階段每次都拿到最新內容。這支腳本還在頻繁修改，
+    //   等穩定後可以拿掉這個參數，改吃正常快取。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
@@ -141,11 +147,19 @@
     }
 
     // 用 GM_xmlhttpRequest 抓取自己打包好的 foliate-js 單一檔案文字內容。
+    //
+    // [cwfm] 開發階段加上時間戳記當作快取破壞參數（cache-busting）：
+    // 曾經實測過，raw.githubusercontent.com 本身會快取內容一段時間，導致
+    // 明明已經推送了新版 bundle，實際抓到的還是舊版（症狀：新加的攔截機制
+    // window.__cwfmShadowMap 完全不存在，即使 bundle 原始碼裡確實有這段）。
+    // 這支腳本還在頻繁修改階段，寧可每次都重新抓一份，等穩定之後可以拿掉
+    // 這個查詢參數，改吃正常快取。
     function fetchBundleText() {
         return new Promise((resolve, reject) => {
+            const url = BUNDLE_URL + '?_=' + Date.now();
             GM_xmlhttpRequest({
                 method: 'GET',
-                url: BUNDLE_URL,
+                url,
                 onload: (res) => {
                     if (res.status < 200 || res.status >= 300) {
                         reject(new Error(`foliate-js bundle 下載失敗：HTTP ${res.status}`));
