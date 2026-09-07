@@ -9,14 +9,16 @@
         return;
     }
 
-    // [cwfm] 這段一定要搶在 view.open() 之前執行。實測發現：如果照原本順序
-    // 放在後面（開書之後才隱藏舊 UI、覆蓋樣式），foliate-js 會用「當下、
-    // 還沒被我們改過」的舊尺寸去量版面、算好排版，我們後來才改變 #viewer
-    // 的實際尺寸，它不會自動重新量一次，畫面看起來就像完全沒生效。
+    // [cwfm] 這段一定要搶在 view.open() 之前執行，理由見上方說明。
+    //
+    // 做法：不維護「要隱藏哪些舊元件」的清單（那種做法本質上就是會漏東西——
+    // 例如 #divider 這個 Calibre-Web 原本的分隔線元件，就是因為當初沒被
+    // 手動列進清單裡才被漏掉，实测才發現）。改成反過來：#main 底下除了我們
+    // 自己的 #viewer，其餘全部隱藏，不用管裡面實際上有什麼、叫什麼名字，
+    // 徹底接管，之後也不會再有「又漏了一個」的狀況。
     function hideOldUI() {
         const style = document.createElement('style');
         style.textContent = [
-            '#titlebar, #prev, #next, .read-footer, #settings-modal { display: none !important; }',
             // Calibre-Web 原本的 main.css 把 #viewer 卡死在父層高度的 80%
             // （是原本 epub.js 版面上下保留給其他元件的空間），我們的新工具列
             // 改用 fixed 定位、不使用那預留的 20%，變成整塊空白。覆蓋成真正
@@ -24,6 +26,15 @@
             '#viewer { height: calc(100% - 44px) !important; }',
         ].join('\n');
         document.head.appendChild(style);
+
+        const main = document.querySelector('#main');
+        if (main) {
+            [...main.children].forEach((el) => {
+                if (el.id !== 'viewer') {
+                    el.style.setProperty('display', 'none', 'important');
+                }
+            });
+        }
     }
     try { hideOldUI(); } catch (e) { console.error('[cwfm:hideOldUI]', e); }
 
@@ -73,13 +84,17 @@
 
     // ============================================================
     // 除錯用的全域物件：Console 打 __cwfm 就能查目前狀態
+    // window.__cwfm 這個容器本身在 entry.js（bundle 那邊）就已經建立，
+    // 裡面掛著 shadowMap/blobMap/createTOCView/createMenu 這些內部機制，
+    // 這裡用 Object.assign 合併進去，不要整個覆蓋掉，理由是所有全域變數
+    // 統一收在同一個命名空間底下，不再各自散落成獨立的 __cwfmXxx 變數。
     // ============================================================
-    window.__cwfm = {
+    Object.assign(window.__cwfm, {
         view,
         book,
         bookId: BOOK_ID,
         settings: null, // 稍後設定選單初始化時會填入
-    };
+    });
 
     // ============================================================
     // 共用樣式
@@ -404,7 +419,7 @@
                 }
                 closeAllPanels();
             };
-            const { element, setCurrentHref } = window.__cwfmCreateTOCView(toc, onclick);
+            const { element, setCurrentHref } = window.__cwfm.createTOCView(toc, onclick);
             element.classList.add('cwfm-toc-view');
             panel.appendChild(element);
 
