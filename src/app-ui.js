@@ -293,17 +293,24 @@
         view.renderer.setAttribute('max-inline-size', Math.round(contentWidth / (columnCount || 1)) + 'px');
     }
 
-    // [cwfm] 垂直方向（上下留白）跟水平方向犯的是同一種疏失：只設定了
-    // margin（保底最小值），完全忘記設定 max-block-size（內容欄的高度
-    // 上限，會直接影響剩餘空間怎麼分配給上下留白）。max-block-size 停在
-    // CSS 預設的 1440px 完全沒被動過，跟左右留白當初漏掉 max-inline-size
-    // 是同一類問題，這裡比照同樣的邏輯補上。
+    // [cwfm] 查證 paginator.js 原始碼後確認：attributeChangedCallback 裡，
+    // 只有 max-inline-size 這個屬性被改變時，會額外呼叫一次 this.render()
+    // （原始碼註解：「needs explicit render() as it doesn't necessarily
+    // resize」）；margin／max-block-size／gap／max-column-count 這幾個
+    // 都只更新 CSS 自訂屬性，不會主動觸發重新排版。實測驗證過這個落差：
+    // --_margin／--_max-block-size 這兩個 CSS 變數本身確實有更新（用
+    // getComputedStyle 查得到新值），但 grid-template-rows 的實際計算
+    // 結果完全沒有跟著變——這正是「數值換了、但沒有觸發重新排版」的
+    // 症狀。修法是比照函式庫對 max-inline-size 的做法，我們自己在改完
+    // margin／max-block-size 之後，手動呼叫一次 view.renderer.render()，
+    // 補上函式庫沒有做的這一步。
     function applyVerticalPadding(desiredPx) {
         const rect = view.renderer.getBoundingClientRect();
         const totalHeight = rect.height || 1;
         view.renderer.setAttribute('margin', desiredPx);
         const contentHeight = Math.max(100, totalHeight - desiredPx * 2);
         view.renderer.setAttribute('max-block-size', Math.round(contentHeight) + 'px');
+        view.renderer.render();
     }
 
     function applySettings(settings) {
