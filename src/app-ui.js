@@ -41,8 +41,12 @@
     // 鍵盤翻頁（含 iframe 內部文件的轉發，見 v0.8.0 沿革說明）
     // ============================================================
     function handleKeydown(e) {
-        if (e.key === 'ArrowLeft') view.goLeft();
-        else if (e.key === 'ArrowRight') view.goRight();
+        try {
+            if (e.key === 'ArrowLeft') view.goLeft();
+            else if (e.key === 'ArrowRight') view.goRight();
+        } catch (err) {
+            console.error('[cwfm:keydown] 翻頁失敗', err);
+        }
     }
     document.addEventListener('keydown', handleKeydown);
     view.addEventListener('load', ({ detail }) => {
@@ -380,9 +384,15 @@
             panel.appendChild(hint);
         } else {
             const onclick = (href) => {
+                // [cwfm] 查證 view.js 原始碼後確認：view.goTo(target) 內部
+                // 自己會呼叫 resolveNavigation()/book.resolveHref() 處理傳進去
+                // 的原始 href 字串。這裡原本多此一舉先呼叫了一次
+                // book.resolveHref(href)，把「已經解析過的物件」又傳給
+                // goTo()，導致它把物件當成原始字串去呼叫不存在的 .split()
+                // 而整個跳轉失敗（實測 Console 錯誤：t.split is not a
+                // function）。改成直接把原始 href 字串交給 goTo()。
                 try {
-                    const resolved = book.resolveHref(href);
-                    view.goTo(resolved);
+                    view.goTo(href);
                 } catch (e) {
                     console.error('[cwfm:toc] 跳轉失敗', e);
                 }
@@ -417,7 +427,9 @@
         const prevBtn = document.createElement('button');
         prevBtn.textContent = '\u2039';
         prevBtn.setAttribute('aria-label', 'Previous page');
-        prevBtn.addEventListener('click', () => view.goLeft());
+        prevBtn.addEventListener('click', () => {
+            try { view.goLeft(); } catch (e) { console.error('[cwfm:toolbar] goLeft 失敗', e); }
+        });
         bar.appendChild(prevBtn);
 
         const progressWrap = document.createElement('div');
@@ -437,7 +449,8 @@
             progressLabel.textContent = Math.round(parseFloat(slider.value) * 100) + '%';
         });
         slider.addEventListener('change', () => {
-            view.goToFraction(parseFloat(slider.value));
+            try { view.goToFraction(parseFloat(slider.value)); }
+            catch (e) { console.error('[cwfm:toolbar] goToFraction 失敗', e); }
             sliderDragging = false;
         });
         progressWrap.appendChild(slider);
@@ -447,7 +460,9 @@
         const nextBtn = document.createElement('button');
         nextBtn.textContent = '\u203A';
         nextBtn.setAttribute('aria-label', 'Next page');
-        nextBtn.addEventListener('click', () => view.goRight());
+        nextBtn.addEventListener('click', () => {
+            try { view.goRight(); } catch (e) { console.error('[cwfm:toolbar] goRight 失敗', e); }
+        });
         bar.appendChild(nextBtn);
 
         const settingsBtn = document.createElement('button');
