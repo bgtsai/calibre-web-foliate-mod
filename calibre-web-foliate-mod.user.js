@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.7.0
+// @version      0.8.0
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -71,6 +71,14 @@
     //   建立「blob 網址 → 原始 Blob 物件」的全域對照表，之後要讀內容直接對
     //   原始 Blob 物件呼叫 .text()，真正做到純記憶體操作、完全不經過網路層，
     //   不會被任何 CSP 指令管轄。
+    // v0.8.0（這版）：v0.7.0 之後畫面終於正常顯示（看到封面），但鍵盤/畫面
+    //   按鈕都沒反應。畫面上的按鈕是 Calibre-Web 原本的 UI，接的是舊版
+    //   epub.js 物件，我們沒建立那個物件，這部分不works 是預期中的（還沒做
+    //   我們自己的操作介面）。但鍵盤也沒反應則是漏了一步：完整讀過官方
+    //   README 與 reader.js 範例後確認，書本內容顯示在獨立 iframe 裡，鍵盤
+    //   事件預設不會從 iframe 往外傳到上層頁面，官方範例除了在外層 document
+    //   掛鍵盤監聽器，還會在每次 'load' 事件（章節載入完成）時，額外把同一個
+    //   處理函式掛到當次載入的 iframe 內部文件上。這版補上這個機制。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
@@ -167,17 +175,27 @@
         // 這一步要另外呼叫 view.renderer.next() 才會真的把內容渲染進去
         // （對照官方範例：await this.view.open(file); this.view.renderer.next();）。
         view.renderer.next();
+
+        // [cwfm] 書本內容實際上是顯示在獨立的 iframe 裡（每個章節各自一個），
+        // 鍵盤事件預設不會從 iframe 往外傳到上層頁面。如果使用者點擊過書本
+        // 內容區域、焦點落在 iframe 裡，掛在外層 document 的鍵盤監聽器就收不到
+        // 按鍵。查證官方範例（reader.js）後確認做法：同一個處理函式，
+        // 除了掛在外層 document，也要在每次 'load' 事件（章節載入完成）時，
+        // 額外掛到當次載入的 iframe 內部文件上。
+        function handleKeydown(e) {
+            if (e.key === 'ArrowLeft') view.goLeft();
+            else if (e.key === 'ArrowRight') view.goRight();
+        }
+        document.addEventListener('keydown', handleKeydown);
+        view.addEventListener('load', ({ detail }) => {
+            detail.doc.addEventListener('keydown', handleKeydown);
+        });
     } catch (e) {
         console.error('[cwfm] 開啟書籍失敗：', e);
         viewerContainer.innerHTML = '';
         viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。';
         return;
     }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') view.goLeft();
-        else if (e.key === 'ArrowRight') view.goRight();
-    });
 
     console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', ${JSON.stringify(bookId)});
 })();
