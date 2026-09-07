@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.4.0
+// @version      0.4.1
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -40,6 +40,13 @@
     //   應用邏輯合併成同一段程式碼」，排除「兩段程式碼分屬不同執行環境」
     //   這個變數，並在關鍵呼叫前加了診斷輸出，方便下一輪直接看到當下環境的
     //   實際狀態，不用再猜。
+    // v0.4.1（這版）：v0.4.0 實測後 renderer.open 的錯誤消失了，診斷輸出證實
+    //   foliate-paginator 正確升級，view.open() 也成功執行——但出現新症狀：
+    //   內容先正常顯示，過一下子又消失。原因是 main() 裡的清空監看在送出
+    //   GM_addElement 呼叫後就立刻停止，這段時間差讓沒被真正攔下來的 epub.js
+    //   晚一步完成自己的初始化，把 #viewer 的內容蓋掉。改成成功路徑不再主動
+    //   停止監看，讓它永久持續（只會清掉非我們標記的節點，不影響 foliate-view
+    //   元素內部自己的渲染內容，留著跑沒有副作用）。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
@@ -177,9 +184,15 @@
             console.error('[cwfm] 初始化失敗：', e);
             viewerContainer.innerHTML = '';
             viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）初始化失敗，詳見主控台錯誤訊息。';
-        } finally {
             stopClearing();
         }
+        // 注意：成功的情況下「不」呼叫 stopClearing()，讓監看永久持續。
+        // 原本以為注入動作送出後就能安全停止監看，但實測發現這段時間差
+        // 剛好讓沒被真正攔下來的 epub.js 晚一步完成初始化、把畫面蓋回去
+        // （症狀是內容先正常顯示，過一下子又消失）。永久監看只會持續清掉
+        // 「不是我們自己標記過的節點」，不會動到 foliate-view 元素內部自己
+        // 的渲染內容（那些是包在 foliate-view 元素裡面，不是 #viewer 的
+        // 直接子節點），所以留著跑不會有副作用。
     }
 
     main();
