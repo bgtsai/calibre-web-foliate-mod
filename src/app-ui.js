@@ -70,6 +70,13 @@
         const style = document.createElement('style');
         style.textContent = [
             '#titlebar, #prev, #next, .read-footer, #settings-modal { display: none !important; }',
+            // [cwfm] Calibre-Web 原本的 main.css 把 #viewer 卡死在父層的 80%
+            // 高度（是為了原本 epub.js 版面上下還有別的元件保留的空間），
+            // 我們的新工具列改用 fixed 定位、不佔用 #viewer 自己的版面，這條
+            // 舊規則留下來的另外 20% 完全沒人用，變成畫面下方一大塊空白
+            // （實測驗證：#main 1000px、#viewer 卡在 800px，剩 200px 空著）。
+            // 這裡覆蓋成真正撐滿可用空間，扣掉我們自己保留給工具列的高度。
+            '#viewer { height: calc(100% - 44px) !important; }',
         ].join('\n');
         document.head.appendChild(style);
     }
