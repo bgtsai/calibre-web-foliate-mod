@@ -19,11 +19,14 @@
     function hideOldUI() {
         const style = document.createElement('style');
         style.textContent = [
-            // Calibre-Web 原本的 main.css 把 #viewer 卡死在父層高度的 80%
-            // （是原本 epub.js 版面上下保留給其他元件的空間），我們的新工具列
-            // 改用 fixed 定位、不使用那預留的 20%，變成整塊空白。覆蓋成真正
-            // 撐滿可用空間，扣掉我們自己保留給工具列的高度。
-            '#viewer { height: calc(100% - 44px) !important; }',
+            // Calibre-Web 原本的 main.css 把 #viewer 同時卡死在父層寬度與
+            // 高度的 80%（width: 80%; height: 80%; margin: 0 auto;）。
+            // 高度那條在更早之前的版本就修過了；寬度那條當時完全沒注意到，
+            // 這次實測「左右留白調整完全沒反映在畫面上」才發現——不是
+            // gap/max-inline-size 算錯，是 #viewer 本身寬度只有可用空間的
+            // 80%，兩側各留 10% 完全在我們排版系統管轄外的死空間，
+            // 不管怎麼調我們自己的設定都調不到它。這裡兩個維度一次覆蓋。
+            '#viewer { width: 100% !important; height: calc(100% - 44px) !important; margin: 0 !important; }',
         ].join('\n');
         document.head.appendChild(style);
 
