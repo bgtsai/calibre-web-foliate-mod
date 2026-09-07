@@ -255,16 +255,29 @@
         ].join('\n');
     }
 
-    // [cwfm] 左右留白真正的主控權在 max-inline-size（決定內容最大寬度，
-    // 螢幕比這個寬多少，兩側就自動留白多少），不是 gap（那個只控制多欄
-    // 模式下「頁與頁中間那條窄窄的裝訂線」，實測影響非常小，一開始
-    // 誤把左右留白的控制權接到這裡，數字才會對不上使用者調整的像素值）。
-    // max-inline-size 本身單位就是 px，不需要像 gap 那樣額外換算百分比。
-    function computeMaxInlineSize(desiredOuterPx, columnCount) {
+    // [cwfm] 左右留白必須同時控制兩個屬性，缺一不可，理由是實測抓到的
+    // 真實現象：
+    // - 螢幕夠寬、內容有多餘空間可以分配時，留白大小由 max-inline-size
+    //   主導（內容欄達到自己的寬度上限，剩下的空間才分給外側留白）。
+    // - 螢幕不夠寬、內容欄撐不到自己想要的寬度時（例如視窗被設定選單
+    //   面板擠壓過的情況），max-inline-size 完全不起作用，外側留白會被
+    //   卡在 gap 屬性算出來的「保底最小值」（gap 的一半，換算成容器寬度
+    //   的百分比）——這正是查證卡了好幾輪才抓到的關鍵：gap 的預設值是
+    //   7%，換算成保底留白遠大於我們想要的像素值，之前只改
+    //   max-inline-size 完全沒處理到這個保底機制，才會實測出留白數字
+    //   對不上滑桿設定的狀況。
+    // 所以這裡兩個屬性一起算：gap 負責「保底最小值」，max-inline-size
+    // 負責「螢幕夠寬時不要讓內容把多餘空間占滿」，兩者算式殊途同歸，
+    // 都是把使用者想要的像素值換算成對應的百分比/像素。
+    function applyHorizontalPadding(desiredPx, columnCount) {
         const rect = view.renderer.getBoundingClientRect();
         const totalWidth = rect.width || 1;
-        const contentWidth = Math.max(100, totalWidth - desiredOuterPx * 2);
-        return Math.round(contentWidth / (columnCount || 1));
+
+        const gapPercent = (desiredPx * 2 / totalWidth) * 100;
+        view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
+
+        const contentWidth = Math.max(100, totalWidth - desiredPx * 2);
+        view.renderer.setAttribute('max-inline-size', Math.round(contentWidth / (columnCount || 1)) + 'px');
     }
 
     function applySettings(settings) {
@@ -275,23 +288,17 @@
             view.renderer.setAttribute('flow', settings.flow);
             view.renderer.setAttribute('margin', settings.topBottomPadding);
             view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
-            view.renderer.setAttribute(
-                'max-inline-size',
-                computeMaxInlineSize(settings.leftRightPadding, settings.maxColumnCount) + 'px'
-            );
+            applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         window.__cwfm.settings = settings;
     }
 
-    // 視窗尺寸改變時，max-inline-size 需要重新換算，否則實際留白像素值
-    // 會跟著視窗大小漂移，不再是使用者原本調整的那個像素值。
+    // 視窗尺寸改變時，gap／max-inline-size 都需要根據新的容器寬度重新
+    // 換算，否則實際留白像素值會跟著視窗大小漂移。
     window.addEventListener('resize', () => {
         if (window.__cwfm.settings) {
             try {
-                view.renderer.setAttribute(
-                    'max-inline-size',
-                    computeMaxInlineSize(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount) + 'px'
-                );
+                applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
             } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用左右留白失敗', e); }
         }
     });
