@@ -192,7 +192,7 @@
     }
 
     // ============================================================
-    // 設定選單：字體、字級、字距、行距、對齊、斷字、翻頁模式、邊界、欄數
+    // 設定選單：字體、字級、字距、行距、對齊、斷字、翻頁模式、上下/左右留白、欄數
     // ============================================================
     const DEFAULT_SETTINGS = {
         fontFamily: '',
@@ -202,7 +202,8 @@
         justify: true,
         hyphenate: true,
         flow: 'paginated',
-        margin: 48,        // px
+        topBottomPadding: 48,  // px，對應 renderer 的 margin 屬性
+        leftRightPadding: 24,  // px，對應 renderer 的 gap 屬性（換算成百分比）
         maxColumnCount: 2,
     };
 
@@ -242,7 +243,30 @@
             '  hyphens: ' + (settings.hyphenate ? 'auto' : 'manual') + ';',
             '}',
             'pre { white-space: pre-wrap !important; }',
+            // [cwfm] 有些書的封面圖片本身沒有設定保持長寬比（直接整張拉伸
+            // 填滿容器），容器尺寸只要因為邊界調整而改變一點點，圖片就會
+            // 明顯變形。強制用 object-fit: contain，保持原始比例、多餘
+            // 空間留白，不再整張硬拉伸。
+            'img, svg {',
+            '  object-fit: contain !important;',
+            '  max-width: 100% !important;',
+            '  max-height: 100% !important;',
+            '}',
         ].join('\n');
+    }
+
+    // [cwfm] gap 屬性吃的是「相對於容器寬度的百分比」，不是純像素，但我們
+    // 希望使用者調整時看到的是直覺的像素數字。這裡即時把「想要的左右留白
+    // 像素」換算成對應的百分比字串。算式反推自 paginator.js 內部：
+    // 實際 gap 像素 = -g/(g-1) * size，其中 g 是百分比（0~1）、size 是容器寬度；
+    // 外側留白 = gap 像素 / 2，所以 gap 像素 = desiredPx * 2，
+    // 反解 g = gapPx / (gapPx + size)。
+    function computeGapPercent(desiredOuterPx) {
+        const rect = view.renderer.getBoundingClientRect();
+        const size = rect.width || 1;
+        const gapPx = desiredOuterPx * 2;
+        const g = gapPx / (gapPx + size);
+        return (g * 100).toFixed(2) + '%';
     }
 
     function applySettings(settings) {
@@ -251,11 +275,22 @@
         } catch (e) { console.error('[cwfm:settings] 套用字體樣式失敗', e); }
         try {
             view.renderer.setAttribute('flow', settings.flow);
-            view.renderer.setAttribute('margin', settings.margin);
+            view.renderer.setAttribute('margin', settings.topBottomPadding);
+            view.renderer.setAttribute('gap', computeGapPercent(settings.leftRightPadding));
             view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         window.__cwfm.settings = settings;
     }
+
+    // 視窗尺寸改變時，左右留白的百分比需要重新換算，否則實際像素值會跟著
+    // 視窗大小漂移，不再是使用者原本調整的那個像素值。
+    window.addEventListener('resize', () => {
+        if (window.__cwfm.settings) {
+            try {
+                view.renderer.setAttribute('gap', computeGapPercent(window.__cwfm.settings.leftRightPadding));
+            } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用左右留白失敗', e); }
+        }
+    });
 
     function buildSettingsPanel() {
         const settings = loadSettings();
@@ -370,7 +405,8 @@
             ['paginated', '\u5206\u9801'],
             ['scrolled', '\u6372\u52D5'],
         ]);
-        addRangeField('\u908A\u754C\u5BEC\u5EA6', 'margin', 0, 120, 4, 'px');
+        addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 4, 120, 1, 'px');
+        addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 4, 120, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
 
         document.body.appendChild(panel);
