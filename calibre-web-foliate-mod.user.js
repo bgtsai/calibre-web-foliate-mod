@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.2.0
+// @version      0.3.0
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -14,19 +14,26 @@
 (function () {
     'use strict';
 
-    // v0.1.0 原本用注入 <script type="module"> 去 import cdn.jsdelivr.net 的 view.js，
-    // 但被 Calibre-Web 頁面自己的 CSP（default-src 'self'）擋下，任何我們插入的 <script>
-    // 標籤（不論 inline 或外部來源）都受頁面 CSP 管轄，這點跟一般網站的 CSP 繼承限制是同一類問題
-    // （見知識庫 10_CSP與跨分頁內容渲染）。
-    //
-    // 改法：先把 foliate-js 的 view.js 連同它動態載入的相依模組，自己用 rollup 打包成
-    // 一份不含外部 import 的單一檔案（build 腳本在 calibre-web-foliate-mod repo 之外，
-    // 產物 vendor 進這個 repo 的 vendor/ 底下），再用兩支 Tampermonkey 特權 API 組合注入：
-    //   1. GM_xmlhttpRequest 抓取檔案內容 —— 完全不受頁面 CSP／CORS 管轄（特權網路請求）
-    //   2. GM_addElement 把抓到的內容當成 inline 內容建立 <script> 元素 —— 這支 API
-    //      官方文件明確説明存在目的就是在網站有嚴格 CSP 時，繞過去加入 script/link/style 元素
-    const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
+    // === 沿革（重要，之後改動前先讀） ===
+    // v0.1.0：注入 <script type="module"> 去 import cdn.jsdelivr.net 的 view.js，
+    //   被 Calibre-Web 頁面自己的 CSP（default-src 'self'）擋下——我們插入的任何
+    //   <script> 標籤（不論 inline 或外部來源）都受頁面 CSP 管轄。
+    // v0.2.0：改把 foliate-js 打包成單一無外部 import 的檔案，用 GM_xmlhttpRequest
+    //   （不受 CSP/CORS 管轄）抓取，再用 GM_addElement（Tampermonkey 官方就是設計
+    //   來繞過嚴格 CSP 加入 script 元素的 API）插入。CSP 問題解決，但緊接著在
+    //   view.open() 內部丟出 "this.renderer.open is not a function"。
+    // v0.3.0（這版）：查出真正原因是 Firefox 的 Xray Vision——腳本一旦宣告任何
+    //   @grant 就會被放進特權沙盒執行，沙盒去呼叫「頁面上自訂元素透過 prototype
+    //   加上去的方法」時，Xray Vision 會把這些方法藏起來（只留瀏覽器原生 DOM
+    //   介面），導致 view.open 這類方法在沙盒裡呼叫失敗。更麻煩的是，一旦有
+    //   @grant，連原本該用來繞過這層限制的 window.wrappedJSObject 本身也會失效
+    //   （Violentmonkey 專案有相同回報），所以沒辦法用「多解一層包裝」來修。
+    //   解法是架構上分工：這支腳本（沙盒化）只做兩件需要特權的事——抓檔案、
+    //   繞過 CSP 插入東西；實際去操作 foliate-view（開書、翻頁）的邏輯，
+    //   包裝成另一段程式碼，一樣用 GM_addElement 插入，但那段程式碼本身在
+    //   「頁面本身的環境」執行，完全不會經過沙盒，也就不會撞到 Xray Vision。
 
+    const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
 
     function getBookId() {
@@ -52,54 +59,10 @@
         });
     }
 
-    // 用 GM_xmlhttpRequest 抓取自己打包好的單一檔案（不受頁面 CSP／CORS 管轄），
-    // 再用 GM_addElement 以 inline 內容的方式插入 <script type="module">
-    // （GM_addElement 官方文件明確說明，就是設計來在頁面 CSP 擋掉一般 script 標籤時繞過去用的）。
-    // 產物本身在被 import 的當下，內部就會自己呼叫 customElements.define('foliate-view', ...)，
-    // 所以這裡只需要負責「把程式碼弄進頁面、等自訂元素註冊完成」，不用自己再呼叫一次 define。
-    function loadFoliateModule() {
-        return new Promise((resolve, reject) => {
-            if (customElements.get('foliate-view')) { resolve(); return; }
-
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: BUNDLE_URL,
-                onload: (res) => {
-                    if (res.status < 200 || res.status >= 300) {
-                        reject(new Error(`foliate-js bundle 下載失敗：HTTP ${res.status}`));
-                        return;
-                    }
-                    try {
-                        GM_addElement('script', {
-                            type: 'module',
-                            textContent: res.responseText,
-                        });
-                    } catch (e) {
-                        reject(new Error('GM_addElement 注入失敗：' + e.message));
-                        return;
-                    }
-                    customElements.whenDefined('foliate-view').then(resolve, reject);
-                },
-                onerror: () => reject(new Error('foliate-js bundle 下載失敗（網路錯誤）')),
-            });
-        });
-    }
-
-    // 抓書籍檔案本體。同網域、同 session，credentials 明確寫 same-origin
-    // 確保就算未來瀏覽器預設值改變，也一定會帶上登入用的 cookie。
-    async function fetchBookFile(bookId) {
-        const url = `/show/${bookId}/epub/file.epub`;
-        const res = await fetch(url, { credentials: 'same-origin' });
-        if (!res.ok) throw new Error(`下載 epub 失敗：HTTP ${res.status}`);
-        return res.blob();
-    }
-
-    // 持續清空 #viewer 容器，直到呼叫 stop() 為止。
-    // 用來防止 epub.js 自己的初始化時機比我們晚，把它塞進來的 iframe 又擠掉我們的 foliate-view。
-    // 這是「跨分頁狀態與執行時機」裡提過的競爭狀況的防護，不是靠猜時機先後賭運氣。
+    // 持續清空 #viewer 容器，直到呼叫回傳的 stop() 為止。
+    // 用來防止 epub.js 自己的初始化時機比我們晚，把它塞進來的 iframe 又擠掉我們的元素。
     function keepContainerClearUntilReady(container) {
         const observer = new MutationObserver(() => {
-            // 只清掉不是我們自己加的節點（沒有這個標記的）
             [...container.children].forEach((child) => {
                 if (!child.dataset || child.dataset.cwfmOwned !== 'true') {
                     child.remove();
@@ -108,6 +71,72 @@
         });
         observer.observe(container, { childList: true });
         return () => observer.disconnect();
+    }
+
+    // 用 GM_xmlhttpRequest 抓取自己打包好的 foliate-js 單一檔案文字內容。
+    function fetchBundleText() {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: BUNDLE_URL,
+                onload: (res) => {
+                    if (res.status < 200 || res.status >= 300) {
+                        reject(new Error(`foliate-js bundle 下載失敗：HTTP ${res.status}`));
+                        return;
+                    }
+                    resolve(res.responseText);
+                },
+                onerror: () => reject(new Error('foliate-js bundle 下載失敗（網路錯誤）')),
+            });
+        });
+    }
+
+    // 產生要塞進「頁面本身環境」執行的應用邏輯（開書、翻頁）。
+    // 刻意寫成字串、透過 GM_addElement 當一般（非沙盒）inline script 插入，
+    // 不要在這支沙盒化的主腳本裡直接操作 foliate-view，理由見檔案開頭的沿革說明。
+    function buildAppScriptSource(bookId) {
+        return `
+(async () => {
+    const viewerContainer = document.querySelector(${JSON.stringify(VIEWER_SELECTOR)});
+    if (!viewerContainer) {
+        console.error('[cwfm] 找不到 #viewer 容器');
+        return;
+    }
+
+    // 兩段注入的執行先後順序不保證（type="module" 是延遲執行的），
+    // 保險起見等自訂元素真的註冊完成再動手。
+    await customElements.whenDefined('foliate-view');
+
+    const view = document.createElement('foliate-view');
+    view.dataset.cwfmOwned = 'true';
+    view.style.display = 'block';
+    view.style.width = '100%';
+    view.style.height = '100%';
+
+    viewerContainer.innerHTML = '';
+    viewerContainer.appendChild(view);
+
+    try {
+        const res = await fetch(${JSON.stringify(`/show/${bookId}/epub/file.epub`)}, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('下載 epub 失敗：HTTP ' + res.status);
+        const blob = await res.blob();
+        const file = new File([blob], ${JSON.stringify(`${bookId}.epub`)}, { type: 'application/epub+zip' });
+        await view.open(file);
+    } catch (e) {
+        console.error('[cwfm] 開啟書籍失敗：', e);
+        viewerContainer.innerHTML = '';
+        viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。';
+        return;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') view.goLeft();
+        else if (e.key === 'ArrowRight') view.goRight();
+    });
+
+    console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', ${JSON.stringify(bookId)});
+})();
+`;
     }
 
     async function main() {
@@ -120,41 +149,26 @@
         const viewerContainer = await waitForElement(VIEWER_SELECTOR);
         const stopClearing = keepContainerClearUntilReady(viewerContainer);
 
-        let view;
         try {
-            await loadFoliateModule();
+            const bundleCode = await fetchBundleText();
 
-            view = document.createElement('foliate-view');
-            view.dataset.cwfmOwned = 'true';
-            view.style.display = 'block';
-            view.style.width = '100%';
-            view.style.height = '100%';
+            // 第一段注入：foliate-js 本體，負責註冊 <foliate-view> 等自訂元素
+            GM_addElement('script', {
+                type: 'module',
+                textContent: bundleCode,
+            });
 
-            // 先清空一次容器（可能已經被 epub.js 塞了東西），再放進我們的元素
-            viewerContainer.innerHTML = '';
-            viewerContainer.appendChild(view);
-
-            const blob = await fetchBookFile(bookId);
-            const file = new File([blob], `${bookId}.epub`, { type: 'application/epub+zip' });
-            await view.open(file);
+            // 第二段注入：我們自己的應用邏輯，在頁面本身環境執行（不經過沙盒）
+            GM_addElement('script', {
+                textContent: buildAppScriptSource(bookId),
+            });
         } catch (e) {
             console.error('[cwfm] 初始化失敗：', e);
             viewerContainer.innerHTML = '';
-            viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。';
-            stopClearing();
-            return;
+            viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）初始化失敗，詳見主控台錯誤訊息。';
         } finally {
-            // 不管成功失敗，我們已經完成一次接管動作，之後不需要再持續清空監看
             stopClearing();
         }
-
-        // 最基本的鍵盤翻頁，之後可以再加畫面上的按鈕
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') view.goLeft();
-            else if (e.key === 'ArrowRight') view.goRight();
-        });
-
-        console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', bookId);
     }
 
     main();
