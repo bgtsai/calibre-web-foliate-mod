@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      0.6.0
+// @version      0.7.0
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -65,6 +65,12 @@
     //   內容文字（blob: 的 fetch 屬於本地記憶體讀取，不受 CSP 管轄），再用
     //   srcdoc 塞給 iframe，並補上 <base href> 保留原本的相對路徑解析。
     //   這個 patch 只存在於我們自己 vendor 的打包版本裡，不影響上游 foliate-js。
+    // v0.7.0（這版）：v0.6.0 實測後，改用 fetch(blob網址) 讀內容那段本身也被
+    //   CSP 擋下（connect-src），先前判斷「blob: 的 fetch 屬於本地讀取、不受
+    //   CSP 管轄」是錯的，這裡更正。改成在 entry.js 攔截 URL.createObjectURL，
+    //   建立「blob 網址 → 原始 Blob 物件」的全域對照表，之後要讀內容直接對
+    //   原始 Blob 物件呼叫 .text()，真正做到純記憶體操作、完全不經過網路層，
+    //   不會被任何 CSP 指令管轄。
 
     const BUNDLE_URL = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/vendor/foliate-view.bundle.js';
     const VIEWER_SELECTOR = '#viewer';
