@@ -52,6 +52,41 @@
     viewerContainer.innerHTML = '';
     viewerContainer.appendChild(view);
 
+    // [cwfm] 進度相關的三個獨立功能共用的 key 產生方式，比照原版
+    // reading/epub.js 的命名慣例："calibre.reader.position." + book.key()，
+    // 我們換成自己的前綴、用 BOOK_ID 當識別碼（同一支腳本、同一支瀏覽器，
+    // 每一本書各自獨立記憶，不會互相覆蓋）。
+    const LOCAL_POSITION_KEY = 'cwfm-position-' + BOOK_ID;
+
+    function getCsrfToken() {
+        const el = document.querySelector('input[name="csrf_token"]');
+        return el ? el.value : '';
+    }
+
+    function wrapCfi(cfi) {
+        if (!cfi) return null;
+        return cfi.startsWith('epubcfi(') ? cfi : 'epubcfi(' + cfi + ')';
+    }
+
+    // 功能二：手動同步到伺服器（對應原版按書籤圖示的動作，同時只會有一個
+    // 書籤，新的會覆蓋舊的——這點跟原版行為一致，不是我們自己發明的）。
+    function syncBookmarkToServer(cfi) {
+        const wrapped = wrapCfi(cfi);
+        if (!wrapped) return Promise.reject(new Error('沒有目前位置可以同步'));
+        return fetch('/ajax/bookmark/' + BOOK_ID + '/epub', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: 'bookmark=' + encodeURIComponent(wrapped),
+        }).then((res) => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            console.log('[cwfm:bookmark] 已同步到伺服器：', wrapped);
+        });
+    }
+
     let book;
     try {
         const res = await fetch('/show/' + BOOK_ID + '/epub/file.epub', { credentials: 'same-origin' });
@@ -60,14 +95,95 @@
         const file = new File([blob], BOOK_ID + '.epub', { type: 'application/epub+zip' });
 
         await view.open(file);
-        view.renderer.next();
         book = view.book;
+
+        // [cwfm] 進度還原優先順序：本機記錄優先（功能一存的，翻頁就即時
+        // 記，通常比較新），本機沒有才看伺服器書籤（Calibre-Web 原本開書
+        // 時會自動把上次位置放在網址列的 #epubcfi(...) 片段裡）。
+        // 本機記錄要不要拿來用，要看使用者有沒有開啟功能一的開關（讀取
+        // 設定放在下面 buildSettingsPanel 建立好之後才做得到，這裡先用
+        // localStorage 原始值自行判斷是否要套用，不等設定物件建好）。
+        let restored = false;
+        try {
+            const savedSettingsRaw = localStorage.getItem(STORAGE_KEY);
+            const savedSettings = savedSettingsRaw ? JSON.parse(savedSettingsRaw) : {};
+            const localRememberEnabled = savedSettings.localAutoRemember !== false; // 預設開啟
+            if (localRememberEnabled) {
+                const savedPosRaw = localStorage.getItem(LOCAL_POSITION_KEY);
+                if (savedPosRaw) {
+                    const savedPos = JSON.parse(savedPosRaw);
+                    if (savedPos && savedPos.cfi) {
+                        await view.goTo(savedPos.cfi);
+                        restored = true;
+                        console.log('[cwfm:bookmark] 已還原本機記憶的閱讀位置：', savedPos.cfi);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[cwfm:bookmark] 還原本機記憶位置失敗', e);
+        }
+
+        if (!restored) {
+            const hash = location.hash;
+            if (hash && hash.startsWith('#epubcfi(')) {
+                try {
+                    await view.goTo(decodeURIComponent(hash.slice(1)));
+                    restored = true;
+                    console.log('[cwfm:bookmark] 已還原伺服器書籤位置：', hash);
+                } catch (e) {
+                    console.error('[cwfm:bookmark] 還原伺服器書籤位置失敗，改從頭開始', e);
+                }
+            }
+        }
+
+        if (!restored) view.renderer.next();
     } catch (e) {
         console.error('[cwfm] 開啟書籍失敗：', e);
         viewerContainer.innerHTML = '';
         viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。';
         return;
     }
+
+    // ============================================================
+    // 功能一：本機自動記憶（每次翻頁即時存進這台瀏覽器的 localStorage，
+    // 比照原版 reading/epub.js 用 "calibre.reader.position." + book.key()
+    // 的做法，換成我們自己的 key 命名）。開關讀 window.__cwfm.settings，
+    // 但這個監聽器在設定選單建立之前就已經掛上，所以每次觸發時才即時讀
+    // 目前設定值，不是掛上當下的快照。
+    // ============================================================
+    view.addEventListener('relocate', (e) => {
+        const settings = window.__cwfm.settings;
+        const enabled = settings ? settings.localAutoRemember : true; // 設定選單還沒建立好之前預設開啟
+        if (!enabled) return;
+        const cfi = e.detail?.cfi;
+        const fraction = e.detail?.fraction;
+        if (!cfi) return;
+        try {
+            localStorage.setItem(LOCAL_POSITION_KEY, JSON.stringify({ cfi, fraction }));
+        } catch (err) {
+            console.error('[cwfm:bookmark] 本機記憶寫入失敗', err);
+        }
+    });
+
+    // ============================================================
+    // 功能三：停留超過 N 秒自動同步到伺服器。同一個位置（relocate 之後）
+    // 沒有再變動、經過設定的秒數，才觸發同步；一旦位置又變了，計時器
+    // 重新開始算，避免快速翻頁時每一頁都送出請求。
+    // ============================================================
+    let autoSyncTimer = null;
+    view.addEventListener('relocate', (e) => {
+        const settings = window.__cwfm.settings;
+        clearTimeout(autoSyncTimer);
+        if (!settings || !settings.autoSyncEnabled) return;
+        const cfi = e.detail?.cfi;
+        if (!cfi) return;
+        const delayMs = Math.max(1, settings.autoSyncDelaySeconds || 5) * 1000;
+        autoSyncTimer = setTimeout(() => {
+            syncBookmarkToServer(cfi).catch((err) =>
+                console.error('[cwfm:bookmark] 停留自動同步失敗', err)
+            );
+        }, delayMs);
+    });
 
     // ============================================================
     // 鍵盤翻頁（含 iframe 內部文件的轉發，見 v0.8.0 沿革說明）
@@ -209,6 +325,9 @@
         topBottomPadding: 48,  // px，對應 renderer 的 margin 屬性
         leftRightPadding: 24,  // px，對應 renderer 的 gap 屬性（換算成百分比）
         maxColumnCount: 2,
+        localAutoRemember: true,   // 功能一：本機自動記憶開關
+        autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
+        autoSyncDelaySeconds: 5,   // 功能三：停留幾秒才觸發同步
     };
 
     function loadSettings() {
@@ -493,6 +612,14 @@
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
 
+        // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
+        // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
+        // 開關；功能二（手動同步）不需要開關，是工具列上的按鈕，使用者
+        // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
+        addCheckboxField('\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09', 'localAutoRemember');
+        addCheckboxField('\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09', 'autoSyncEnabled');
+        addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
+
         document.body.appendChild(panel);
         applySettings(settings);
         return panel;
@@ -610,6 +737,31 @@
         settingsBtn.textContent = '\u8A2D\u5B9A'; // 設定
         settingsBtn.addEventListener('click', () => openPanel(settingsPanel));
         bar.appendChild(settingsBtn);
+
+        // 功能二：手動同步到伺服器。不需要開關，按下去才會觸發，本來就是
+        // 主動行為。用 view.lastLocation（公開屬性）取得目前位置，不用
+        // 另外自己追蹤一份重複的狀態。
+        const syncBtn = document.createElement('button');
+        syncBtn.textContent = '\u5b58\u5230\u4f3a\u670d\u5668'; // 存到伺服器
+        syncBtn.addEventListener('click', () => {
+            const cfi = view.lastLocation?.cfi;
+            if (!cfi) {
+                console.warn('[cwfm:toolbar] 還沒有可同步的位置');
+                return;
+            }
+            const original = syncBtn.textContent;
+            syncBookmarkToServer(cfi)
+                .then(() => {
+                    syncBtn.textContent = '\u5df2\u5b58\u5165 \u2713';
+                    setTimeout(() => { syncBtn.textContent = original; }, 1500);
+                })
+                .catch((e) => {
+                    console.error('[cwfm:toolbar] 手動同步失敗', e);
+                    syncBtn.textContent = '\u5931\u6557';
+                    setTimeout(() => { syncBtn.textContent = original; }, 1500);
+                });
+        });
+        bar.appendChild(syncBtn);
 
         document.body.appendChild(bar);
 
