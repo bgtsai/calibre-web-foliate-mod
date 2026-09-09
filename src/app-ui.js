@@ -2,6 +2,26 @@
     const VIEWER_SELECTOR = '__VIEWER_SELECTOR__';
     const BOOK_ID = '__BOOK_ID__';
     const STORAGE_KEY = 'cwfm-settings';
+    const POSITION_KEY = 'cwfm-position-' + BOOK_ID;
+
+    // [cwfm] 儲存機制改用 Tampermonkey 的 GM_setValue/GM_getValue，不再用
+    // localStorage（理由：GM 儲存跟著腳本走、方便備份與跨電腦同步，不像
+    // localStorage 綁在網站網域上、容易被清瀏覽器資料時一併清掉）。
+    //
+    // 這兩個常數是外層有 @grant 的腳本，在插入這段程式碼「之前」就先用
+    // GM_getValue 讀好、直接把值嵌進來的（外層程式碼用字串取代
+    // "__INITIAL_SETTINGS__"／"__INITIAL_POSITION__" 這兩個佔位字串，
+    // 取代後這裡看到的就已經是真正的 JS 值，不是字串，不用再 JSON.parse
+    // 一次）。因為 GM_setValue/GM_getValue 只有外層有特權的腳本能呼叫，
+    // 這段頁面環境的程式碼沒辦法直接呼叫，讀取用這種「先嵌好」的方式
+    // 繞過去；寫入則用 gmSet() 發自訂事件，外層腳本監聽到才真的呼叫
+    // GM_setValue（fire-and-forget，不需要同步等回應）。
+    const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";
+    const INITIAL_POSITION = "__INITIAL_POSITION__";
+
+    function gmSet(key, value) {
+        document.dispatchEvent(new CustomEvent('cwfm:gm-set', { detail: { key, value } }));
+    }
 
     const viewerContainer = document.querySelector(VIEWER_SELECTOR);
     if (!viewerContainer) {
@@ -54,9 +74,9 @@
 
     // [cwfm] 進度相關的三個獨立功能共用的 key 產生方式，比照原版
     // reading/epub.js 的命名慣例："calibre.reader.position." + book.key()，
-    // 我們換成自己的前綴、用 BOOK_ID 當識別碼（同一支腳本、同一支瀏覽器，
-    // 每一本書各自獨立記憶，不會互相覆蓋）。
-    const LOCAL_POSITION_KEY = 'cwfm-position-' + BOOK_ID;
+    // 我們換成自己的前綴、用 BOOK_ID 當識別碼（同一支腳本、同一本書，
+    // 各自獨立記憶，不會互相覆蓋）。實際的 key 常數在檔案開頭已經宣告
+    // 為 POSITION_KEY，這裡不重複宣告。
 
     function getCsrfToken() {
         const el = document.querySelector('input[name="csrf_token"]');
@@ -100,24 +120,17 @@
         // [cwfm] 進度還原優先順序：本機記錄優先（功能一存的，翻頁就即時
         // 記，通常比較新），本機沒有才看伺服器書籤（Calibre-Web 原本開書
         // 時會自動把上次位置放在網址列的 #epubcfi(...) 片段裡）。
-        // 本機記錄要不要拿來用，要看使用者有沒有開啟功能一的開關（讀取
-        // 設定放在下面 buildSettingsPanel 建立好之後才做得到，這裡先用
-        // localStorage 原始值自行判斷是否要套用，不等設定物件建好）。
+        // 本機記錄要不要拿來用，要看使用者有沒有開啟功能一的開關；這裡
+        // 讀的是外層腳本已經先嵌好的 INITIAL_SETTINGS/INITIAL_POSITION，
+        // 不等 buildSettingsPanel 建好設定物件（那時已經太晚，開書一開始
+        // 就要決定要不要還原位置）。
         let restored = false;
         try {
-            const savedSettingsRaw = localStorage.getItem(STORAGE_KEY);
-            const savedSettings = savedSettingsRaw ? JSON.parse(savedSettingsRaw) : {};
-            const localRememberEnabled = savedSettings.localAutoRemember !== false; // 預設開啟
-            if (localRememberEnabled) {
-                const savedPosRaw = localStorage.getItem(LOCAL_POSITION_KEY);
-                if (savedPosRaw) {
-                    const savedPos = JSON.parse(savedPosRaw);
-                    if (savedPos && savedPos.cfi) {
-                        await view.goTo(savedPos.cfi);
-                        restored = true;
-                        console.log('[cwfm:bookmark] 已還原本機記憶的閱讀位置：', savedPos.cfi);
-                    }
-                }
+            const localRememberEnabled = INITIAL_SETTINGS ? INITIAL_SETTINGS.localAutoRemember !== false : true;
+            if (localRememberEnabled && INITIAL_POSITION && INITIAL_POSITION.cfi) {
+                await view.goTo(INITIAL_POSITION.cfi);
+                restored = true;
+                console.log('[cwfm:bookmark] 已還原本機記憶的閱讀位置：', INITIAL_POSITION.cfi);
             }
         } catch (e) {
             console.error('[cwfm:bookmark] 還原本機記憶位置失敗', e);
@@ -145,11 +158,11 @@
     }
 
     // ============================================================
-    // 功能一：本機自動記憶（每次翻頁即時存進這台瀏覽器的 localStorage，
-    // 比照原版 reading/epub.js 用 "calibre.reader.position." + book.key()
-    // 的做法，換成我們自己的 key 命名）。開關讀 window.__cwfm.settings，
-    // 但這個監聽器在設定選單建立之前就已經掛上，所以每次觸發時才即時讀
-    // 目前設定值，不是掛上當下的快照。
+    // 功能一：本機自動記憶（每次翻頁即時存，比照原版 reading/epub.js 用
+    // "calibre.reader.position." + book.key() 的做法，換成我們自己的 key
+    // 命名，改存進 GM 儲存）。開關讀 window.__cwfm.settings，但這個監聽器
+    // 在設定選單建立之前就已經掛上，所以每次觸發時才即時讀目前設定值，
+    // 不是掛上當下的快照。
     // ============================================================
     view.addEventListener('relocate', (e) => {
         const settings = window.__cwfm.settings;
@@ -159,7 +172,7 @@
         const fraction = e.detail?.fraction;
         if (!cfi) return;
         try {
-            localStorage.setItem(LOCAL_POSITION_KEY, JSON.stringify({ cfi, fraction }));
+            gmSet(POSITION_KEY, { cfi, fraction });
         } catch (err) {
             console.error('[cwfm:bookmark] 本機記憶寫入失敗', err);
         }
@@ -332,13 +345,12 @@
 
     function loadSettings() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) {
-                console.log('[cwfm:settings] localStorage 沒有存過設定，使用預設值');
+            if (!INITIAL_SETTINGS) {
+                console.log('[cwfm:settings] GM 儲存沒有存過設定，使用預設值');
                 return { ...DEFAULT_SETTINGS };
             }
-            const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-            console.log('[cwfm:settings] 從 localStorage 讀回設定：', parsed);
+            const parsed = { ...DEFAULT_SETTINGS, ...INITIAL_SETTINGS };
+            console.log('[cwfm:settings] 從 GM 儲存讀回設定：', parsed);
             return parsed;
         } catch (e) {
             console.error('[cwfm:settings] 讀取設定失敗，改用預設值', e);
@@ -348,10 +360,10 @@
 
     function saveSettings(settings) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-            console.log('[cwfm:settings] 已寫入 localStorage：', settings);
+            gmSet(STORAGE_KEY, settings);
+            console.log('[cwfm:settings] 已送出寫入請求（GM 儲存）：', settings);
         } catch (e) {
-            console.error('[cwfm:settings] 儲存設定失敗（localStorage 可能被瀏覽器封鎖或容量已滿）', e);
+            console.error('[cwfm:settings] 儲存設定失敗', e);
         }
     }
 
