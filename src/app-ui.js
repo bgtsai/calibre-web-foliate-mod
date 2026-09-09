@@ -276,6 +276,12 @@
             '  font-size: 13px;',
             '}',
             '.cwfm-panel input[type="range"] { width: 100%; }',
+            '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; }',
+            '.cwfm-value-input {',
+            '  width: 4em; box-sizing: border-box; padding: 2px 4px;',
+            '  background: #333; border: 1px solid #555; color: #eee; border-radius: 4px;',
+            '  font-size: 12px; text-align: right;',
+            '}',
             '.cwfm-panel .cwfm-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
             '.cwfm-panel select {',
@@ -392,6 +398,20 @@
         localAutoRemember: true,   // 功能一：本機自動記憶開關
         autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
         autoSyncDelaySeconds: 5,   // 功能三：停留幾秒才觸發同步
+        themeName: 'auto',         // 'auto'／'light'／'dark'／'sepia'／'custom'
+        customTextColor: '#333333',
+        customBackgroundColor: '#f5f0e6',
+    };
+
+    // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
+    // auto（跟隨系統深色模式，不特別指定顏色，維持原本 color-scheme
+    // 自動切換的行為）、light（亮色）、dark（暗色）、sepia（復古黃，
+    // 長時間閱讀常見的護眼色調）。custom 則用下面兩個 customXxxColor
+    // 設定值，讓使用者自己挑。
+    const THEME_PRESETS = {
+        light: { text: '#1a1a1a', background: '#ffffff' },
+        dark: { text: '#e0e0e0', background: '#1a1a1a' },
+        sepia: { text: '#4b3621', background: '#f4ecd8' },
     };
 
     function loadSettings() {
@@ -422,9 +442,21 @@
         const fontFamilyRule = settings.fontFamily
             ? '  * { font-family: ' + JSON.stringify(settings.fontFamily) + ' !important; }'
             : '';
+
+        // [cwfm] 佈景主題：auto 不特別指定顏色，維持原本 color-scheme
+        // 跟隨系統深色模式自動切換的行為；light/dark/sepia 用預設配色；
+        // custom 用使用者自己選的顏色。
+        const theme = settings.themeName === 'custom'
+            ? { text: settings.customTextColor, background: settings.customBackgroundColor }
+            : THEME_PRESETS[settings.themeName];
+        const themeRule = theme
+            ? 'html, body { color: ' + theme.text + ' !important; background-color: ' + theme.background + ' !important; }'
+            : '';
+
         return [
             '@namespace epub "http://www.idpf.org/2007/ops";',
             'html { color-scheme: light dark; }',
+            themeRule,
             fontFamilyRule,
             'p, li, blockquote, dd, div {',
             '  font-size: ' + settings.fontSize + '% !important;',
@@ -581,27 +613,53 @@
             row.className = 'cwfm-row';
             const label = document.createElement('label');
             label.textContent = labelText;
-            const valueSpan = document.createElement('span');
-            valueSpan.textContent = settings[key] + (unitSuffix || '');
             row.appendChild(label);
-            row.appendChild(valueSpan);
+
+            // [cwfm] 數值顯示改成可編輯的數字輸入框，不再是純顯示用的
+            // <span>——使用者除了拖滑桿，也可以直接打數字調整。用一個小
+            // 容器把輸入框跟單位文字包起來，維持原本的排版位置。
+            const valueWrap = document.createElement('span');
+            valueWrap.className = 'cwfm-value-input-wrap';
+            const valueInput = document.createElement('input');
+            valueInput.type = 'number';
+            valueInput.className = 'cwfm-value-input';
+            valueInput.min = String(min);
+            valueInput.max = String(max);
+            valueInput.step = String(step);
+            valueInput.value = String(settings[key]);
+            const unitSpan = document.createElement('span');
+            unitSpan.textContent = unitSuffix || '';
+            valueWrap.appendChild(valueInput);
+            valueWrap.appendChild(unitSpan);
+            row.appendChild(valueWrap);
             panel.appendChild(row);
 
-            const input = document.createElement('input');
-            input.type = 'range';
-            input.min = String(min);
-            input.max = String(max);
-            input.step = String(step);
-            input.value = String(settings[key]);
-            input.addEventListener('input', () => {
-                const val = parseFloat(input.value);
-                settings[key] = val;
-                valueSpan.textContent = val + (unitSuffix || '');
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = String(min);
+            slider.max = String(max);
+            slider.step = String(step);
+            slider.value = String(settings[key]);
+
+            function commit(val) {
+                // 夾在 min/max 範圍內，避免使用者手動輸入超出範圍的數字
+                const clamped = Math.min(max, Math.max(min, val));
+                settings[key] = clamped;
+                slider.value = String(clamped);
+                valueInput.value = String(clamped);
                 saveSettings(settings);
                 applySettings(settings);
+            }
+
+            slider.addEventListener('input', () => commit(parseFloat(slider.value)));
+            valueInput.addEventListener('change', () => {
+                const val = parseFloat(valueInput.value);
+                if (Number.isNaN(val)) { valueInput.value = String(settings[key]); return; }
+                commit(val);
             });
-            panel.appendChild(input);
-            return input;
+
+            panel.appendChild(slider);
+            return slider;
         }
 
         function addCheckboxField(labelText, key) {
@@ -643,6 +701,38 @@
             panel.appendChild(select);
             return select;
         }
+
+        function addColorField(labelText, key) {
+            const row = document.createElement('div');
+            row.className = 'cwfm-row';
+            const label = document.createElement('label');
+            label.textContent = labelText;
+            row.appendChild(label);
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.value = settings[key];
+            input.addEventListener('input', () => {
+                settings[key] = input.value;
+                saveSettings(settings);
+                applySettings(settings);
+            });
+            row.appendChild(input);
+            panel.appendChild(row);
+            return input;
+        }
+
+        // [cwfm] 佈景主題：先給幾個常用配色，auto 是預設值（跟隨系統深色
+        // 模式，不特別指定顏色）。custom 選項另外顯示兩個顏色選擇器，讓
+        // 使用者自訂文字/背景顏色。
+        addSelectField('\u4f48\u666f\u4e3b\u984c', 'themeName', [
+            ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
+            ['light', '\u4eae\u8272'],
+            ['dark', '\u6697\u8272'],
+            ['sepia', '\u5fa9\u53e4\u9ec3'],
+            ['custom', '\u81ea\u8a02'],
+        ]);
+        addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
+        addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
 
         addTextField('\u5B57\u9AD4\uFF08\u8F38\u5165\u672C\u6A5F\u5DF2\u5B89\u88DD\u7684\u5B57\u9AD4\u540D\u7A31\uFF09', 'fontFamily', '\u4F8B\u5982\uFF1ATC_JBMM_1111');
         addRangeField('\u5B57\u7D1A', 'fontSize', 70, 200, 5, '%');
