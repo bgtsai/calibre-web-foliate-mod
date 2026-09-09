@@ -293,21 +293,22 @@
         view.renderer.setAttribute('max-inline-size', Math.round(contentWidth / (columnCount || 1)) + 'px');
     }
 
-    // [cwfm] 查證 paginator.js 原始碼後確認：attributeChangedCallback 裡，
-    // 只有 max-inline-size 這個屬性被改變時，會額外呼叫一次 this.render()
-    // （原始碼註解：「needs explicit render() as it doesn't necessarily
-    // resize」）；margin／max-block-size／gap／max-column-count 這幾個
-    // 都只更新 CSS 自訂屬性，不會主動觸發重新排版。實測驗證過這個落差：
-    // --_margin／--_max-block-size 這兩個 CSS 變數本身確實有更新（用
-    // getComputedStyle 查得到新值），但 grid-template-rows 的實際計算
-    // 結果完全沒有跟著變——這正是「數值換了、但沒有觸發重新排版」的
-    // 症狀。修法是比照函式庫對 max-inline-size 的做法，我們自己在改完
-    // margin／max-block-size 之後，手動呼叫一次 view.renderer.render()，
-    // 補上函式庫沒有做的這一步。
+    // [cwfm] margin 這個屬性一定要帶 px 單位，這是上下留白怎麼調都沒反應
+    // 的真正原因（查證 paginator.js 原始碼確認）：
+    // - attributeChangedCallback 收到 margin 後，是把值「原封不動」塞進
+    //   CSS 變數（setProperty('--_margin', value)），完全沒有補單位的處理。
+    // - 這個變數用在 `minmax(var(--_margin), 1fr)` 與 `height: var(--_margin)`
+    //   這兩個需要合法長度的地方；CSS 規格裡不帶單位的數字不是合法長度
+    //   （唯一例外是 0），整條 grid-template-rows 宣告會被瀏覽器丟棄，
+    //   格線退回自動排版，所以不管調 4 或 120 畫面完全一樣。
+    // - 佐證：函式庫自己的預設值就寫成 48px（帶單位）。也解釋了為什麼
+    //   最早期 margin=0 時上下真的變成 0（0 是唯一合法的無單位長度）。
+    // 注意第 720 行有段 JS 會用 parseFloat 把這個變數讀回去做欄寬計算，
+    // parseFloat('120px') 與 parseFloat('120') 結果相同，加上 px 不影響它。
     function applyVerticalPadding(desiredPx) {
         const rect = view.renderer.getBoundingClientRect();
         const totalHeight = rect.height || 1;
-        view.renderer.setAttribute('margin', desiredPx);
+        view.renderer.setAttribute('margin', desiredPx + 'px');
         const contentHeight = Math.max(100, totalHeight - desiredPx * 2);
         view.renderer.setAttribute('max-block-size', Math.round(contentHeight) + 'px');
         view.renderer.render();
@@ -450,8 +451,13 @@
             ['paginated', '\u5206\u9801'],
             ['scrolled', '\u6372\u52D5'],
         ]);
-        addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 4, 120, 1, 'px');
-        addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 4, 120, 1, 'px');
+        // [cwfm] 上下留白最小值放回 0：先前一度鎖在 4，理由是「margin=0
+        // 會導致上下貼邊、不對稱」，但後來查出 margin 因為缺少 px 單位
+        // 從頭到尾就沒有真正生效過（唯一例外是 0，因為 0 是 CSS 裡合法的
+        // 無單位長度）——當初觀察到的「只有 0 會貼邊」，其實是「只有 0
+        // 有生效」的假象，那個結論的前提不成立，所以把限制放回來。
+        addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, 120, 1, 'px');
+        addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, 120, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
 
         document.body.appendChild(panel);
