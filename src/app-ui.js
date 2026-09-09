@@ -204,6 +204,7 @@
         lineSpacing: 1.4,
         justify: true,
         hyphenate: true,
+        disableLigatures: false, // 關閉連字（含詞彙替換字型的 ccmp 替換）
         flow: 'paginated',
         topBottomPadding: 48,  // px，對應 renderer 的 margin 屬性
         leftRightPadding: 24,  // px，對應 renderer 的 gap 屬性（換算成百分比）
@@ -213,8 +214,13 @@
     function loadSettings() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return { ...DEFAULT_SETTINGS };
-            return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+            if (!raw) {
+                console.log('[cwfm:settings] localStorage 沒有存過設定，使用預設值');
+                return { ...DEFAULT_SETTINGS };
+            }
+            const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+            console.log('[cwfm:settings] 從 localStorage 讀回設定：', parsed);
+            return parsed;
         } catch (e) {
             console.error('[cwfm:settings] 讀取設定失敗，改用預設值', e);
             return { ...DEFAULT_SETTINGS };
@@ -224,8 +230,9 @@
     function saveSettings(settings) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            console.log('[cwfm:settings] 已寫入 localStorage：', settings);
         } catch (e) {
-            console.error('[cwfm:settings] 儲存設定失敗', e);
+            console.error('[cwfm:settings] 儲存設定失敗（localStorage 可能被瀏覽器封鎖或容量已滿）', e);
         }
     }
 
@@ -253,6 +260,9 @@
             // 排除了 justify 相關機制）。明確關閉字型的 kerning，讓所有
             // 字元只依照我們設定的 letter-spacing 均勻分佈。
             '  font-kerning: none !important;',
+            (settings.disableLigatures
+                ? '  font-variant-ligatures: none !important; font-feature-settings: "liga" 0, "dlig" 0, "clig" 0, "ccmp" 0 !important;'
+                : ''),
             '}',
             'pre { white-space: pre-wrap !important; }',
             // [cwfm] 查證 EPUB 封面圖片的業界標準做法（Pandoc/Calibre/Sigil
@@ -456,6 +466,13 @@
         addRangeField('\u884C\u8DDD', 'lineSpacing', 1, 2.5, 0.1, '');
         addCheckboxField('\u5169\u7AEF\u5C0D\u9F4A', 'justify');
         addCheckboxField('\u81EA\u52D5\u65B7\u5B57', 'hyphenate');
+        // [cwfm] 查證後確認：詞彙替換字型（用 ccmp 這個 OpenType 機制把
+        // 簡體詞彙替換成繁體詞彙）跟一般裝飾用連字，在瀏覽器眼中是同一套
+        // 機制，沒有天生的區分方式，只能整組一起開關。開著的話詞彙替換
+        // 正常運作，但可能導致特定詞彙間距比周圍窄；關掉則間距完全均勻，
+        // 但字型的詞彙替換功能也會一併失效。預設不關閉（保留詞彙替換），
+        // 讓使用者自己決定要不要犧牲間距換取替換失效。
+        addCheckboxField('\u95dc\u9589\u9023\u5b57\uff08\u53ef\u80fd\u4f7f\u8a5e\u5f59\u66ff\u63db\u5b57\u578b\u5931\u6548\uff09', 'disableLigatures');
         addSelectField('\u7FFB\u9801\u6A21\u5F0F', 'flow', [
             ['paginated', '\u5206\u9801'],
             ['scrolled', '\u6372\u52D5'],
@@ -465,8 +482,15 @@
         // 從頭到尾就沒有真正生效過（唯一例外是 0，因為 0 是 CSS 裡合法的
         // 無單位長度）——當初觀察到的「只有 0 會貼邊」，其實是「只有 0
         // 有生效」的假象，那個結論的前提不成立，所以把限制放回來。
-        addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, 120, 1, 'px');
-        addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, 120, 1, 'px');
+        //
+        // 最大值改成動態計算：以 renderer 目前的實際尺寸的一半為上限，
+        // 不再寫死 120——不同螢幕大小，「合理的最大留白」本來就不一樣，
+        // 寫死的數字在小螢幕上可能太大、在大螢幕上可能太小。
+        const rendererRect = view.renderer.getBoundingClientRect();
+        const maxTopBottomPadding = Math.max(20, Math.floor(rendererRect.height / 2));
+        const maxLeftRightPadding = Math.max(20, Math.floor(rendererRect.width / 2));
+        addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
+        addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
 
         document.body.appendChild(panel);
