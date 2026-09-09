@@ -8,14 +8,20 @@
     // localStorage（理由：GM 儲存跟著腳本走、方便備份與跨電腦同步，不像
     // localStorage 綁在網站網域上、容易被清瀏覽器資料時一併清掉）。
     //
-    // 這兩個常數是外層有 @grant 的腳本，在插入這段程式碼「之前」就先用
-    // GM_getValue 讀好、直接把值嵌進來的（外層程式碼用字串取代
-    // "__INITIAL_SETTINGS__"／"__INITIAL_POSITION__" 這兩個佔位字串，
-    // 取代後這裡看到的就已經是真正的 JS 值，不是字串，不用再 JSON.parse
-    // 一次）。因為 GM_setValue/GM_getValue 只有外層有特權的腳本能呼叫，
-    // 這段頁面環境的程式碼沒辦法直接呼叫，讀取用這種「先嵌好」的方式
-    // 繞過去；寫入則用 gmSet() 發自訂事件，外層腳本監聽到才真的呼叫
-    // GM_setValue（fire-and-forget，不需要同步等回應）。
+    // 下面這兩個常數是外層有 @grant 的腳本，在插入這段程式碼「之前」就先
+    // 用 GM_getValue 讀好、直接把值嵌進來的（外層程式碼會找到對應的宣告
+    // 那一行整個替換掉，取代後這裡看到的就已經是真正的 JS 值，不是字串，
+    // 不用再 JSON.parse 一次）。因為 GM_setValue/GM_getValue 只有外層有
+    // 特權的腳本能呼叫，這段頁面環境的程式碼沒辦法直接呼叫，讀取用這種
+    // 「先嵌好」的方式繞過去；寫入則用 gmSet() 發自訂事件，外層腳本監聽
+    // 到才真的呼叫 GM_setValue（fire-and-forget，不需要同步等回應）。
+    //
+    // 注意：下面兩行宣告本身的確切文字（含等號、分號），外層腳本的
+    // buildCombinedScriptSource() 會拿去精確比對取代，這份註解故意不要
+    // 再重複打出跟宣告一模一樣的引號字串——先前這裡的說明文字曾經寫了
+    // 一模一樣的字串，結果 replace() 找到的是「這段註解」而不是「真正
+    // 的宣告」，替換整個失效，設定值/閱讀進度永遠讀不到剛存過的內容，
+    // 是實測抓到的真實 bug，不是假設性的風險。
     const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";
     const INITIAL_POSITION = "__INITIAL_POSITION__";
 
