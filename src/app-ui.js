@@ -329,10 +329,17 @@
     function updateDivider(settings) {
         try {
             const rendererRect = view.renderer.getBoundingClientRect();
-            const totalHeight = rendererRect.height || 1;
-            const topPercent = (settings.topBottomPadding / totalHeight) * 100;
-            divider.style.top = topPercent + '%';
-            divider.style.height = (100 - topPercent * 2) + '%';
+            const viewerRect = viewerContainer.getBoundingClientRect();
+            // [cwfm] 改用像素計算，不用百分比：divider 是 #viewer 的絕對
+            // 定位子元素，絕對定位元素的百分比是相對於容器的「padding box」
+            // （含我們自己加的 44px 工具列留白）計算，不是相對於 renderer
+            // 實際內容高度，兩者對不上，會導致分隔線下緣多延伸進工具列的
+            // 保留空間。改用像素直接量測、直接相加，不透過百分比換算，
+            // 就不會有這個基準不一致的問題。
+            const topOffsetPx = (rendererRect.top - viewerRect.top) + settings.topBottomPadding;
+            const heightPx = rendererRect.height - settings.topBottomPadding * 2;
+            divider.style.top = topOffsetPx + 'px';
+            divider.style.height = Math.max(0, heightPx) + 'px';
             divider.classList.toggle('cwfm-show', settings.maxColumnCount >= 2 && settings.flow === 'paginated');
         } catch (e) {
             console.error('[cwfm:divider] 更新分隔線位置失敗', e);
