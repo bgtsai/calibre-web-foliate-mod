@@ -244,6 +244,15 @@
             '  text-align: ' + (settings.justify ? 'justify' : 'start') + ' !important;',
             '  -webkit-hyphens: ' + (settings.hyphenate ? 'auto' : 'manual') + ';',
             '  hyphens: ' + (settings.hyphenate ? 'auto' : 'manual') + ';',
+            // [cwfm] 查證後確認：部分字型內建「字距微調（kerning）」資料表，
+            // 只針對特定字元組合生效（不是每一對字都有），跟我們外加的
+            // letter-spacing（均勻套用在所有字元）疊加後，命中 kerning 表
+            // 的特定詞彙會被字型自己拉近一點，看起來比周圍文字擠——這正好
+            // 解釋了為什麼只有特定詞彙（例如「症狀」「出現」）間距比較窄，
+            // 而且跟兩端對齊無關（已實測確認關掉兩端對齊症狀依然存在，
+            // 排除了 justify 相關機制）。明確關閉字型的 kerning，讓所有
+            // 字元只依照我們設定的 letter-spacing 均勻分佈。
+            '  font-kerning: none !important;',
             '}',
             'pre { white-space: pre-wrap !important; }',
             // [cwfm] 查證 EPUB 封面圖片的業界標準做法（Pandoc/Calibre/Sigil
