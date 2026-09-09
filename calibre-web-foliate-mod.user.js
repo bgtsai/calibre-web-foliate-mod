@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      1.8.1
+// @version      1.8.2
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
@@ -269,14 +269,35 @@
 
     // 監聽頁面那邊發出的寫入請求，真正呼叫 GM_setValue。掛在 document 上，
     // 不管頁面那段程式碼實際插入到哪裡都收得到（事件會冒泡）。
+    //
+    // [cwfm] 懷疑這裡可能又是 Xray Vision 類的問題：這支腳本因為
+    // GM_setValue/GM_getValue 這兩個 @grant，被放進特權沙盒執行；頁面
+    // 環境（不在沙盒裡）發出的自訂事件，detail 帶的是頁面環境自己建立的
+    // 物件，沙盒環境讀取這個物件的屬性時，有沒有可能被 Xray Vision 擋掉
+    // （就像之前沙盒讀不到頁面元素透過 prototype 加上去的方法一樣）？
+    // 原本這裡「key 讀不到就靜默 return」，完全沒有任何記錄，難怪使用者
+    // 那邊看不到任何錯誤，但資料就是沒存進去。先補上完整診斷，不要再
+    // 猜，讓下一輪測試能直接看出問題出在哪一步。
     function setupGmStorageBridge() {
         document.addEventListener('cwfm:gm-set', (e) => {
-            const { key, value } = e.detail || {};
-            if (!key) return;
+            console.log('[cwfm:gm-bridge] 收到寫入請求事件，e.detail 型別：', typeof e.detail, e.detail);
+            const detail = e.detail || {};
+            const key = detail.key;
+            const value = detail.value;
+            console.log('[cwfm:gm-bridge] 解析出的 key：', key, ' value 型別：', typeof value);
+            if (!key) {
+                console.warn('[cwfm:gm-bridge] key 是空的，放棄寫入。這很可能就是問題所在。');
+                return;
+            }
             try {
                 GM_setValue(key, value);
+                console.log('[cwfm:gm-bridge] GM_setValue 呼叫完成，key：', key);
+                // 立刻讀回來驗證，確認真的寫進去了，不是呼叫成功但沒有
+                // 真的持久化
+                const readBack = GM_getValue(key, '__NOT_FOUND__');
+                console.log('[cwfm:gm-bridge] 立刻讀回驗證：', readBack === '__NOT_FOUND__' ? '讀不到！' : '讀到了');
             } catch (err) {
-                console.error('[cwfm] GM_setValue 寫入失敗：', key, err);
+                console.error('[cwfm:gm-bridge] GM_setValue 寫入失敗：', key, err);
             }
         });
     }
