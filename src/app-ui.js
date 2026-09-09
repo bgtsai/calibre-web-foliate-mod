@@ -296,10 +296,48 @@
             '  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;',
             '}',
             '.cwfm-dimming.cwfm-show { opacity: 1; pointer-events: auto; }',
+            // [cwfm] 分隔線：查證 Calibre-Web 原本 main.css 的 #divider 規則
+            // 後確認，原版是 position: absolute、寫死 height: 80%／top: 10%，
+            // 這兩個數字是配合原本 #viewer 固定 80% 高度、置中對齊湊出來的。
+            // 我們已經把 #viewer 改成撐滿 100%，照搬這兩個寫死的數字位置會
+            // 對不上；改成用 JS 動態算 top/height（對齊我們自己算好的上下
+            // 留白），不寫死在 CSS 裡，這裡只定義不隨設定變動的部分
+            // （寬度、顏色、透明度、陰影，這些直接沿用原版數值）。
+            '.cwfm-divider {',
+            '  position: absolute; width: 1px; left: 50%; margin-left: -0.5px;',
+            '  border-right: 1px solid #000; opacity: 0.15; z-index: 1;',
+            '  box-shadow: -2px 0 15px rgba(0, 0, 0, 1); pointer-events: none;',
+            '  display: none;',
+            '}',
+            '.cwfm-divider.cwfm-show { display: block; }',
         ].join('\n');
         document.head.appendChild(style);
     }
     try { injectStyles(); } catch (e) { console.error('[cwfm:injectStyles]', e); }
+
+    // [cwfm] 分隔線元素本身：插進 #viewer 裡面（#viewer 本身是
+    // position: relative，這是 Calibre-Web 原本 main.css 就設定好的，
+    // absolute 定位的子元素會依照 #viewer 的框定位，不用我們自己再設定）。
+    // 只在兩欄模式（maxColumnCount >= 2）才顯示，一欄模式沒有「中間那條
+    // 裝訂線」的意義。位置（top/height）在 applySettings 裡動態計算，
+    // 對齊當下的上下留白設定，不寫死。
+    const divider = document.createElement('div');
+    divider.className = 'cwfm-divider';
+    divider.dataset.cwfmOwned = 'true';
+    try { viewerContainer.appendChild(divider); } catch (e) { console.error('[cwfm:divider] 建立分隔線失敗', e); }
+
+    function updateDivider(settings) {
+        try {
+            const rendererRect = view.renderer.getBoundingClientRect();
+            const totalHeight = rendererRect.height || 1;
+            const topPercent = (settings.topBottomPadding / totalHeight) * 100;
+            divider.style.top = topPercent + '%';
+            divider.style.height = (100 - topPercent * 2) + '%';
+            divider.classList.toggle('cwfm-show', settings.maxColumnCount >= 2 && settings.flow === 'paginated');
+        } catch (e) {
+            console.error('[cwfm:divider] 更新分隔線位置失敗', e);
+        }
+    }
 
     // 讓工具列/面板不要蓋住書本內容：#viewer 底部留一點空間
     try { viewerContainer.style.paddingBottom = '44px'; } catch (e) { console.error('[cwfm:layout]', e); }
@@ -473,6 +511,7 @@
             view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
             applyVerticalPadding(settings.topBottomPadding);
             applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
+            updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         window.__cwfm.settings = settings;
     }
@@ -484,6 +523,7 @@
             try {
                 applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
                 applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
+                updateDivider(window.__cwfm.settings);
             } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
         }
     });
