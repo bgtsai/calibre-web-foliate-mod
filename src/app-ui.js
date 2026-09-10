@@ -559,6 +559,7 @@
         themeName: 'auto',         // 'auto'／'light'／'dark'／'sepia'／'custom'
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
+        preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
@@ -607,27 +608,41 @@
         const theme = settings.themeName === 'custom'
             ? { text: settings.customTextColor, background: settings.customBackgroundColor }
             : THEME_PRESETS[settings.themeName];
-        // [cwfm] 背景色跟文字色套用同一套邏輯，不要只靠其中一個選擇器。
-        // 這本測試書背景色目前運作正常，但既然文字色已經證實會被某些
-        // 書本自己的 CSS 蓋掉，背景色理論上也可能遇到同樣的狀況，只是
-        // 這本書剛好沒有衝突——不能因為「這次沒事」就假設每本書都不會
-        // 出事，兩者都同時套用在 html,body（涵蓋整個頁面底色）跟
-        // p/li/blockquote/dd/div（涵蓋更多實際內容元素）這兩層，增加
-        // 覆蓋範圍一致。
+
+        // [cwfm] 顏色規則獨立成單獨一條、用萬用選擇器（*）套用，不能跟
+        // 字級/行距那條規則（只涵蓋 p/li/blockquote/dd/div）共用——實測
+        // 發現標題（h1~h6）、連結（a）、span 這類標籤完全沒被那條規則
+        // 涵蓋到，導致「少部分文字沒套用到顏色」；但也不能直接把顏色塞
+        // 進那條規則裡，因為那樣會連帶把標題的字級也強制跟內文一樣大，
+        // 破壞標題層次。用萬用選擇器確保涵蓋到任何標籤，同時獨立成
+        // 自己一條規則，不影響字級/行距的套用範圍。
+        //
+        // 背景色跟文字色套用同一套邏輯（雙重覆蓋：html,body 一份、萬用
+        // 選擇器一份），不能因為某本書這次沒事就假設每本書都不會撞到
+        // 書本自己 CSS 的優先權衝突。
+        //
+        // preferOriginalTextColor：使用者可以選擇「優先套用書籍本身的
+        // 文字樣式」，勾選後即使選了主題/自訂顏色，也不強制覆蓋文字
+        // 顏色（背景色不受這個選項影響，仍然套用，因為背景色關係到
+        // 「看不看得清楚」這個更基本的可用性問題，跟文字顏色的「排版
+        // 美感選擇」性質不同）。
         const themeRule = theme
             ? 'html, body { background-color: ' + theme.background + ' !important; }'
             : '';
-        const textColorRule = theme
-            ? '  color: ' + theme.text + ' !important;\n  background-color: ' + theme.background + ' !important;'
+        const universalColorRule = theme
+            ? '* {\n' +
+              (settings.preferOriginalTextColor ? '' : '  color: ' + theme.text + ' !important;\n') +
+              '  background-color: ' + theme.background + ' !important;\n' +
+              '}'
             : '';
 
         return [
             '@namespace epub "http://www.idpf.org/2007/ops";',
             'html { color-scheme: light dark; }',
             themeRule,
+            universalColorRule,
             fontFamilyRule,
             'p, li, blockquote, dd, div {',
-            textColorRule,
             '  font-size: ' + settings.fontSize + '% !important;',
             '  letter-spacing: ' + settings.letterSpacing + 'em !important;',
             '  line-height: ' + settings.lineSpacing + ' !important;',
@@ -1299,6 +1314,7 @@
         ]);
         addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
         addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
+        addCheckboxField('\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09', 'preferOriginalTextColor');
 
         addTextField('\u5B57\u9AD4\uFF08\u8F38\u5165\u672C\u6A5F\u5DF2\u5B89\u88DD\u7684\u5B57\u9AD4\u540D\u7A31\uFF09', 'fontFamily', '\u4F8B\u5982\uFF1ATC_JBMM_1111');
         addRangeField('\u5B57\u7D1A', 'fontSize', 70, 200, 5, '%');
