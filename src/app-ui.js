@@ -52,7 +52,9 @@
             // gap/max-inline-size 算錯，是 #viewer 本身寬度只有可用空間的
             // 80%，兩側各留 10% 完全在我們排版系統管轄外的死空間，
             // 不管怎麼調我們自己的設定都調不到它。這裡兩個維度一次覆蓋。
-            '#viewer { width: 100% !important; height: calc(100% - 44px) !important; margin: 0 !important; }',
+            // 現在有上下兩條固定工具列（新增了上方工具列），各佔約 44px，
+            // 要一併從可用高度扣掉，不能只扣原本那一條。
+            '#viewer { width: 100% !important; height: calc(100% - 88px) !important; margin: 0 !important; }',
         ].join('\n');
         document.head.appendChild(style);
 
@@ -256,6 +258,34 @@
             '.cwfm-progress-wrap { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; }',
             '.cwfm-progress-wrap input[type="range"] { flex: 1; }',
             '.cwfm-progress-label { flex: 0 0 auto; min-width: 3.5em; text-align: right; color: #aaa; font-size: 12px; }',
+            // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
+            // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
+            '.cwfm-toolbar-top {',
+            '  position: fixed; left: 0; right: 0; top: 0;',
+            '  display: flex; align-items: center; gap: 6px;',
+            '  padding: 8px 14px; background: rgba(24,24,24,0.92);',
+            '  color: #eee; font-family: sans-serif;',
+            '  z-index: 999999; box-sizing: border-box;',
+            '}',
+            '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
+            '.cwfm-toolbar-top button {',
+            '  background: none; border: none; color: #eee;',
+            '  border-radius: 4px; padding: 6px; cursor: pointer;',
+            '  display: flex; align-items: center; justify-content: center;',
+            '}',
+            '.cwfm-toolbar-top button:hover { background: #3a3a3a; }',
+            '.cwfm-toolbar-top button svg { width: 20px; height: 20px; }',
+            // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
+            // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
+            // 直接沿用：WebKit 系瀏覽器（Chrome/Edge）用 -webkit-appearance
+            // 隱藏內建的 spin button 偽元素；Firefox 用 -moz-appearance:
+            // textfield 讓整個 input 表現得像一般文字框，不會再冒出箭頭。
+            'input[type="number"]::-webkit-outer-spin-button,',
+            'input[type="number"]::-webkit-inner-spin-button {',
+            '  -webkit-appearance: none !important;',
+            '  margin: 0;',
+            '}',
+            'input[type="number"] { -moz-appearance: textfield !important; }',
             '.cwfm-panel {',
             '  position: fixed; top: 0; bottom: 0; width: 320px; max-width: 85vw;',
             '  background: #1e1e1e; color: #eee; z-index: 1000000;',
@@ -263,7 +293,12 @@
             '  overflow-y: auto; padding: 18px; box-sizing: border-box;',
             '  font-family: sans-serif; font-size: 13px;',
             '  transition: transform 0.2s ease;',
+            '  column-gap: 24px;',
             '}',
+            // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
+            // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
+            // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
+            '.cwfm-field { break-inside: avoid; margin-bottom: 4px; }',
             '.cwfm-panel[data-side="left"] { left: 0; transform: translateX(-105%); }',
             '.cwfm-panel[data-side="left"].cwfm-open { transform: translateX(0); }',
             '.cwfm-panel[data-side="right"] { right: 0; transform: translateX(105%); }',
@@ -359,7 +394,10 @@
     }
 
     // 讓工具列/面板不要蓋住書本內容：#viewer 底部留一點空間
-    try { viewerContainer.style.paddingBottom = '44px'; } catch (e) { console.error('[cwfm:layout]', e); }
+    try {
+        viewerContainer.style.paddingTop = '44px';
+        viewerContainer.style.paddingBottom = '44px';
+    } catch (e) { console.error('[cwfm:layout]', e); }
 
     // 共用的遮罩，點擊可以關掉任何一個開著的面板
     let dimming;
@@ -592,9 +630,11 @@
         panel.appendChild(title);
 
         function addTextField(labelText, key, placeholder) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
             const label = document.createElement('label');
             label.textContent = labelText;
-            panel.appendChild(label);
+            field.appendChild(label);
             const input = document.createElement('input');
             input.type = 'text';
             input.value = settings[key] || '';
@@ -604,11 +644,15 @@
                 saveSettings(settings);
                 applySettings(settings);
             });
-            panel.appendChild(input);
+            field.appendChild(input);
+            panel.appendChild(field);
             return input;
         }
 
         function addRangeField(labelText, key, min, max, step, unitSuffix) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+
             const row = document.createElement('div');
             row.className = 'cwfm-row';
             const label = document.createElement('label');
@@ -632,7 +676,7 @@
             valueWrap.appendChild(valueInput);
             valueWrap.appendChild(unitSpan);
             row.appendChild(valueWrap);
-            panel.appendChild(row);
+            field.appendChild(row);
 
             const slider = document.createElement('input');
             slider.type = 'range';
@@ -658,11 +702,14 @@
                 commit(val);
             });
 
-            panel.appendChild(slider);
+            field.appendChild(slider);
+            panel.appendChild(field);
             return slider;
         }
 
         function addCheckboxField(labelText, key) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
             const row = document.createElement('div');
             row.className = 'cwfm-row';
             const label = document.createElement('label');
@@ -677,14 +724,17 @@
                 applySettings(settings);
             });
             row.appendChild(input);
-            panel.appendChild(row);
+            field.appendChild(row);
+            panel.appendChild(field);
             return input;
         }
 
         function addSelectField(labelText, key, options) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
             const label = document.createElement('label');
             label.textContent = labelText;
-            panel.appendChild(label);
+            field.appendChild(label);
             const select = document.createElement('select');
             options.forEach(([value, text]) => {
                 const opt = document.createElement('option');
@@ -698,11 +748,14 @@
                 saveSettings(settings);
                 applySettings(settings);
             });
-            panel.appendChild(select);
+            field.appendChild(select);
+            panel.appendChild(field);
             return select;
         }
 
         function addColorField(labelText, key) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
             const row = document.createElement('div');
             row.className = 'cwfm-row';
             const label = document.createElement('label');
@@ -717,7 +770,8 @@
                 applySettings(settings);
             });
             row.appendChild(input);
-            panel.appendChild(row);
+            field.appendChild(row);
+            panel.appendChild(field);
             return input;
         }
 
@@ -776,6 +830,32 @@
         addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
 
         document.body.appendChild(panel);
+
+        // [cwfm] 依可用高度自動決定欄數：用 CSS column-count 讓內容自然依序
+        // 流入多欄，不用自己手動分配每個欄位該放哪些項目。單欄先量實際
+        // 內容高度，超過可用視窗高度（扣掉上下兩條工具列）就升級成兩欄，
+        // 升級後用新的實際高度再檢查一次，還是超過才升級成三欄——每次都
+        // 用「當下那個欄位配置」量出來的真實高度重新判斷，不是憑空估計。
+        try {
+            const availableHeight = window.innerHeight - 88;
+            const widthByColumns = { 1: 320, 2: 620, 3: 900 };
+            let columnCount = 1;
+            panel.style.columnCount = '1';
+            panel.style.width = widthByColumns[1] + 'px';
+            if (panel.scrollHeight > availableHeight) {
+                columnCount = 2;
+                panel.style.columnCount = '2';
+                panel.style.width = widthByColumns[2] + 'px';
+            }
+            if (columnCount === 2 && panel.scrollHeight > availableHeight) {
+                columnCount = 3;
+                panel.style.columnCount = '3';
+                panel.style.width = widthByColumns[3] + 'px';
+            }
+        } catch (e) {
+            console.error('[cwfm:settings] 自動排版失敗', e);
+        }
+
         applySettings(settings);
         return panel;
     }
@@ -837,15 +917,21 @@
     // ============================================================
     // 底部工具列：上一頁 / 下一頁 / 進度條 / 目錄按鈕 / 設定按鈕
     // ============================================================
+    // [cwfm] 圖示：取自 Feather Icons（MIT 授權的通用幾何圖示集，不是任何
+    // 品牌商標），比純文字按鈕更符合一般操作介面的慣例。
+    const ICONS = {
+        list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+        settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+        bookmarkOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+        bookmarkFilled: '<svg viewBox="0 0 24 24" fill="#e33" stroke="#e33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+        maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
+        minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
+    };
+
     function buildToolbar(tocPanel, settingsPanel) {
         const bar = document.createElement('div');
         bar.className = 'cwfm-toolbar';
         bar.dataset.cwfmOwned = 'true';
-
-        const tocBtn = document.createElement('button');
-        tocBtn.textContent = '\u76EE\u9304'; // 目錄
-        tocBtn.addEventListener('click', () => openPanel(tocPanel));
-        bar.appendChild(tocBtn);
 
         const prevBtn = document.createElement('button');
         prevBtn.textContent = '\u2039';
@@ -888,36 +974,6 @@
         });
         bar.appendChild(nextBtn);
 
-        const settingsBtn = document.createElement('button');
-        settingsBtn.textContent = '\u8A2D\u5B9A'; // 設定
-        settingsBtn.addEventListener('click', () => openPanel(settingsPanel));
-        bar.appendChild(settingsBtn);
-
-        // 功能二：手動同步到伺服器。不需要開關，按下去才會觸發，本來就是
-        // 主動行為。用 view.lastLocation（公開屬性）取得目前位置，不用
-        // 另外自己追蹤一份重複的狀態。
-        const syncBtn = document.createElement('button');
-        syncBtn.textContent = '\u5b58\u5230\u4f3a\u670d\u5668'; // 存到伺服器
-        syncBtn.addEventListener('click', () => {
-            const cfi = view.lastLocation?.cfi;
-            if (!cfi) {
-                console.warn('[cwfm:toolbar] 還沒有可同步的位置');
-                return;
-            }
-            const original = syncBtn.textContent;
-            syncBookmarkToServer(cfi)
-                .then(() => {
-                    syncBtn.textContent = '\u5df2\u5b58\u5165 \u2713';
-                    setTimeout(() => { syncBtn.textContent = original; }, 1500);
-                })
-                .catch((e) => {
-                    console.error('[cwfm:toolbar] 手動同步失敗', e);
-                    syncBtn.textContent = '\u5931\u6557';
-                    setTimeout(() => { syncBtn.textContent = original; }, 1500);
-                });
-        });
-        bar.appendChild(syncBtn);
-
         document.body.appendChild(bar);
 
         // 依 relocate 事件同步進度條與百分比顯示（使用者正在拖曳時不要被蓋過去）
@@ -933,10 +989,85 @@
         return bar;
     }
 
-    let tocPanel, settingsPanel, toolbar;
+    // [cwfm] 上方工具列：目錄、設定、書籤、全螢幕，比照一般 EPUB 閱讀器
+    // 的慣例（查證官方 reader.html 結構，這些操作型按鈕本來就是放在上方，
+    // 進度條這種「顯示狀態」的元件才放下方）。
+    function buildTopToolbar(tocPanel, settingsPanel) {
+        const bar = document.createElement('div');
+        bar.className = 'cwfm-toolbar-top';
+        bar.dataset.cwfmOwned = 'true';
+
+        const tocBtn = document.createElement('button');
+        tocBtn.innerHTML = ICONS.list;
+        tocBtn.setAttribute('aria-label', '\u76EE\u9304');
+        tocBtn.addEventListener('click', () => openPanel(tocPanel));
+        bar.appendChild(tocBtn);
+
+        const spacer = document.createElement('div');
+        spacer.className = 'cwfm-toolbar-top-spacer';
+        bar.appendChild(spacer);
+
+        // 書籤：查證原版 reading/epub.js 的慣例後確認，有存書籤是實心（這裡
+        // 用紅色），沒有則是空心的鏤空圖示。伺服器書籤同時只能有一個，這裡
+        // 用「網址列開書時有沒有帶 #epubcfi(...) 片段」當作初始狀態的判斷
+        // 依據（有的話代表這本書已經有存過伺服器書籤）。
+        const bookmarkBtn = document.createElement('button');
+        let isBookmarked = location.hash.startsWith('#epubcfi(');
+        function renderBookmarkIcon() {
+            bookmarkBtn.innerHTML = isBookmarked ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
+        }
+        renderBookmarkIcon();
+        bookmarkBtn.setAttribute('aria-label', '\u5b58\u5230\u4f3a\u670d\u5668\u66f8\u7c64');
+        bookmarkBtn.addEventListener('click', () => {
+            const cfi = view.lastLocation?.cfi;
+            if (!cfi) {
+                console.warn('[cwfm:toolbar] 還沒有可同步的位置');
+                return;
+            }
+            syncBookmarkToServer(cfi)
+                .then(() => {
+                    isBookmarked = true;
+                    renderBookmarkIcon();
+                })
+                .catch((e) => console.error('[cwfm:toolbar] 書籤同步失敗', e));
+        });
+        bar.appendChild(bookmarkBtn);
+
+        const settingsBtn = document.createElement('button');
+        settingsBtn.innerHTML = ICONS.settings;
+        settingsBtn.setAttribute('aria-label', '\u8A2D\u5B9A');
+        settingsBtn.addEventListener('click', () => openPanel(settingsPanel));
+        bar.appendChild(settingsBtn);
+
+        const fullscreenBtn = document.createElement('button');
+        function renderFullscreenIcon() {
+            fullscreenBtn.innerHTML = document.fullscreenElement ? ICONS.minimize : ICONS.maximize;
+        }
+        renderFullscreenIcon();
+        fullscreenBtn.setAttribute('aria-label', '\u5168\u87A2\u5E55');
+        fullscreenBtn.addEventListener('click', () => {
+            try {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    document.documentElement.requestFullscreen();
+                }
+            } catch (e) {
+                console.error('[cwfm:toolbar] 全螢幕切換失敗', e);
+            }
+        });
+        document.addEventListener('fullscreenchange', renderFullscreenIcon);
+        bar.appendChild(fullscreenBtn);
+
+        document.body.appendChild(bar);
+        return bar;
+    }
+
+    let tocPanel, settingsPanel, toolbar, topToolbar;
     try { tocPanel = buildTOCPanel(); } catch (e) { console.error('[cwfm:toc] 建立目錄面板失敗', e); }
     try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error('[cwfm:settings] 建立設定面板失敗', e); }
     try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立工具列失敗', e); }
+    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立上方工具列失敗', e); }
 
     console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
 })();
