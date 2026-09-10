@@ -98,9 +98,7 @@
 
     // 功能二：手動同步到伺服器（對應原版按書籤圖示的動作，同時只會有一個
     // 書籤，新的會覆蓋舊的——這點跟原版行為一致，不是我們自己發明的）。
-    function syncBookmarkToServer(cfi) {
-        const wrapped = wrapCfi(cfi);
-        if (!wrapped) return Promise.reject(new Error('沒有目前位置可以同步'));
+    function postBookmarkValue(rawValue) {
         return fetch('/ajax/bookmark/' + BOOK_ID + '/epub', {
             method: 'POST',
             credentials: 'same-origin',
@@ -108,10 +106,29 @@
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': getCsrfToken(),
             },
-            body: 'bookmark=' + encodeURIComponent(wrapped),
+            body: 'bookmark=' + encodeURIComponent(rawValue),
         }).then((res) => {
             if (!res.ok) throw new Error('HTTP ' + res.status);
+        });
+    }
+
+    function syncBookmarkToServer(cfi) {
+        const wrapped = wrapCfi(cfi);
+        if (!wrapped) return Promise.reject(new Error('沒有目前位置可以同步'));
+        return postBookmarkValue(wrapped).then(() => {
             console.log('[cwfm:bookmark] 已同步到伺服器：', wrapped);
+        });
+    }
+
+    // [cwfm] 移除伺服器書籤：查證原版 reading/epub.js 原始碼後確認，
+    // updateBookmark(action, location) 這個函式，"add" 跟 "remove" 兩種
+    // 動作都是走同一支 $.ajax POST，差別只在傳入的 bookmark 值——
+    // "remove" 對應的 location 會是空值，程式碼寫的是
+    // `data: { bookmark: location || "" }`，代表移除書籤的做法，就是對
+    // 同一個端點送出空字串。這裡照同樣的方式實作。
+    function removeServerBookmark() {
+        return postBookmarkValue('').then(() => {
+            console.log('[cwfm:bookmark] 已從伺服器移除書籤');
         });
     }
 
@@ -293,8 +310,15 @@
             '  overflow-y: auto; padding: 18px; box-sizing: border-box;',
             '  font-family: sans-serif; font-size: 13px;',
             '  transition: transform 0.2s ease;',
-            '  column-gap: 24px;',
             '}',
+            // [cwfm] 標題列獨立成 header 區塊，永遠橫跨整個面板寬度，
+            // 不會被下面欄位區塊的多欄排版影響。
+            '.cwfm-panel-header {',
+            '  position: relative; margin-bottom: 12px; padding-bottom: 8px;',
+            '  border-bottom: 1px solid #444;',
+            '}',
+            '.cwfm-panel-header h3 { margin: 0; font-size: 15px; }',
+            '.cwfm-fields-wrap { column-gap: 24px; }',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
@@ -303,7 +327,6 @@
             '.cwfm-panel[data-side="left"].cwfm-open { transform: translateX(0); }',
             '.cwfm-panel[data-side="right"] { right: 0; transform: translateX(105%); }',
             '.cwfm-panel[data-side="right"].cwfm-open { transform: translateX(0); }',
-            '.cwfm-panel h3 { margin: 0 0 12px; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 8px; }',
             '.cwfm-panel label { display: block; margin: 14px 0 4px; font-size: 12px; color: #aaa; }',
             '.cwfm-panel input[type="text"], .cwfm-panel input[type="number"] {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
@@ -325,10 +348,12 @@
             '  font-size: 13px;',
             '}',
             '.cwfm-close-btn {',
-            '  position: absolute; top: 12px; right: 12px; background: none; border: none;',
-            '  color: #aaa; font-size: 18px; cursor: pointer; line-height: 1;',
+            '  position: absolute; top: 0; right: 0; background: none;',
+            '  border: 1px solid #666; border-radius: 50%;',
+            '  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;',
+            '  color: #aaa; font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
             '}',
-            '.cwfm-close-btn:hover { color: #fff; }',
+            '.cwfm-close-btn:hover { color: #fff; border-color: #999; }',
             '.cwfm-toc-view { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view ol { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view [role="treeitem"] {',
@@ -619,15 +644,29 @@
         panel.dataset.side = 'right';
         panel.dataset.cwfmOwned = 'true';
 
+        // [cwfm] 標題跟關閉按鈕獨立成一個 header 區塊，跟下面的欄位分開，
+        // 這樣多欄排版只會套用在欄位區塊上，標題列永遠橫跨整個面板寬度、
+        // 不會被欄斷點影響。
+        const header = document.createElement('div');
+        header.className = 'cwfm-panel-header';
+
         const closeBtn = document.createElement('button');
         closeBtn.className = 'cwfm-close-btn';
         closeBtn.textContent = '\u2715';
         closeBtn.addEventListener('click', closeAllPanels);
-        panel.appendChild(closeBtn);
+        header.appendChild(closeBtn);
 
         const title = document.createElement('h3');
         title.textContent = '\u95B1\u8B80\u8A2D\u5B9A'; // 閱讀設定
-        panel.appendChild(title);
+        header.appendChild(title);
+
+        panel.appendChild(header);
+
+        // 欄位都塞進這個容器，多欄排版（column-count）只套用在這個容器上。
+        const fieldsWrap = document.createElement('div');
+        fieldsWrap.className = 'cwfm-fields-wrap';
+        panel.appendChild(fieldsWrap);
+        const panelTarget = fieldsWrap; // add*Field() 系列函式改成往這裡塞
 
         function addTextField(labelText, key, placeholder) {
             const field = document.createElement('div');
@@ -645,7 +684,7 @@
                 applySettings(settings);
             });
             field.appendChild(input);
-            panel.appendChild(field);
+            panelTarget.appendChild(field);
             return input;
         }
 
@@ -703,7 +742,7 @@
             });
 
             field.appendChild(slider);
-            panel.appendChild(field);
+            panelTarget.appendChild(field);
             return slider;
         }
 
@@ -725,7 +764,7 @@
             });
             row.appendChild(input);
             field.appendChild(row);
-            panel.appendChild(field);
+            panelTarget.appendChild(field);
             return input;
         }
 
@@ -749,7 +788,7 @@
                 applySettings(settings);
             });
             field.appendChild(select);
-            panel.appendChild(field);
+            panelTarget.appendChild(field);
             return select;
         }
 
@@ -766,19 +805,29 @@
             input.value = settings[key];
             input.addEventListener('input', () => {
                 settings[key] = input.value;
+                // [cwfm] 自訂顏色欄位跟「佈景主題」下拉選單是分開的兩個
+                // UI 元件，但邏輯上只有選「自訂」時這兩個顏色才會真正套用
+                // ——實測發現使用者調整顏色時常常沒有先把下拉選單切到
+                // 「自訂」，導致顏色改了卻完全沒有視覺效果。這裡改成調整
+                // 顏色時自動把 themeName 也一併切成 custom，同時更新下拉
+                // 選單本身顯示的值，讓使用者不用記得要先切選單。
+                if (settings.themeName !== 'custom') {
+                    settings.themeName = 'custom';
+                    if (themeSelect) themeSelect.value = 'custom';
+                }
                 saveSettings(settings);
                 applySettings(settings);
             });
             row.appendChild(input);
             field.appendChild(row);
-            panel.appendChild(field);
+            panelTarget.appendChild(field);
             return input;
         }
 
         // [cwfm] 佈景主題：先給幾個常用配色，auto 是預設值（跟隨系統深色
         // 模式，不特別指定顏色）。custom 選項另外顯示兩個顏色選擇器，讓
         // 使用者自訂文字/背景顏色。
-        addSelectField('\u4f48\u666f\u4e3b\u984c', 'themeName', [
+        const themeSelect = addSelectField('\u4f48\u666f\u4e3b\u984c', 'themeName', [
             ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
             ['light', '\u4eae\u8272'],
             ['dark', '\u6697\u8272'],
@@ -832,26 +881,25 @@
         document.body.appendChild(panel);
 
         // [cwfm] 依可用高度自動決定欄數：用 CSS column-count 讓內容自然依序
-        // 流入多欄，不用自己手動分配每個欄位該放哪些項目。單欄先量實際
-        // 內容高度，超過可用視窗高度（扣掉上下兩條工具列）就升級成兩欄，
-        // 升級後用新的實際高度再檢查一次，還是超過才升級成三欄——每次都
-        // 用「當下那個欄位配置」量出來的真實高度重新判斷，不是憑空估計。
+        // 流入多欄，不用自己手動分配每個欄位該放哪些項目。套用在
+        // fieldsWrap（不含標題列）上，標題列永遠維持橫跨整個面板寬度。
+        // 迴圈不設欄數上限，量到「當下這個欄數配置」實際排出來的高度，
+        // 還是超過可用高度就再加一欄，直到放得下為止（設一個防呆用的
+        // 安全上限，避免極端情況下無限迴圈，不是刻意設計的欄數上限）。
         try {
-            const availableHeight = window.innerHeight - 88;
-            const widthByColumns = { 1: 320, 2: 620, 3: 900 };
+            const headerHeight = header.getBoundingClientRect().height;
+            const availableHeight = window.innerHeight - 88 - headerHeight - 36; // 36 是面板自己的上下 padding
+            const COLUMN_WIDTH = 300;
+            const SAFETY_MAX_COLUMNS = 8;
             let columnCount = 1;
-            panel.style.columnCount = '1';
-            panel.style.width = widthByColumns[1] + 'px';
-            if (panel.scrollHeight > availableHeight) {
-                columnCount = 2;
-                panel.style.columnCount = '2';
-                panel.style.width = widthByColumns[2] + 'px';
+            fieldsWrap.style.columnCount = '1';
+            fieldsWrap.style.width = COLUMN_WIDTH + 'px';
+            while (fieldsWrap.scrollHeight > availableHeight && columnCount < SAFETY_MAX_COLUMNS) {
+                columnCount += 1;
+                fieldsWrap.style.columnCount = String(columnCount);
+                fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
             }
-            if (columnCount === 2 && panel.scrollHeight > availableHeight) {
-                columnCount = 3;
-                panel.style.columnCount = '3';
-                panel.style.width = widthByColumns[3] + 'px';
-            }
+            panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
         } catch (e) {
             console.error('[cwfm:settings] 自動排版失敗', e);
         }
@@ -1008,29 +1056,58 @@
         bar.appendChild(spacer);
 
         // 書籤：查證原版 reading/epub.js 的慣例後確認，有存書籤是實心（這裡
-        // 用紅色），沒有則是空心的鏤空圖示。伺服器書籤同時只能有一個，這裡
-        // 用「網址列開書時有沒有帶 #epubcfi(...) 片段」當作初始狀態的判斷
-        // 依據（有的話代表這本書已經有存過伺服器書籤）。
+        // 用紅色），沒有則是空心的鏤空圖示。
+        //
+        // [cwfm] 精確比對「目前顯示的位置」是不是剛好等於已存的伺服器書籤
+        // ——不是「這本書有沒有存過書籤」這種粗略狀態。用
+        // currentServerBookmarkCfi 記住目前伺服器書籤實際的 CFI 字串值
+        // （不只是布林值），每次 relocate 都拿目前位置去精確比對：
+        // 相符才顯示紅色，一旦翻頁離開（不再相符）就變回空心。
+        // 初始值從網址列的 #epubcfi(...) 片段取得（Calibre-Web 開書時
+        // 如果這本書已有伺服器書籤，會自動帶在網址上）。
+        let currentServerBookmarkCfi = location.hash.startsWith('#epubcfi(')
+            ? decodeURIComponent(location.hash.slice(1))
+            : null;
+
         const bookmarkBtn = document.createElement('button');
-        let isBookmarked = location.hash.startsWith('#epubcfi(');
+        function isCurrentLocationBookmarked() {
+            const cfi = view.lastLocation?.cfi;
+            if (!cfi || !currentServerBookmarkCfi) return false;
+            return wrapCfi(cfi) === currentServerBookmarkCfi;
+        }
         function renderBookmarkIcon() {
-            bookmarkBtn.innerHTML = isBookmarked ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
+            bookmarkBtn.innerHTML = isCurrentLocationBookmarked() ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
         }
         renderBookmarkIcon();
-        bookmarkBtn.setAttribute('aria-label', '\u5b58\u5230\u4f3a\u670d\u5668\u66f8\u7c64');
+        bookmarkBtn.setAttribute('aria-label', '\u66f8\u7c64');
         bookmarkBtn.addEventListener('click', () => {
             const cfi = view.lastLocation?.cfi;
             if (!cfi) {
                 console.warn('[cwfm:toolbar] 還沒有可同步的位置');
                 return;
             }
-            syncBookmarkToServer(cfi)
-                .then(() => {
-                    isBookmarked = true;
-                    renderBookmarkIcon();
-                })
-                .catch((e) => console.error('[cwfm:toolbar] 書籤同步失敗', e));
+            if (isCurrentLocationBookmarked()) {
+                // (c) 已經是紅色書籤，按下去立刻取消
+                removeServerBookmark()
+                    .then(() => {
+                        currentServerBookmarkCfi = null;
+                        renderBookmarkIcon();
+                    })
+                    .catch((e) => console.error('[cwfm:toolbar] 移除書籤失敗', e));
+            } else {
+                // (b) 目前這頁沒有書籤，按下去立刻存成新書籤（同時只能有
+                // 一個，這裡存了之後，原本別頁的書籤自然就不再相符、
+                // 下次切過去會自動變回空心，不用另外處理）
+                syncBookmarkToServer(cfi)
+                    .then(() => {
+                        currentServerBookmarkCfi = wrapCfi(cfi);
+                        renderBookmarkIcon();
+                    })
+                    .catch((e) => console.error('[cwfm:toolbar] 書籤同步失敗', e));
+            }
         });
+        // (a) 翻頁時即時重新比對，離開已存書籤的那一頁就變回空心
+        view.addEventListener('relocate', renderBookmarkIcon);
         bar.appendChild(bookmarkBtn);
 
         const settingsBtn = document.createElement('button');
