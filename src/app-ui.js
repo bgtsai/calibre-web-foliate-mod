@@ -354,6 +354,101 @@
             '  color: #aaa; font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
             '}',
             '.cwfm-close-btn:hover { color: #fff; border-color: #999; }',
+            // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
+            // 自訂取色器。
+            '.cwfm-color-swatch-btn {',
+            '  width: 48px; height: 28px; border-radius: 4px;',
+            '  border: 1px solid #666; cursor: pointer;',
+            '}',
+            // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
+            // 改名為 cwfm-cp。原版是亮色主題、另外用 html[dark] 屬性選擇器
+            // 疊一套暗色 override；我們的設定面板本身就是深色的，直接用
+            // 深色配色，不用像原版那樣準備兩套。
+            '.cwfm-cp-wrap {',
+            '  position: fixed; inset: 0; z-index: 1000010;',
+            '  display: flex; align-items: center; justify-content: center;',
+            '  background: rgba(0,0,0,0.55);',
+            '}',
+            '.cwfm-cp {',
+            '  width: 233px; border-radius: 11px; overflow: hidden;',
+            '  background: #262626; border: 1px solid rgba(255,255,255,0.13);',
+            '  box-shadow: 0 8px 28px rgba(0,0,0,0.5); font-family: sans-serif;',
+            '}',
+            '.cwfm-cp .cp-grad-wrap { padding: 9px 9px 0; }',
+            '.cwfm-cp .cp-grad-box { width:100%; height:140px; position:relative; cursor:crosshair; border-radius:5px; overflow:hidden; }',
+            '.cwfm-cp .cp-grad-white { position:absolute;inset:0; background:linear-gradient(to right,#fff,transparent); }',
+            '.cwfm-cp .cp-grad-black { position:absolute;inset:0; background:linear-gradient(to bottom,transparent,#000); }',
+            '.cwfm-cp .cp-cursor {',
+            '  position:absolute; width:12px; height:12px; border-radius:50%;',
+            '  border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.4),0 1px 4px rgba(0,0,0,0.5);',
+            '  top:28%; left:62%; transform:translate(-50%,-50%); pointer-events:none;',
+            '}',
+            '.cwfm-cp .cp-sliders { display:flex; align-items:center; gap:9px; padding: 9px 13px 7px; }',
+            '.cwfm-cp .cp-preview { width:32px; height:32px; border-radius:50%; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); }',
+            '.cwfm-cp .cp-tracks { flex:1; display:flex; flex-direction:column; gap:7px; padding-right:4px; }',
+            '.cwfm-cp .cp-track-row { display:flex; align-items:center; gap:14px; }',
+            '.cwfm-cp .cp-track-lbl { width:10px; text-align:center; font-size:10px; font-weight:600; user-select:none; flex-shrink:0; }',
+            '.cwfm-cp .cp-track-lbl.vis  { color:#999; }',
+            '.cwfm-cp .cp-track-lbl.hide { color:transparent; }',
+            '.cwfm-cp .cp-track { flex:1; height:12px; border-radius:6px; position:relative; cursor:pointer; }',
+            '.cwfm-cp .cp-track.off { opacity:0.28; cursor:default; pointer-events:none; }',
+            '.cwfm-cp .cp-thumb {',
+            '  position:absolute; top:50%; transform:translate(-50%,-50%);',
+            '  width:14px; height:14px; border-radius:50%; background:#fff;',
+            '  border:1.5px solid rgba(0,0,0,0.35); box-shadow: 0 1px 3px rgba(0,0,0,0.4);',
+            '  pointer-events:none;',
+            '}',
+            '.cwfm-cp .cp-track-hue { background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); }',
+            '.cwfm-cp .cp-track-off-bg { background:#444; }',
+            '.cwfm-cp .cp-sep { height:1px; background:rgba(255,255,255,0.1); margin:0 13px; }',
+            '.cwfm-cp .cp-mode-row { display:flex; gap:5px; padding:7px 13px 5px; }',
+            '.cwfm-cp .cp-tab {',
+            '  flex:1; padding:3px 0; border-radius:5px; border:1px solid transparent;',
+            '  font-size:10px; font-weight:600; cursor:pointer; background:transparent;',
+            '  color:#888; letter-spacing:0.03em;',
+            '}',
+            '.cwfm-cp .cp-tab.active { background:rgba(255,255,255,0.1); color:#eee; border-color:rgba(255,255,255,0.2); }',
+            '.cwfm-cp .cp-summary-row { padding:0 13px 7px; }',
+            '.cwfm-cp .cp-summary {',
+            '  width:100%; box-sizing:border-box; padding:5px 8px; font-size:11px;',
+            '  border:1px solid rgba(255,255,255,0.15); border-radius:6px; outline:none;',
+            '  font-family:"Courier New",monospace; background:#333; color:#eee;',
+            '  text-align:center;',
+            '}',
+            '.cwfm-cp .cp-summary:focus { border-color:rgba(200,60,60,0.5); background:#3a3a3a; }',
+            '.cwfm-cp .cp-summary.off { opacity:0.32; pointer-events:none; }',
+            '.cwfm-cp .cp-bottom { display:flex; gap:8px; padding:5px 13px 11px; align-items:flex-start; }',
+            '.cwfm-cp .cp-steppers { width:105px; flex-shrink:0; flex-grow:0; display:flex; flex-direction:column; gap:9px; }',
+            '.cwfm-cp .cp-ch-row { display:flex; align-items:center; gap:5px; }',
+            '.cwfm-cp .cp-ch-lbl { width:12px; text-align:center; font-size:10px; font-weight:600; user-select:none; flex-shrink:0; }',
+            '.cwfm-cp .cp-ch-lbl.vis  { color:#888; }',
+            '.cwfm-cp .cp-ch-lbl.hide { color:transparent; }',
+            '.cwfm-cp .cp-stepper {',
+            '  display:flex; align-items:center; border:1px solid rgba(255,255,255,0.15);',
+            '  border-radius:5px; overflow:hidden; height:22px; flex:1;',
+            '}',
+            '.cwfm-cp .cp-stepper.off { opacity:0.38; pointer-events:none; }',
+            '.cwfm-cp .cp-s-btn {',
+            '  width:22px; height:100%; border:none; background:transparent;',
+            '  cursor:pointer; font-size:13px; color:#aaa; flex-shrink:0;',
+            '  display:flex; align-items:center; justify-content:center; line-height:1;',
+            '}',
+            '.cwfm-cp .cp-s-btn:hover { background:rgba(255,255,255,0.1); }',
+            '.cwfm-cp .cp-s-val {',
+            '  flex:1; border:none; outline:none; text-align:center; font-size:11px;',
+            '  background:transparent; color:#eee; width:0; min-width:0;',
+            '  -moz-appearance:textfield;',
+            '}',
+            '.cwfm-cp .cp-s-val::-webkit-inner-spin-button,',
+            '.cwfm-cp .cp-s-val::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }',
+            '.cwfm-cp .cp-stepper.off .cp-s-val { color:transparent; }',
+            '.cwfm-cp .cp-actions { flex:1; display:flex; flex-direction:column; gap:6px; justify-content:center; }',
+            '.cwfm-cp .cp-btn { width:100%; padding:5px 0; border-radius:6px; border:none; font-size:11.5px; cursor:pointer; transition:opacity 0.1s; }',
+            '.cwfm-cp .cp-btn:active { opacity:.82; }',
+            '.cwfm-cp .cp-btn-cancel { background:#3a3a3a; border:1px solid rgba(255,255,255,0.12); color:#ccc; font-weight:500; }',
+            '.cwfm-cp .cp-btn-cancel:hover { background:#444; }',
+            '.cwfm-cp .cp-btn-ok { background:#cc0000; color:#fff; font-weight:600; }',
+            '.cwfm-cp .cp-btn-ok:hover { opacity:.88; }',
             '.cwfm-toc-view { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view ol { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view [role="treeitem"] {',
@@ -512,17 +607,19 @@
         const theme = settings.themeName === 'custom'
             ? { text: settings.customTextColor, background: settings.customBackgroundColor }
             : THEME_PRESETS[settings.themeName];
+        // [cwfm] 背景色跟文字色套用同一套邏輯，不要只靠其中一個選擇器。
+        // 這本測試書背景色目前運作正常，但既然文字色已經證實會被某些
+        // 書本自己的 CSS 蓋掉，背景色理論上也可能遇到同樣的狀況，只是
+        // 這本書剛好沒有衝突——不能因為「這次沒事」就假設每本書都不會
+        // 出事，兩者都同時套用在 html,body（涵蓋整個頁面底色）跟
+        // p/li/blockquote/dd/div（涵蓋更多實際內容元素）這兩層，增加
+        // 覆蓋範圍一致。
         const themeRule = theme
             ? 'html, body { background-color: ' + theme.background + ' !important; }'
             : '';
-        // [cwfm] 文字顏色改成套用在下面這條規則（跟字級/行距同一條，已經
-        // 實測驗證過能穩定生效）上，不是只靠 html,body 那條。查證後確認
-        // 原因：背景色套用正常、文字色卻始終失效，這代表書本自己的 CSS
-        // 很可能對 color 也用了 !important（但對 background-color 沒有），
-        // 而且在層疊順序上排在我們的 html,body 規則後面，蓋掉了我們的
-        // 設定；背景色因為沒有同樣的衝突，才會正常。改成套用在涵蓋更多
-        // 元素類型（p/li/blockquote/dd/div）的規則上，增加覆蓋範圍。
-        const textColorRule = theme ? '  color: ' + theme.text + ' !important;' : '';
+        const textColorRule = theme
+            ? '  color: ' + theme.text + ' !important;\n  background-color: ' + theme.background + ' !important;'
+            : '';
 
         return [
             '@namespace epub "http://www.idpf.org/2007/ops";',
@@ -644,6 +741,358 @@
             } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
         }
     });
+
+    // ============================================================
+    // 自訂取色器：移植自 bgtsai/claude-knowledge-base 的
+    // _scripts/youtube_channel_memory/YouTube_Channel_Memory.user.js，
+    // 不用瀏覽器原生的 <input type="color">（原版叫 ysc-cp，這裡改名為
+    // cwfm-cp 避免命名衝突；配色直接採用深色主題，因為我們的設定面板
+    // 本身就是深色的，不像原版需要另外做亮/暗兩套）。
+    // ── 色彩換算輔助函式：純數學運算，不牽涉 DOM ──
+    function cwfmHsvToRgb(h, s, v) {
+        const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+        let r = 0, g = 0, b = 0;
+        if      (h < 60)  { r=c; g=x; b=0; }
+        else if (h < 120) { r=x; g=c; b=0; }
+        else if (h < 180) { r=0; g=c; b=x; }
+        else if (h < 240) { r=0; g=x; b=c; }
+        else if (h < 300) { r=x; g=0; b=c; }
+        else              { r=c; g=0; b=x; }
+        return { r: Math.round((r+m)*255), g: Math.round((g+m)*255), b: Math.round((b+m)*255) };
+    }
+    function cwfmRgbToHsv(r, g, b) {
+        r/=255; g/=255; b/=255;
+        const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+        let h=0, s=(max===0?0:d/max), v=max;
+        if (d!==0) {
+            if      (max===r) h = ((g-b)/d + (g<b?6:0)) / 6;
+            else if (max===g) h = ((b-r)/d + 2) / 6;
+            else              h = ((r-g)/d + 4) / 6;
+        }
+        return { h: h*360, s, v };
+    }
+    function cwfmRgbToHex(r, g, b) {
+        return '#' + [r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+    }
+    function cwfmHexToRgb(hex) {
+        const m = hex.replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        if (!m) return null;
+        return { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) };
+    }
+    function cwfmCssToHex(css) {
+        try {
+            const el = document.createElement('div');
+            el.style.display = 'none';
+            el.style.color = css;
+            document.body.appendChild(el);
+            const computed = getComputedStyle(el).color;
+            el.remove();
+            const m = computed.match(/rgba?\(([0-9]+),\s*([0-9]+),\s*([0-9]+)/);
+            if (!m) return null;
+            return cwfmRgbToHex(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+        } catch { return null; }
+    }
+
+    // ── 開啟取色器，選好按 OK 後呼叫 onConfirm(hex) ──
+    function openColorPicker(initialHex, onConfirm) {
+        document.getElementById('cwfm-cp-wrap')?.remove();
+
+        const initRgb = cwfmHexToRgb(initialHex) || { r: 204, g: 0, b: 0 };
+        const initHsv = cwfmRgbToHsv(initRgb.r, initRgb.g, initRgb.b);
+        const cpState = {
+            h: initHsv.h, s: initHsv.s, v: initHsv.v,
+            r: initRgb.r, g: initRgb.g, b: initRgb.b,
+            mode: 'RGB',
+        };
+        function cpSyncFromHsv() {
+            const rgb = cwfmHsvToRgb(cpState.h, cpState.s, cpState.v);
+            cpState.r = rgb.r; cpState.g = rgb.g; cpState.b = rgb.b;
+        }
+        function cpSyncFromRgb() {
+            const hsv = cwfmRgbToHsv(cpState.r, cpState.g, cpState.b);
+            cpState.s = hsv.s; cpState.v = hsv.v;
+            if (hsv.s > 0.02) cpState.h = hsv.h;
+        }
+
+        document.body.insertAdjacentHTML('beforeend', `
+<div id="cwfm-cp-wrap" class="cwfm-cp-wrap" data-cwfm-owned="true">
+  <div id="cwfm-cp" class="cwfm-cp">
+    <div class="cp-grad-wrap">
+      <div class="cp-grad-box">
+        <div class="cp-grad-white"></div>
+        <div class="cp-grad-black"></div>
+        <div class="cp-cursor"></div>
+      </div>
+    </div>
+    <div class="cp-sliders">
+      <div class="cp-preview"></div>
+      <div class="cp-tracks">
+        <div class="cp-track-row">
+          <span class="cp-track-lbl vis cp-lbl1">H</span>
+          <div class="cp-track cp-track-hue cp-track1"><div class="cp-thumb"></div></div>
+        </div>
+        <div class="cp-track-row">
+          <span class="cp-track-lbl hide cp-lbl2">\u00b7</span>
+          <div class="cp-track cp-track-off-bg off cp-track2"><div class="cp-thumb"></div></div>
+        </div>
+        <div class="cp-track-row">
+          <span class="cp-track-lbl hide cp-lbl3">\u00b7</span>
+          <div class="cp-track cp-track-off-bg off cp-track3"><div class="cp-thumb"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="cp-sep"></div>
+    <div class="cp-mode-row">
+      <button class="cp-tab" data-mode="HEX">HEX</button>
+      <button class="cp-tab active" data-mode="RGB">RGB</button>
+      <button class="cp-tab" data-mode="HSV">HSV</button>
+    </div>
+    <div class="cp-summary-row">
+      <input class="cp-summary" type="text" spellcheck="false">
+    </div>
+    <div class="cp-bottom">
+      <div class="cp-steppers">
+        <div class="cp-ch-row"><span class="cp-ch-lbl vis cp-lbl-ch1"></span>
+          <div class="cp-stepper cp-stepper1"><button class="cp-s-btn cp-s-dec1">\u2212</button><input class="cp-s-val cp-val1" type="number"><button class="cp-s-btn cp-s-inc1">+</button></div>
+        </div>
+        <div class="cp-ch-row"><span class="cp-ch-lbl vis cp-lbl-ch2"></span>
+          <div class="cp-stepper cp-stepper2"><button class="cp-s-btn cp-s-dec2">\u2212</button><input class="cp-s-val cp-val2" type="number"><button class="cp-s-btn cp-s-inc2">+</button></div>
+        </div>
+        <div class="cp-ch-row"><span class="cp-ch-lbl vis cp-lbl-ch3"></span>
+          <div class="cp-stepper cp-stepper3"><button class="cp-s-btn cp-s-dec3">\u2212</button><input class="cp-s-val cp-val3" type="number"><button class="cp-s-btn cp-s-inc3">+</button></div>
+        </div>
+      </div>
+      <div class="cp-actions">
+        <button class="cp-btn cp-btn-cancel">\u53d6\u6d88</button>
+        <button class="cp-btn cp-btn-ok">OK</button>
+      </div>
+    </div>
+  </div>
+</div>`);
+
+        const cpOverlay = document.getElementById('cwfm-cp-wrap');
+        const cp        = document.getElementById('cwfm-cp');
+        const gradBox   = cp.querySelector('.cp-grad-box');
+        const cpCursor  = cp.querySelector('.cp-cursor');
+        const cpPreview = cp.querySelector('.cp-preview');
+        const track1    = cp.querySelector('.cp-track1');
+        const track2    = cp.querySelector('.cp-track2');
+        const track3    = cp.querySelector('.cp-track3');
+        const lbl1      = cp.querySelector('.cp-lbl1');
+        const lbl2      = cp.querySelector('.cp-lbl2');
+        const lbl3      = cp.querySelector('.cp-lbl3');
+        const summary   = cp.querySelector('.cp-summary');
+        const tabs      = cp.querySelectorAll('.cp-tab');
+        const val1      = cp.querySelector('.cp-val1');
+        const val2      = cp.querySelector('.cp-val2');
+        const val3      = cp.querySelector('.cp-val3');
+        const lblCh1    = cp.querySelector('.cp-lbl-ch1');
+        const lblCh2    = cp.querySelector('.cp-lbl-ch2');
+        const lblCh3    = cp.querySelector('.cp-lbl-ch3');
+        const step1     = cp.querySelector('.cp-stepper1');
+        const step2     = cp.querySelector('.cp-stepper2');
+        const step3     = cp.querySelector('.cp-stepper3');
+
+        function cpRender() {
+            const { h, s, v, r, g, b, mode } = cpState;
+            const hueRgb = cwfmHsvToRgb(h, 1, 1);
+            gradBox.style.background = `rgb(${hueRgb.r},${hueRgb.g},${hueRgb.b})`;
+            cpCursor.style.left = (s * 100) + '%';
+            cpCursor.style.top  = ((1 - v) * 100) + '%';
+            const hex = (mode === 'RGB') ? cwfmRgbToHex(r, g, b) : cwfmRgbToHex(...Object.values(cwfmHsvToRgb(h, s, v)));
+            cpPreview.style.background = hex;
+
+            if (mode === 'RGB') {
+                track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
+                track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
+                lbl1.textContent = 'H'; lbl1.className = 'cp-track-lbl vis cp-lbl1';
+                track2.classList.add('off','cp-track-off-bg'); track3.classList.add('off','cp-track-off-bg');
+                lbl2.textContent = '\u00b7'; lbl2.className = 'cp-track-lbl hide cp-lbl2';
+                lbl3.textContent = '\u00b7'; lbl3.className = 'cp-track-lbl hide cp-lbl3';
+                lblCh1.textContent = 'R'; lblCh2.textContent = 'G'; lblCh3.textContent = 'B';
+                step1.classList.remove('off'); step2.classList.remove('off'); step3.classList.remove('off');
+                val1.value = r; val2.value = g; val3.value = b;
+                summary.value = `${r}, ${g}, ${b}`;
+            } else if (mode === 'HSV') {
+                track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
+                track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
+                lbl1.textContent = 'H'; lbl1.className = 'cp-track-lbl vis cp-lbl1';
+                const hFullSat = cwfmHsvToRgb(h, 1, v);
+                const hNoSat   = cwfmHsvToRgb(h, 0, v);
+                track2.style.background = `linear-gradient(to right, rgb(${hNoSat.r},${hNoSat.g},${hNoSat.b}), rgb(${hFullSat.r},${hFullSat.g},${hFullSat.b}))`;
+                track2.querySelector('.cp-thumb').style.left = (s * 100) + '%';
+                track2.classList.remove('off','cp-track-off-bg');
+                lbl2.textContent = 'S'; lbl2.className = 'cp-track-lbl vis cp-lbl2';
+                const hFullV = cwfmHsvToRgb(h, s, 1);
+                track3.style.background = `linear-gradient(to right, #000, rgb(${hFullV.r},${hFullV.g},${hFullV.b}))`;
+                track3.querySelector('.cp-thumb').style.left = (v * 100) + '%';
+                track3.classList.remove('off','cp-track-off-bg');
+                lbl3.textContent = 'V'; lbl3.className = 'cp-track-lbl vis cp-lbl3';
+                lblCh1.textContent = 'H'; lblCh2.textContent = 'S'; lblCh3.textContent = 'V';
+                step1.classList.remove('off'); step2.classList.remove('off'); step3.classList.remove('off');
+                val1.value = Math.round(h); val2.value = Math.round(s * 100); val3.value = Math.round(v * 100);
+                summary.value = `${Math.round(h)}, ${Math.round(s*100)}, ${Math.round(v*100)}`;
+            } else { // HEX
+                track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
+                track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
+                lbl1.textContent = 'H'; lbl1.className = 'cp-track-lbl vis cp-lbl1';
+                track2.classList.add('off','cp-track-off-bg'); track3.classList.add('off','cp-track-off-bg');
+                lbl2.textContent = '\u00b7'; lbl2.className = 'cp-track-lbl hide cp-lbl2';
+                lbl3.textContent = '\u00b7'; lbl3.className = 'cp-track-lbl hide cp-lbl3';
+                lblCh1.textContent = ''; lblCh2.textContent = ''; lblCh3.textContent = '';
+                step1.classList.add('off'); step2.classList.add('off'); step3.classList.add('off');
+                val1.value = ''; val2.value = ''; val3.value = '';
+                summary.value = hex.toUpperCase();
+            }
+        }
+
+        let _cpRafPending = false;
+        function cpRenderRaf() {
+            if (!_cpRafPending) {
+                _cpRafPending = true;
+                requestAnimationFrame(() => { cpRender(); _cpRafPending = false; });
+            }
+        }
+
+        function cpTrackDrag(trackEl, onMove) {
+            function move(e) {
+                const rect = trackEl.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                onMove(ratio);
+                cpRenderRaf();
+            }
+            function up() {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup',  up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend',  up);
+            }
+            trackEl.addEventListener('mousedown',  e => { e.preventDefault(); move(e); document.addEventListener('mousemove', move); document.addEventListener('mouseup', up); });
+            trackEl.addEventListener('touchstart', e => { e.preventDefault(); move(e); document.addEventListener('touchmove', move); document.addEventListener('touchend', up); }, {passive:false});
+        }
+        cpTrackDrag(track1, ratio => { cpState.h = ratio * 360; cpSyncFromHsv(); });
+        cpTrackDrag(track2, ratio => { if (cpState.mode === 'HSV') { cpState.s = ratio; cpSyncFromHsv(); } });
+        cpTrackDrag(track3, ratio => { if (cpState.mode === 'HSV') { cpState.v = ratio; cpSyncFromHsv(); } });
+
+        function gradMove(e) {
+            e.preventDefault();
+            const rect = gradBox.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            cpState.s = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            cpState.v = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
+            cpSyncFromHsv();
+            cpRenderRaf();
+        }
+        function gradUp() {
+            document.removeEventListener('mousemove', gradMove);
+            document.removeEventListener('mouseup',  gradUp);
+            document.removeEventListener('touchmove', gradMove);
+            document.removeEventListener('touchend',  gradUp);
+        }
+        gradBox.addEventListener('mousedown',  e => { gradMove(e); document.addEventListener('mousemove', gradMove); document.addEventListener('mouseup', gradUp); });
+        gradBox.addEventListener('touchstart', e => { gradMove(e); document.addEventListener('touchmove', gradMove); document.addEventListener('touchend', gradUp); }, {passive:false});
+
+        function cpStepperChange(idx, delta, rawVal) {
+            const { mode } = cpState;
+            if (mode === 'HEX') return;
+            if (mode === 'RGB') {
+                const keys = ['r','g','b'];
+                const key = keys[idx-1];
+                if (rawVal !== undefined) cpState[key] = Math.max(0, Math.min(255, parseInt(rawVal)||0));
+                else cpState[key] = Math.max(0, Math.min(255, cpState[key] + delta));
+                cpSyncFromRgb();
+            } else if (mode === 'HSV') {
+                const hsvVals = [Math.round(cpState.h), Math.round(cpState.s*100), Math.round(cpState.v*100)];
+                if (rawVal !== undefined) hsvVals[idx-1] = parseFloat(rawVal)||0;
+                else hsvVals[idx-1] += delta;
+                hsvVals[0] = ((hsvVals[0] % 360) + 360) % 360;
+                hsvVals[1] = Math.max(0, Math.min(100, hsvVals[1]));
+                hsvVals[2] = Math.max(0, Math.min(100, hsvVals[2]));
+                cpState.h = hsvVals[0]; cpState.s = hsvVals[1]/100; cpState.v = hsvVals[2]/100;
+                cpSyncFromHsv();
+            }
+            cpRender();
+        }
+        function cpBindHold(btn, idx, delta) {
+            let holdTimer = null, holdInterval = null;
+            function start(e) {
+                e.preventDefault();
+                cpStepperChange(idx, delta);
+                holdTimer = setTimeout(() => { holdInterval = setInterval(() => cpStepperChange(idx, delta), 60); }, 400);
+            }
+            function stop() { clearTimeout(holdTimer); clearInterval(holdInterval); holdTimer = null; holdInterval = null; }
+            btn.addEventListener('mousedown',  start);
+            btn.addEventListener('touchstart', start, {passive:false});
+            btn.addEventListener('mouseup',    stop);
+            btn.addEventListener('mouseleave', stop);
+            btn.addEventListener('touchend',   stop);
+            btn.addEventListener('touchcancel',stop);
+            btn.addEventListener('click', e => e.preventDefault());
+        }
+        [[val1,step1,1],[val2,step2,2],[val3,step3,3]].forEach(([valEl, stepEl, idx]) => {
+            cpBindHold(stepEl.querySelector('.cp-s-btn:first-child'), idx, -1);
+            cpBindHold(stepEl.querySelector('.cp-s-btn:last-child'),  idx, +1);
+            valEl.addEventListener('change', () => cpStepperChange(idx, 0, valEl.value));
+            valEl.addEventListener('keydown', e => { if (e.key==='Enter') cpStepperChange(idx, 0, valEl.value); });
+        });
+
+        function cpSummaryCommit() {
+            const raw = summary.value.trim();
+            const mode = cpState.mode;
+            function cpSetFromRgb(rgb) { cpState.r=rgb.r; cpState.g=rgb.g; cpState.b=rgb.b; cpSyncFromRgb(); cpRender(); }
+            if (/^#?[0-9a-f]{6}$/i.test(raw.replace(/\s/g,''))) {
+                const hex = raw.startsWith('#') ? raw : '#'+raw;
+                const rgb = cwfmHexToRgb(hex);
+                if (rgb) cpSetFromRgb(rgb);
+                return;
+            }
+            const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
+            if (m3) {
+                if (mode === 'RGB') {
+                    cpSetFromRgb({
+                        r: Math.max(0,Math.min(255,parseInt(m3[1])||0)),
+                        g: Math.max(0,Math.min(255,parseInt(m3[2])||0)),
+                        b: Math.max(0,Math.min(255,parseInt(m3[3])||0)),
+                    });
+                } else if (mode === 'HSV') {
+                    cpState.h = ((parseFloat(m3[1])%360)+360)%360;
+                    cpState.s = Math.max(0,Math.min(100,parseFloat(m3[2])||0))/100;
+                    cpState.v = Math.max(0,Math.min(100,parseFloat(m3[3])||0))/100;
+                    cpSyncFromHsv(); cpRender();
+                }
+                return;
+            }
+            const hex = cwfmCssToHex(raw);
+            if (hex) { const rgb = cwfmHexToRgb(hex); if (rgb) cpSetFromRgb(rgb); }
+        }
+        summary.addEventListener('change', cpSummaryCommit);
+        summary.addEventListener('keydown', e => { if (e.key==='Enter') cpSummaryCommit(); });
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const newMode = tab.dataset.mode;
+                if (cpState.mode === 'RGB') cpSyncFromRgb(); else cpSyncFromHsv();
+                cpState.mode = newMode;
+                cpRender();
+            });
+        });
+
+        function cpClose() { cpOverlay.remove(); }
+        function cpOK() {
+            const rgbVal = (cpState.mode === 'RGB') ? { r: cpState.r, g: cpState.g, b: cpState.b } : cwfmHsvToRgb(cpState.h, cpState.s, cpState.v);
+            const hex = cwfmRgbToHex(rgbVal.r, rgbVal.g, rgbVal.b);
+            onConfirm(hex);
+            cpOverlay.remove();
+        }
+        cp.querySelector('.cp-btn-cancel').addEventListener('click', cpClose);
+        cp.querySelector('.cp-btn-ok').addEventListener('click', cpOK);
+
+        cpRender();
+    }
 
     function buildSettingsPanel() {
         const settings = loadSettings();
@@ -810,28 +1259,32 @@
             const label = document.createElement('label');
             label.textContent = labelText;
             row.appendChild(label);
-            const input = document.createElement('input');
-            input.type = 'color';
-            input.value = settings[key];
-            input.addEventListener('input', () => {
-                settings[key] = input.value;
-                // [cwfm] 自訂顏色欄位跟「佈景主題」下拉選單是分開的兩個
-                // UI 元件，但邏輯上只有選「自訂」時這兩個顏色才會真正套用
-                // ——實測發現使用者調整顏色時常常沒有先把下拉選單切到
-                // 「自訂」，導致顏色改了卻完全沒有視覺效果。這裡改成調整
-                // 顏色時自動把 themeName 也一併切成 custom，同時更新下拉
-                // 選單本身顯示的值，讓使用者不用記得要先切選單。
-                if (settings.themeName !== 'custom') {
-                    settings.themeName = 'custom';
-                    if (themeSelect) themeSelect.value = 'custom';
-                }
-                saveSettings(settings);
-                applySettings(settings);
+
+            // [cwfm] 不用原生 <input type="color">，改成一個色塊按鈕，點下去
+            // 開啟自訂取色器（openColorPicker，移植自 YouTube Channel Memory）。
+            const swatchBtn = document.createElement('button');
+            swatchBtn.type = 'button';
+            swatchBtn.className = 'cwfm-color-swatch-btn';
+            swatchBtn.style.background = settings[key];
+            swatchBtn.addEventListener('click', () => {
+                openColorPicker(settings[key], (hex) => {
+                    settings[key] = hex;
+                    swatchBtn.style.background = hex;
+                    // 理由同前：自訂顏色欄位跟「佈景主題」下拉選單是分開的
+                    // 兩個 UI 元件，只有選「自訂」時這兩個顏色才會真正套用，
+                    // 選色時自動把 themeName 也一併切成 custom。
+                    if (settings.themeName !== 'custom') {
+                        settings.themeName = 'custom';
+                        if (themeSelect) themeSelect.value = 'custom';
+                    }
+                    saveSettings(settings);
+                    applySettings(settings);
+                });
             });
-            row.appendChild(input);
+            row.appendChild(swatchBtn);
             field.appendChild(row);
             panelTarget.appendChild(field);
-            return input;
+            return swatchBtn;
         }
 
         // [cwfm] 佈景主題：先給幾個常用配色，auto 是預設值（跟隨系統深色
