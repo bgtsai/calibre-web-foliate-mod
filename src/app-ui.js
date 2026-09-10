@@ -314,8 +314,8 @@
             // [cwfm] 標題列獨立成 header 區塊，永遠橫跨整個面板寬度，
             // 不會被下面欄位區塊的多欄排版影響。
             '.cwfm-panel-header {',
-            '  position: relative; margin-bottom: 12px; padding-bottom: 8px;',
-            '  border-bottom: 1px solid #444;',
+            '  display: flex; align-items: center; justify-content: space-between;',
+            '  margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #444;',
             '}',
             '.cwfm-panel-header h3 { margin: 0; font-size: 15px; }',
             '.cwfm-fields-wrap { column-gap: 24px; }',
@@ -348,7 +348,7 @@
             '  font-size: 13px;',
             '}',
             '.cwfm-close-btn {',
-            '  position: absolute; top: 0; right: 0; background: none;',
+            '  flex: 0 0 auto; background: none;',
             '  border: 1px solid #666; border-radius: 50%;',
             '  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;',
             '  color: #aaa; font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
@@ -513,8 +513,16 @@
             ? { text: settings.customTextColor, background: settings.customBackgroundColor }
             : THEME_PRESETS[settings.themeName];
         const themeRule = theme
-            ? 'html, body { color: ' + theme.text + ' !important; background-color: ' + theme.background + ' !important; }'
+            ? 'html, body { background-color: ' + theme.background + ' !important; }'
             : '';
+        // [cwfm] 文字顏色改成套用在下面這條規則（跟字級/行距同一條，已經
+        // 實測驗證過能穩定生效）上，不是只靠 html,body 那條。查證後確認
+        // 原因：背景色套用正常、文字色卻始終失效，這代表書本自己的 CSS
+        // 很可能對 color 也用了 !important（但對 background-color 沒有），
+        // 而且在層疊順序上排在我們的 html,body 規則後面，蓋掉了我們的
+        // 設定；背景色因為沒有同樣的衝突，才會正常。改成套用在涵蓋更多
+        // 元素類型（p/li/blockquote/dd/div）的規則上，增加覆蓋範圍。
+        const textColorRule = theme ? '  color: ' + theme.text + ' !important;' : '';
 
         return [
             '@namespace epub "http://www.idpf.org/2007/ops";',
@@ -522,6 +530,7 @@
             themeRule,
             fontFamilyRule,
             'p, li, blockquote, dd, div {',
+            textColorRule,
             '  font-size: ' + settings.fontSize + '% !important;',
             '  letter-spacing: ' + settings.letterSpacing + 'em !important;',
             '  line-height: ' + settings.lineSpacing + ' !important;',
@@ -646,19 +655,20 @@
 
         // [cwfm] 標題跟關閉按鈕獨立成一個 header 區塊，跟下面的欄位分開，
         // 這樣多欄排版只會套用在欄位區塊上，標題列永遠橫跨整個面板寬度、
-        // 不會被欄斷點影響。
+        // 不會被欄斷點影響。header 用 flex + space-between，標題要先加、
+        // 關閉按鈕後加，才會分別落在左右兩側。
         const header = document.createElement('div');
         header.className = 'cwfm-panel-header';
+
+        const title = document.createElement('h3');
+        title.textContent = '\u95B1\u8B80\u8A2D\u5B9A'; // 閱讀設定
+        header.appendChild(title);
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'cwfm-close-btn';
         closeBtn.textContent = '\u2715';
         closeBtn.addEventListener('click', closeAllPanels);
         header.appendChild(closeBtn);
-
-        const title = document.createElement('h3');
-        title.textContent = '\u95B1\u8B80\u8A2D\u5B9A'; // 閱讀設定
-        header.appendChild(title);
 
         panel.appendChild(header);
 
@@ -917,15 +927,20 @@
         panel.dataset.side = 'left';
         panel.dataset.cwfmOwned = 'true';
 
+        const header = document.createElement('div');
+        header.className = 'cwfm-panel-header';
+
+        const title = document.createElement('h3');
+        title.textContent = '\u76EE\u9304'; // 目錄
+        header.appendChild(title);
+
         const closeBtn = document.createElement('button');
         closeBtn.className = 'cwfm-close-btn';
         closeBtn.textContent = '\u2715';
         closeBtn.addEventListener('click', closeAllPanels);
-        panel.appendChild(closeBtn);
+        header.appendChild(closeBtn);
 
-        const title = document.createElement('h3');
-        title.textContent = '\u76EE\u9304'; // 目錄
-        panel.appendChild(title);
+        panel.appendChild(header);
 
         const toc = book?.toc;
         if (!toc || !toc.length) {
