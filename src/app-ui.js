@@ -560,6 +560,12 @@
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
         preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
+        // [cwfm] 實驗性功能：縮放/還原書籤時，嘗試把定位點精準對齊到
+        // 整頁邊界（引擎層的修改，見 foliate-js/paginator.js 的
+        // cwfmAlignAnchor）。預設關閉——這套邏輯目前還沒驗證穩定，
+        // 之後會持續在這個開關上面繼續開發，不是關掉就代表放棄這個
+        // 方向，是先讓使用者自己選擇要不要承擔目前還不穩定的風險。
+        experimentalAnchorAlign: false,
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
@@ -742,6 +748,12 @@
             applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
+        // [cwfm] 實驗性功能開關：這是一般 JS 屬性（不是 HTML attribute），
+        // 直接設在 renderer 元素本身，引擎內部的 #scrollToAnchor 每次都會
+        // 讀這個值即時判斷，不用另外呼叫任何方法去通知。
+        try {
+            view.renderer.cwfmAlignAnchor = !!settings.experimentalAnchorAlign;
+        } catch (e) { console.error('[cwfm:settings] 套用實驗性功能開關失敗', e); }
         window.__cwfm.settings = settings;
     }
 
@@ -1348,6 +1360,7 @@
         addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
+        addCheckboxField('\u3010\u5be6\u9a57\u6027\u3011\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede\uff08\u76ee\u524d\u4e0d\u7a69\u5b9a\uff0c\u51fa\u72c0\u6cc1\u8acb\u95dc\u9589\uff09', 'experimentalAnchorAlign');
 
         // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
         // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
