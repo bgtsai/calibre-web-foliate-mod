@@ -560,12 +560,9 @@
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
         preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
-        // [cwfm] 實驗性功能：縮放/還原書籤時，嘗試把定位點精準對齊到
-        // 整頁邊界（引擎層的修改，見 foliate-js/paginator.js 的
-        // cwfmAlignAnchor）。預設關閉——這套邏輯目前還沒驗證穩定，
-        // 之後會持續在這個開關上面繼續開發，不是關掉就代表放棄這個
-        // 方向，是先讓使用者自己選擇要不要承擔目前還不穩定的風險。
-        experimentalAnchorAlign: false,
+        // [cwfm] 注意：實驗性功能開關（縮放/還原書籤時的定位點對齊）故意
+        // 不放在這個物件裡，見下方 cwfmExperimentalAnchorAlignSession
+        // 這個獨立變數的說明。
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
@@ -737,6 +734,14 @@
         view.renderer.render();
     }
 
+    // [cwfm] 實驗性功能開關，故意不放進 settings 物件、不透過 saveSettings
+    // 寫進 GM 儲存——這是使用者明確要求的設計：這套「定位點對齊」邏輯
+    // 目前還沒驗證穩定過，萬一勾選後畫面卡死，下次重新整理頁面時，這個
+    // 變數會跟著整支腳本的執行環境一起歸零，自動回到關閉、安全的狀態，
+    // 不需要使用者自己去 Tampermonkey 裡手動清掉存檔的設定值，才能拿到
+    // 一個能重新測試的乾淨起點。
+    let cwfmExperimentalAnchorAlignSession = false;
+
     function applySettings(settings) {
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
@@ -748,11 +753,11 @@
             applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
-        // [cwfm] 實驗性功能開關：這是一般 JS 屬性（不是 HTML attribute），
-        // 直接設在 renderer 元素本身，引擎內部的 #scrollToAnchor 每次都會
-        // 讀這個值即時判斷，不用另外呼叫任何方法去通知。
+        // [cwfm] 實驗性功能開關：讀 cwfmExperimentalAnchorAlignSession這個
+        // session-only 變數，不是 settings.xxx——不能讓這個值跟著其他一般
+        // 設定一起被存進 GM 儲存，見上方宣告處的說明。
         try {
-            view.renderer.cwfmAlignAnchor = !!settings.experimentalAnchorAlign;
+            view.renderer.cwfmAlignAnchor = cwfmExperimentalAnchorAlignSession;
         } catch (e) { console.error('[cwfm:settings] 套用實驗性功能開關失敗', e); }
         window.__cwfm.settings = settings;
     }
@@ -1360,7 +1365,33 @@
         addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
-        addCheckboxField('\u3010\u5be6\u9a57\u6027\u3011\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede\uff08\u76ee\u524d\u4e0d\u7a69\u5b9a\uff0c\u51fa\u72c0\u6cc1\u8acb\u95dc\u9589\uff09', 'experimentalAnchorAlign');
+        // [cwfm] 這個勾選框不能用上面的 addCheckboxField()——那個函式的
+        // change 事件一定會呼叫 saveSettings()，把值寫進 GM 儲存，違反
+        // 「這個開關不存檔、只在這次分頁開啟期間有效」的要求。改成手動
+        // 寫一個結構相同、但只操作 cwfmExperimentalAnchorAlignSession
+        // 這個 session 變數的版本，不碰 settings 物件、不呼叫
+        // saveSettings。
+        (function addExperimentalAnchorAlignField() {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const row = document.createElement('div');
+            row.className = 'cwfm-row';
+            const label = document.createElement('label');
+            label.textContent = '\u3010\u5be6\u9a57\u6027\u3011\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede\uff08\u76ee\u524d\u4e0d\u7a69\u5b9a\uff0c\u51fa\u72c0\u6cc1\u8acb\u95dc\u9589\uff09';
+            row.appendChild(label);
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = cwfmExperimentalAnchorAlignSession;
+            input.addEventListener('change', () => {
+                cwfmExperimentalAnchorAlignSession = input.checked;
+                try {
+                    view.renderer.cwfmAlignAnchor = cwfmExperimentalAnchorAlignSession;
+                } catch (e) { console.error('[cwfm:settings] 套用實驗性功能開關失敗', e); }
+            });
+            row.appendChild(input);
+            field.appendChild(row);
+            panelTarget.appendChild(field);
+        })();
 
         // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
         // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
