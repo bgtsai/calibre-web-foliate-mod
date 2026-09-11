@@ -764,14 +764,32 @@
 
     // 視窗尺寸改變時，margin/max-block-size 與 gap/max-inline-size 都需要
     // 根據新的容器尺寸重新換算。
+    //
+    // [cwfm] 防抖動：實測（全螢幕切換）發現瀏覽器轉場過程會連續密集發出
+    // 好幾次 resize 通知，原本這裡收到一次就立刻完整重跑一次「重新排版
+    // + 對齊定位點」，會對著轉場途中還沒定案的中間尺寸算出錯誤的平移量，
+    // 導致畫面瘋狂跳動、版面跑掉。改成收到通知先不動作，等一小段時間
+    // （CWFM_RESIZE_DEBOUNCE_MS）確定沒有新通知再進來，才真正執行一次；
+    // 這段期間內又收到新通知，就把等待時間重新算過。
+    const CWFM_RESIZE_DEBOUNCE_MS = 300;
+    let resizeDebounceTimer = null;
+    let resizeRawCount = 0; // 診斷用：原始通知總共進來幾次
+    let resizeExecCount = 0; // 診斷用：防抖動後實際執行了幾次
     window.addEventListener('resize', () => {
-        if (window.__cwfm.settings) {
-            try {
-                applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
-                applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
-                updateDivider(window.__cwfm.settings);
-            } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
-        }
+        resizeRawCount++;
+        console.log('[cwfm:resize] 收到原始 resize 通知，累計=' + resizeRawCount);
+        clearTimeout(resizeDebounceTimer);
+        resizeDebounceTimer = setTimeout(() => {
+            resizeExecCount++;
+            console.log('[cwfm:resize] 防抖動後真正執行，累計=' + resizeExecCount);
+            if (window.__cwfm.settings) {
+                try {
+                    applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
+                    applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
+                    updateDivider(window.__cwfm.settings);
+                } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
+            }
+        }, CWFM_RESIZE_DEBOUNCE_MS);
     });
 
     // ============================================================
