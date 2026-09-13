@@ -710,7 +710,9 @@
         view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
 
         const contentWidth = Math.max(100, totalWidth - desiredPx * 2);
-        view.renderer.setAttribute('max-inline-size', Math.round(contentWidth / (columnCount || 1)) + 'px');
+        const maxInlineSizePx = Math.round(contentWidth / (columnCount || 1));
+        console.log('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' gapPercent=' + gapPercent.toFixed(3) + ' maxInlineSize=' + maxInlineSizePx);
+        view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
     }
 
     // [cwfm] margin 這個屬性一定要帶 px 單位，這是上下留白怎麼調都沒反應
@@ -730,7 +732,9 @@
         const totalHeight = rect.height || 1;
         view.renderer.setAttribute('margin', desiredPx + 'px');
         const contentHeight = Math.max(100, totalHeight - desiredPx * 2);
-        view.renderer.setAttribute('max-block-size', Math.round(contentHeight) + 'px');
+        const maxBlockSizePx = Math.round(contentHeight);
+        console.log('[cwfm:node] applyVerticalPadding() desiredPx=' + desiredPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
+        view.renderer.setAttribute('max-block-size', maxBlockSizePx + 'px');
         view.renderer.render();
     }
 
