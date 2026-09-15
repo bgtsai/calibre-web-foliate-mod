@@ -260,10 +260,33 @@
     // ============================================================
     // 鍵盤翻頁（含 iframe 內部文件的轉發，見 v0.8.0 沿革說明）
     // ============================================================
+    // [cwfm] 把一次按鍵事件轉成固定格式的字串（例如 'ArrowLeft'、
+    // 'Ctrl+Shift+ArrowLeft'），錄製介面跟實際比對翻頁都共用這一個函式，
+    // 保證格式一致。純按修飾鍵（還沒按到主鍵）回傳 null，呼叫端要自己
+    // 判斷 null 代表「還沒按完，繼續等」，不是「這次按鍵無效」。
+    function formatKeyCombo(e) {
+        if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return null;
+        const parts = [];
+        if (e.ctrlKey) parts.push('Ctrl');
+        if (e.altKey) parts.push('Alt');
+        if (e.shiftKey) parts.push('Shift');
+        if (e.metaKey) parts.push('Meta');
+        parts.push(e.key);
+        return parts.join('+');
+    }
     function handleKeydown(e) {
         try {
-            if (e.key === 'ArrowLeft') view.goLeft();
-            else if (e.key === 'ArrowRight') view.goRight();
+            const combo = formatKeyCombo(e);
+            if (!combo) return;
+            // [cwfm] 讀 window.__cwfm.settings 而不是直接讀某個外層變數：
+            // 這個函式在 buildSettingsPanel() 建立、也就是 settings 這個
+            // 物件真正存在之前就已經註冊監聽了，兩者不在同一個函式作用
+            // 域裡，直接引用會找不到變數；用全域共用狀態才能保證讀到
+            // 當下最新的設定，還沒套用完成前退回預設值，不會整個失效。
+            const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
+                || DEFAULT_SETTINGS.pagingKeys;
+            if (pagingKeys.prev.includes(combo)) view.goLeft();
+            else if (pagingKeys.next.includes(combo)) view.goRight();
         } catch (err) {
             console.error('[cwfm:keydown] 翻頁失敗', err);
         }
@@ -392,6 +415,29 @@
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
             '.cwfm-field { break-inside: avoid; margin-bottom: 4px; }',
+            // [cwfm] 翻頁快速鍵錄製欄位（addKeyListField）：每組已錄製的
+            // 按鍵組合顯示成一個小圓角標籤（chip），標籤上自帶一個小小的
+            // 刪除按鈕；最後面永遠有一個「+ 新增」按鈕，點下去進入錄製
+            // 狀態（樣式沿用同一顆按鈕，只是換文字＋disabled，不用另外
+            // 做一個獨立的錄製中樣式）。
+            '.cwfm-keylist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }',
+            '.cwfm-keychip {',
+            '  display: inline-flex; align-items: center; gap: 4px;',
+            '  background: #333; border: 1px solid #555; border-radius: 4px;',
+            '  padding: 3px 4px 3px 8px; font-size: 12px; color: #eee;',
+            '}',
+            '.cwfm-keychip-remove {',
+            '  background: none; border: none; color: #999; cursor: pointer;',
+            '  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 3px;',
+            '}',
+            '.cwfm-keychip-remove:hover { color: #fff; background: #4a4a4a; }',
+            '.cwfm-keychip-add {',
+            '  background: none; border: 1px dashed #666; border-radius: 4px;',
+            '  color: #aaa; font-size: 12px; padding: 3px 8px; cursor: pointer;',
+            '}',
+            '.cwfm-keychip-add:hover { color: #fff; border-color: #999; }',
+            '.cwfm-keychip-add:disabled { color: #4ea1ff; border-color: #4ea1ff; cursor: default; }',
+            '.cwfm-keylist-hint { color: #e0a030; font-size: 12px; margin-top: 4px; }',
             '.cwfm-panel[data-side="left"] { left: 0; transform: translateX(-105%); }',
             '.cwfm-panel[data-side="left"].cwfm-open { transform: translateX(0); }',
             '.cwfm-panel[data-side="right"] { right: 0; transform: translateX(105%); }',
@@ -652,6 +698,11 @@
         preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
         colorPickerMode: 'RGB',    // 取色器上次使用的分頁（HEX／RGB／HSV），下次打開沿用
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
+        // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
+        // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
+        // 例如 'ArrowLeft'、'Ctrl+Shift+ArrowLeft'。預設維持跟改版前
+        // 一樣的行為（左鍵往前、右鍵往後），使用者可以自己增減。
+        pagingKeys: { prev: ['ArrowLeft'], next: ['ArrowRight'] },
         // [cwfm] 注意：實驗性功能開關（縮放/還原書籤時的定位點對齊）故意
         // 不放在這個物件裡，見下方 cwfmExperimentalAnchorAlignSession
         // 這個獨立變數的說明。
@@ -1424,6 +1475,90 @@
             return input;
         }
 
+        // [cwfm] 翻頁快速鍵錄製欄位。list 直接傳 settings.pagingKeys.prev
+        // 或 .next 這個陣列的參照，就地新增/刪除，不用另外組裝物件再存
+        // 回去；otherList 是另一個方向的陣列，錄製完成、真的要存進 list
+        // 之前，要檢查新錄到的組合鍵有沒有跟 list 自己、或 otherList
+        // 重複（同一組鍵不能同時是「往前」又是「往後」，也不能在同一個
+        // 方向裡重複收兩次）。
+        function addKeyListField(labelText, list, otherList) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const label = document.createElement('label');
+            label.textContent = labelText;
+            field.appendChild(label);
+            const listEl = document.createElement('div');
+            listEl.className = 'cwfm-keylist';
+            const hintEl = document.createElement('div');
+            hintEl.className = 'cwfm-keylist-hint';
+            hintEl.style.display = 'none';
+
+            function render() {
+                listEl.innerHTML = '';
+                list.forEach((combo, idx) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'cwfm-keychip';
+                    chip.textContent = combo;
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'cwfm-keychip-remove';
+                    removeBtn.textContent = '\u00d7';
+                    removeBtn.setAttribute('aria-label', '\u522a\u9664\u9019\u7d44\u5feb\u901f\u9375');
+                    removeBtn.addEventListener('click', () => {
+                        list.splice(idx, 1);
+                        saveSettings(settings);
+                        render();
+                    });
+                    chip.appendChild(removeBtn);
+                    listEl.appendChild(chip);
+                });
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'cwfm-keychip-add';
+                addBtn.textContent = '+ \u65b0\u589e';
+                addBtn.addEventListener('click', () => startRecording(addBtn));
+                listEl.appendChild(addBtn);
+            }
+
+            function startRecording(addBtn) {
+                const originalText = addBtn.textContent;
+                addBtn.textContent = '\u8acb\u6309\u4e0b\u6309\u9375\u2026\uff08Esc \u53d6\u6d88\uff09';
+                addBtn.disabled = true;
+                hintEl.style.display = 'none';
+
+                function cleanup() {
+                    document.removeEventListener('keydown', onKeydown, true);
+                    addBtn.textContent = originalText;
+                    addBtn.disabled = false;
+                }
+                function onKeydown(e) {
+                    // capture 階段擋下，不要讓這次錄製過程中按到的鍵，
+                    // 又被其他地方（例如翻頁本身）當作正常操作處理掉。
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.key === 'Escape') { cleanup(); return; }
+                    const combo = formatKeyCombo(e);
+                    if (!combo) return; // 還在按修飾鍵，繼續等下一次 keydown
+                    if (list.includes(combo) || otherList.includes(combo)) {
+                        hintEl.textContent = '\u300c' + combo + '\u300d\u5df2\u7d93\u88ab\u4f7f\u7528\u4e86\uff0c\u63db\u4e00\u7d44\u770b\u770b';
+                        hintEl.style.display = 'block';
+                        cleanup();
+                        return;
+                    }
+                    list.push(combo);
+                    saveSettings(settings);
+                    cleanup();
+                    render();
+                }
+                document.addEventListener('keydown', onKeydown, true);
+            }
+
+            render();
+            field.appendChild(listEl);
+            field.appendChild(hintEl);
+            panelTarget.appendChild(field);
+        }
+
         function addSelectField(labelText, key, options) {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
@@ -1565,6 +1700,8 @@
         addCheckboxField('\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09', 'localAutoRemember');
         addCheckboxField('\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09', 'autoSyncEnabled');
         addCheckboxField('\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09', 'autoHideToolbar');
+        addKeyListField('\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.prev, settings.pagingKeys.next);
+        addKeyListField('\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.next, settings.pagingKeys.prev);
         addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
 
         document.body.appendChild(panel);
@@ -1826,7 +1963,14 @@
                 console.error('[cwfm:toolbar] 全螢幕切換失敗', e);
             }
         });
-        document.addEventListener('fullscreenchange', renderFullscreenIcon);
+        // [cwfm] 全螢幕切換時要順便喚醒自動隱藏的工具列（原本是靠
+        // relocate 事件附帶觸發，但那一行已經拿掉——見下面 relocate
+        // 監聽器移除處的說明——這裡改成明確掛在 fullscreenchange 上，
+        // 不用再靠巧合。
+        document.addEventListener('fullscreenchange', () => {
+            renderFullscreenIcon();
+            cwfmWakeBars();
+        });
         bar.appendChild(fullscreenBtn);
 
         document.body.appendChild(bar);
@@ -1899,7 +2043,13 @@
             bar.addEventListener('mouseenter', () => { cwfmAutoHideHoveringBar = true; clearTimeout(cwfmAutoHideTimer); });
             bar.addEventListener('mouseleave', () => { cwfmAutoHideHoveringBar = false; cwfmScheduleAutoHide(); });
         });
-        view.addEventListener('relocate', cwfmWakeBars);
+        // [cwfm] 原本這裡掛 view.addEventListener('relocate', cwfmWakeBars)
+        // ——翻頁（不分滑鼠或鍵盤）都會觸發 relocate，導致鍵盤連續翻頁時
+        // 每按一次都會把已經隱藏的工具列重新叫醒、3 秒後才又收回去，不
+        // 符合預期（翻頁本身不該被視為「操作工具列」）。改成只靠滑鼠
+        // 移到邊緣感應區/點擊感應區（上面 topZone/bottomZone 那兩行），
+        // 加上全螢幕切換（見上面 fullscreenchange 監聽器）這兩種明確的
+        // 方式喚醒，翻頁不會再誤觸。
     } catch (e) { console.error('[cwfm:autohide] 初始化自動隱藏失敗', e); }
 
     console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
