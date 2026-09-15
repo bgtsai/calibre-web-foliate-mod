@@ -1044,25 +1044,44 @@
             let container, offset, anchorElement, doc, index;
 
             if (cwfmAnchorStash && cwfmAnchorStash.sectionIndex === currentIndex) {
-                // [cwfm] 已經有暫存、而且是目前這一章的——直接沿用暫存
-                // 記住的那個節點當目標，不要重新讀 view.lastLocation.cfi
-                // 再解析一次。已經實測抓到過真實錯誤：內容還沒接回去的
-                // 這段期間，只要有任何一次 relocate 發生，
-                // view.lastLocation.cfi 就會被更新成「對著已經搬走一截
-                // 的樹」算出來的結果；接回去、恢復成完整的樹之後，這個
-                // 舊 cfi 的結構路徑已經對不上，重新解析會撞到 Range 邊界
-                // 超出範圍的例外（DOMException: Index or size is negative
-                // or greater than the allowed amount）。暫存本身記住的
-                // 節點，offset 保證是 0（搬移時就是精準切在這個點），
-                // 直接沿用不會有這個問題。
+                // [cwfm] 已經有暫存、而且是目前這一章的——但不能直接沿用
+                // 暫存記住的那個「第一次」節點：如果使用者在暫存還沒接
+                // 回去的這段期間翻過頁（例如全螢幕裡面翻了幾頁），目前
+                // 真正該鎖住的位置早就不是暫存原本記的那個點了，每次
+                // 翻頁都要當成一個全新的定位點。改成呼叫排版引擎既有的
+                // getVisibleRange()，直接問「現在畫面上第一個可見的節點
+                // 是誰」——拿到的是活的節點參照，不是字串化的 CFI，就算
+                // 接下來把暫存接回去、往前插入內容，這個參照本身依然
+                // 指向同一個真實節點，不會因為前面內容變多而失效或指錯
+                // 地方（CFI 字串重新解析才會，這正是上一輪 DOMException
+                // 的根因）。一定要在接回去之前呼叫，才能抓到「暫存還沒
+                // 接回去、翻頁後」真正的畫面內容。
                 const stash = cwfmAnchorStash;
+                const visible = view.renderer.getVisibleRange?.();
+                let liveContainer = visible ? visible.startContainer : null;
+                let liveOffset = visible ? visible.startOffset : 0;
+
+                cwfmReinsertStash();
+
+                // [cwfm] 邊界情況：如果使用者完全沒有翻頁，抓到的節點會
+                // 剛好落在暫存邊界那個文字節點上，接回去最後一步的
+                // normalize() 合併文字節點時，這個節點物件本身有可能不是
+                // 存活下來的那一個（依瀏覽器實作而定），參照因此失效。
+                // 用 isConnected 檢查，斷開的話退回暫存自己原本記住的
+                // 位置——這種情況下兩者本來就是同一個位置，退回去用完全
+                // 不影響正確性。
+                if (liveContainer && liveContainer.isConnected) {
+                    container = liveContainer;
+                    offset = liveOffset;
+                } else {
+                    const leaf = stash.originalChain[stash.originalChain.length - 1];
+                    if (!leaf.firstChild) return;
+                    container = leaf.firstChild;
+                    offset = 0;
+                }
                 doc = currentDoc;
                 index = currentIndex;
-                anchorElement = stash.originalChain[stash.originalChain.length - 1];
-                cwfmReinsertStash();
-                if (!anchorElement.firstChild) return;
-                container = anchorElement.firstChild;
-                offset = 0;
+                anchorElement = container.nodeType === 3 ? container.parentNode : container;
             } else {
                 // [cwfm] 沒有暫存，或者暫存是別的章節留下來的舊資料
                 // （使用者中途跨章節翻頁，不是透過目錄跳轉那條已經有
