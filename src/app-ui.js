@@ -1037,22 +1037,55 @@
         if (!cwfmExperimentalAnchorAlignSession) return;
         if (cwfmAligningAnchor) return;
         try {
-            // 先把上一輪可能還沒接回去的暫存內容接回去，不要疊加搬移。
-            cwfmReinsertStash();
-
-            const targetCfi = view.lastLocation?.cfi;
-            if (!targetCfi) return;
             const contents = view.renderer.getContents();
             if (!contents.length) return;
-            const { doc, index } = contents[0];
-            const resolved = view.resolveCFI(targetCfi);
-            if (!resolved || resolved.index !== index) return; // 定位點不在目前這一章，不處理
-            const range = resolved.anchor(doc);
-            if (!range) return;
+            const { doc: currentDoc, index: currentIndex } = contents[0];
 
-            const container = range.startContainer;
-            const offset = range.startOffset;
-            const anchorElement = container.nodeType === 3 ? container.parentNode : container;
+            let container, offset, anchorElement, doc, index;
+
+            if (cwfmAnchorStash && cwfmAnchorStash.sectionIndex === currentIndex) {
+                // [cwfm] 已經有暫存、而且是目前這一章的——直接沿用暫存
+                // 記住的那個節點當目標，不要重新讀 view.lastLocation.cfi
+                // 再解析一次。已經實測抓到過真實錯誤：內容還沒接回去的
+                // 這段期間，只要有任何一次 relocate 發生，
+                // view.lastLocation.cfi 就會被更新成「對著已經搬走一截
+                // 的樹」算出來的結果；接回去、恢復成完整的樹之後，這個
+                // 舊 cfi 的結構路徑已經對不上，重新解析會撞到 Range 邊界
+                // 超出範圍的例外（DOMException: Index or size is negative
+                // or greater than the allowed amount）。暫存本身記住的
+                // 節點，offset 保證是 0（搬移時就是精準切在這個點），
+                // 直接沿用不會有這個問題。
+                const stash = cwfmAnchorStash;
+                doc = currentDoc;
+                index = currentIndex;
+                anchorElement = stash.originalChain[stash.originalChain.length - 1];
+                cwfmReinsertStash();
+                if (!anchorElement.firstChild) return;
+                container = anchorElement.firstChild;
+                offset = 0;
+            } else {
+                // [cwfm] 沒有暫存，或者暫存是別的章節留下來的舊資料
+                // （使用者中途跨章節翻頁，不是透過目錄跳轉那條已經有
+                // 安全網的路徑）——舊暫存已經過期，不能沿用，先單純
+                // 接回去清掉（不強求對齊，反正它不是目前這一章），再
+                // 照「完全沒有暫存」的正常流程，重新讀一次
+                // view.lastLocation.cfi 對目前真正顯示的這一章重新解析。
+                cwfmReinsertStash();
+
+                const targetCfi = view.lastLocation?.cfi;
+                if (!targetCfi) return;
+                const resolved = view.resolveCFI(targetCfi);
+                if (!resolved || resolved.index !== currentIndex) return; // 定位點不在目前這一章，不處理
+                const range = resolved.anchor(currentDoc);
+                if (!range) return;
+
+                doc = currentDoc;
+                index = currentIndex;
+                container = range.startContainer;
+                offset = range.startOffset;
+                anchorElement = container.nodeType === 3 ? container.parentNode : container;
+            }
+
             const body = doc.body;
             if (!anchorElement || anchorElement === body) return; // 已經是最外層，沒有東西可搬
 
@@ -1111,9 +1144,19 @@
     async function cwfmGoLeft() {
         try {
             if (cwfmAnchorStash && view.renderer.atStart) {
+                // [cwfm] 暫存有可能是別的章節留下的舊資料（使用者中途
+                // 跨章節翻頁，不是透過目錄跳轉那條已經有安全網的路徑）
+                // ——這種情況不能當成「翻到搬走內容的邊界」處理，只是
+                // 單純把過期的暫存接回去清掉（不影響目前這一章），然後
+                // 照完全沒有我們這套機制介入的方式繼續。
+                const contents = view.renderer.getContents();
+                const currentIndex = contents[0]?.index;
+                if (cwfmAnchorStash.sectionIndex === currentIndex) {
+                    cwfmReinsertStash();
+                    await view.goLeft();
+                    return;
+                }
                 cwfmReinsertStash();
-                await view.goLeft();
-                return;
             }
         } catch (e) {
             console.error('[cwfm:align] 往前翻頁時處理暫存內容失敗', e);
