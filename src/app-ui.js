@@ -96,6 +96,21 @@
         return cfi.startsWith('epubcfi(') ? cfi : 'epubcfi(' + cfi + ')';
     }
 
+    // [cwfm] 關閉鈕用 SVG 畫叉叉，不用文字字元「✕」——文字字元置中位置會
+    // 隨作業系統/瀏覽器的字型度量跑掉（實測在不同環境偏差明顯），SVG 用
+    // 固定座標系統畫兩條交叉線，任何環境都精準置中。
+    const CWFM_CLOSE_ICON_SVG = '<svg viewBox="0 0 14 14" width="14" height="14" style="display:block;pointer-events:none;">'
+        + '<line x1="1" y1="1" x2="13" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+        + '<line x1="13" y1="1" x2="1" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+        + '</svg>';
+    function createCloseBtn(onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'cwfm-close-btn';
+        btn.innerHTML = CWFM_CLOSE_ICON_SVG;
+        btn.addEventListener('click', onClick);
+        return btn;
+    }
+
     // 功能二：手動同步到伺服器（對應原版按書籤圖示的動作，同時只會有一個
     // 書籤，新的會覆蓋舊的——這點跟原版行為一致，不是我們自己發明的）。
     function postBookmarkValue(rawValue) {
@@ -265,7 +280,20 @@
             '  padding: 8px 14px; background: rgba(24,24,24,0.92);',
             '  color: #eee; font-family: sans-serif; font-size: 13px;',
             '  z-index: 999999; box-sizing: border-box;',
+            '  transition: transform 0.3s ease;',
             '}',
+            // [cwfm] 自動隱藏：滑動到邊緣外（不是 display:none，維持
+            // transform 位移，這樣才能做滑入/滑出動畫）。上/下工具列各自
+            // 往自己所在的那個邊滑出去。
+            '.cwfm-toolbar.cwfm-autohidden { transform: translateY(100%); }',
+            '.cwfm-toolbar-top.cwfm-autohidden { transform: translateY(-100%); }',
+            // [cwfm] 邊緣感應區：固定貼在螢幕上/下緣的透明區塊，跟工具列
+            // 同高，工具列隱藏時仍然貼在原位，用來接住滑鼠移入/點擊喚醒。
+            '.cwfm-autohide-zone {',
+            '  position: fixed; left: 0; right: 0; height: 44px; z-index: 999998;',
+            '}',
+            '.cwfm-autohide-zone.cwfm-top { top: 0; }',
+            '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
             '.cwfm-toolbar button {',
             '  background: none; border: 1px solid #666; color: #eee;',
             '  border-radius: 4px; padding: 5px 12px; cursor: pointer;',
@@ -273,7 +301,26 @@
             '}',
             '.cwfm-toolbar button:hover { background: #3a3a3a; }',
             '.cwfm-progress-wrap { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; }',
-            '.cwfm-progress-wrap input[type="range"] { flex: 1; }',
+            // [cwfm] 進度條原本完全沒有自訂樣式，瀏覽器原生 <input type="range">
+            // 預設外觀（一條顯眼的白色/淺色軌道）就這樣露出來，不是刻意畫的
+            // 裝飾線。這裡蓋掉原生外觀，改成跟上方工具列一致、不額外畫線的
+            // 樣式（軌道用跟工具列邊框相近的深色，thumb 保留可見即可）。
+            '.cwfm-progress-wrap input[type="range"] {',
+            '  flex: 1; -webkit-appearance: none; appearance: none; background: transparent; height: 16px;',
+            '}',
+            '.cwfm-progress-wrap input[type="range"]::-webkit-slider-runnable-track {',
+            '  height: 3px; background: #555; border-radius: 2px;',
+            '}',
+            '.cwfm-progress-wrap input[type="range"]::-webkit-slider-thumb {',
+            '  -webkit-appearance: none; margin-top: -5px;',
+            '  width: 13px; height: 13px; border-radius: 50%; background: #ccc; border: none; cursor: pointer;',
+            '}',
+            '.cwfm-progress-wrap input[type="range"]::-moz-range-track {',
+            '  height: 3px; background: #555; border-radius: 2px;',
+            '}',
+            '.cwfm-progress-wrap input[type="range"]::-moz-range-thumb {',
+            '  width: 13px; height: 13px; border-radius: 50%; background: #ccc; border: none; cursor: pointer;',
+            '}',
             '.cwfm-progress-label { flex: 0 0 auto; min-width: 3.5em; text-align: right; color: #aaa; font-size: 12px; }',
             // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
             // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
@@ -283,6 +330,7 @@
             '  padding: 8px 14px; background: rgba(24,24,24,0.92);',
             '  color: #eee; font-family: sans-serif;',
             '  z-index: 999999; box-sizing: border-box;',
+            '  transition: transform 0.3s ease;',
             '}',
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
             '.cwfm-toolbar-top button {',
@@ -457,9 +505,22 @@
             '.cwfm-toc-view [role="treeitem"]:hover { color: #fff; }',
             '.cwfm-toc-view [role="treeitem"][aria-current="page"] { color: #4ea1ff; font-weight: bold; }',
             '.cwfm-toc-view [aria-expanded="false"] ~ ol { display: none; }',
+            // [cwfm] 目錄展開三角形：foliate-js ui/tree.js 產生的 <svg><polygon>
+            // 沒有設定 fill，SVG 規格預設黑色，在深色背景幾乎看不見；改成跟
+            // 文字同色，hover 時比照文字變亮，並在 aria-expanded=true 時轉 90
+            // 度（原本完全沒有旋轉動畫）。margin-right 是跟文字之間的間距。
+            '.cwfm-toc-view [role="treeitem"] svg {',
+            '  fill: #ccc; margin-right: 6px; flex-shrink: 0; vertical-align: middle;',
+            '  transition: fill 0.15s ease, transform 0.15s ease;',
+            '}',
+            '.cwfm-toc-view [role="treeitem"]:hover svg { fill: #fff; }',
+            '.cwfm-toc-view [role="treeitem"][aria-expanded="true"] > svg { transform: rotate(90deg); }',
             '.cwfm-empty-hint { color: #888; font-size: 12px; }',
+            // [cwfm] 面板變暗遮罩：原本會把畫面調暗，但這個遮罩本身沒有接
+            // 任何點擊關閉的事件（純視覺效果），使用者調整顏色設定時看不清
+            // 預覽，拿掉變暗，遮罩只留著（openPanel/closeAllPanels 邏輯不動）。
             '.cwfm-dimming {',
-            '  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999998;',
+            '  position: fixed; inset: 0; background: transparent; z-index: 999998;',
             '  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;',
             '}',
             '.cwfm-dimming.cwfm-show { opacity: 1; pointer-events: auto; }',
@@ -560,6 +621,8 @@
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
         preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
+        colorPickerMode: 'RGB',    // 取色器上次使用的分頁（HEX／RGB／HSV），下次打開沿用
+        autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 注意：實驗性功能開關（縮放/還原書籤時的定位點對齊）故意
         // 不放在這個物件裡，見下方 cwfmExperimentalAnchorAlignSession
         // 這個獨立變數的說明。
@@ -763,6 +826,9 @@
         try {
             view.renderer.cwfmAlignAnchor = cwfmExperimentalAnchorAlignSession;
         } catch (e) { console.error('[cwfm:settings] 套用實驗性功能開關失敗', e); }
+        try {
+            updateAutoHideEnabled(settings.autoHideToolbar);
+        } catch (e) { console.error('[cwfm:settings] 套用自動隱藏開關失敗', e); }
         window.__cwfm.settings = settings;
     }
 
@@ -856,7 +922,8 @@
         const cpState = {
             h: initHsv.h, s: initHsv.s, v: initHsv.v,
             r: initRgb.r, g: initRgb.g, b: initRgb.b,
-            mode: 'RGB',
+            // [cwfm] 沿用使用者上次選過的分頁，不寫死 'RGB'
+            mode: window.__cwfm.settings?.colorPickerMode || 'RGB',
         };
         function cpSyncFromHsv() {
             const rgb = cwfmHsvToRgb(cpState.h, cpState.s, cpState.v);
@@ -898,7 +965,7 @@
     <div class="cp-sep"></div>
     <div class="cp-mode-row">
       <button class="cp-tab" data-mode="HEX">HEX</button>
-      <button class="cp-tab active" data-mode="RGB">RGB</button>
+      <button class="cp-tab" data-mode="RGB">RGB</button>
       <button class="cp-tab" data-mode="HSV">HSV</button>
     </div>
     <div class="cp-summary-row">
@@ -1124,6 +1191,9 @@
         summary.addEventListener('change', cpSummaryCommit);
         summary.addEventListener('keydown', e => { if (e.key==='Enter') cpSummaryCommit(); });
 
+        // [cwfm] 不再寫死哪個分頁 active，改成依 cpState.mode（已經讀了使用
+        // 者上次選過的值）動態標記初始分頁。
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.mode === cpState.mode));
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
@@ -1131,6 +1201,11 @@
                 const newMode = tab.dataset.mode;
                 if (cpState.mode === 'RGB') cpSyncFromRgb(); else cpSyncFromHsv();
                 cpState.mode = newMode;
+                // [cwfm] 記住這次選的分頁，下次打開取色器沿用
+                if (window.__cwfm.settings) {
+                    window.__cwfm.settings.colorPickerMode = newMode;
+                    saveSettings(window.__cwfm.settings);
+                }
                 cpRender();
             });
         });
@@ -1167,10 +1242,7 @@
         title.textContent = '\u95B1\u8B80\u8A2D\u5B9A'; // 閱讀設定
         header.appendChild(title);
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'cwfm-close-btn';
-        closeBtn.textContent = '\u2715';
-        closeBtn.addEventListener('click', closeAllPanels);
+        const closeBtn = createCloseBtn(closeAllPanels);
         header.appendChild(closeBtn);
 
         panel.appendChild(header);
@@ -1421,6 +1493,7 @@
         // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
         addCheckboxField('\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09', 'localAutoRemember');
         addCheckboxField('\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09', 'autoSyncEnabled');
+        addCheckboxField('\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09', 'autoHideToolbar');
         addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
 
         document.body.appendChild(panel);
@@ -1469,10 +1542,7 @@
         title.textContent = '\u76EE\u9304'; // 目錄
         header.appendChild(title);
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'cwfm-close-btn';
-        closeBtn.textContent = '\u2715';
-        closeBtn.addEventListener('click', closeAllPanels);
+        const closeBtn = createCloseBtn(closeAllPanels);
         header.appendChild(closeBtn);
 
         panel.appendChild(header);
@@ -1695,6 +1765,63 @@
     try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error('[cwfm:settings] 建立設定面板失敗', e); }
     try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立工具列失敗', e); }
     try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立上方工具列失敗', e); }
+
+    // ============================================================
+    // 自動隱藏工具列（設定開關 autoHideToolbar）。3 秒無動作後，上/下
+    // 工具列各自滑出畫面邊緣；滑鼠移到邊緣感應區（電腦）或點擊原本工具
+    // 列所在位置（觸控，此時工具列已隱藏，點擊會落在感應區上）喚醒；
+    // 翻頁時（relocate）一律先顯示、重新倒數；滑鼠停在工具列本身上面
+    // 時暫停倒數，離開才重新開始，避免操作到一半被收走。
+    // ============================================================
+    const CWFM_AUTOHIDE_DELAY_MS = 3000;
+    let cwfmAutoHideEnabled = false;
+    let cwfmAutoHideTimer = null;
+    let cwfmAutoHideHoveringBar = false;
+    function cwfmShowBars() {
+        toolbar?.classList.remove('cwfm-autohidden');
+        topToolbar?.classList.remove('cwfm-autohidden');
+    }
+    function cwfmHideBars() {
+        if (cwfmAutoHideHoveringBar) return;
+        toolbar?.classList.add('cwfm-autohidden');
+        topToolbar?.classList.add('cwfm-autohidden');
+    }
+    function cwfmScheduleAutoHide() {
+        clearTimeout(cwfmAutoHideTimer);
+        if (!cwfmAutoHideEnabled) return;
+        cwfmAutoHideTimer = setTimeout(cwfmHideBars, CWFM_AUTOHIDE_DELAY_MS);
+    }
+    function cwfmWakeBars() {
+        if (!cwfmAutoHideEnabled) return;
+        cwfmShowBars();
+        cwfmScheduleAutoHide();
+    }
+    function updateAutoHideEnabled(enabled) {
+        cwfmAutoHideEnabled = !!enabled;
+        clearTimeout(cwfmAutoHideTimer);
+        if (cwfmAutoHideEnabled) cwfmWakeBars();
+        else cwfmShowBars();
+    }
+    try {
+        const topZone = document.createElement('div');
+        topZone.className = 'cwfm-autohide-zone cwfm-top';
+        topZone.dataset.cwfmOwned = 'true';
+        const bottomZone = document.createElement('div');
+        bottomZone.className = 'cwfm-autohide-zone cwfm-bottom';
+        bottomZone.dataset.cwfmOwned = 'true';
+        document.body.appendChild(topZone);
+        document.body.appendChild(bottomZone);
+        [topZone, bottomZone].forEach(zone => {
+            zone.addEventListener('mouseenter', cwfmWakeBars);
+            zone.addEventListener('click', cwfmWakeBars);
+        });
+        [toolbar, topToolbar].forEach(bar => {
+            if (!bar) return;
+            bar.addEventListener('mouseenter', () => { cwfmAutoHideHoveringBar = true; clearTimeout(cwfmAutoHideTimer); });
+            bar.addEventListener('mouseleave', () => { cwfmAutoHideHoveringBar = false; cwfmScheduleAutoHide(); });
+        });
+        view.addEventListener('relocate', cwfmWakeBars);
+    } catch (e) { console.error('[cwfm:autohide] 初始化自動隱藏失敗', e); }
 
     console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
 })();
