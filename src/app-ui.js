@@ -892,6 +892,7 @@
     // 負責「螢幕夠寬時不要讓內容把多餘空間占滿」，兩者算式殊途同歸，
     // 都是把使用者想要的像素值換算成對應的百分比/像素。
     function applyHorizontalPadding(desiredPx, columnCount) {
+        console.log('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalWidth = rect.width || 1;
 
@@ -902,6 +903,7 @@
         const maxInlineSizePx = Math.round(contentWidth / (columnCount || 1));
         console.log('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' gapPercent=' + gapPercent.toFixed(3) + ' maxInlineSize=' + maxInlineSizePx);
         view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
+        console.log('[cwfm:align:t] applyHorizontalPadding() 結束 t=' + performance.now().toFixed(1));
     }
 
     // [cwfm] margin 這個屬性一定要帶 px 單位，這是上下留白怎麼調都沒反應
@@ -917,6 +919,7 @@
     // 注意第 720 行有段 JS 會用 parseFloat 把這個變數讀回去做欄寬計算，
     // parseFloat('120px') 與 parseFloat('120') 結果相同，加上 px 不影響它。
     function applyVerticalPadding(desiredPx) {
+        console.log('[cwfm:align:t] applyVerticalPadding() 開始 t=' + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalHeight = rect.height || 1;
         view.renderer.setAttribute('margin', desiredPx + 'px');
@@ -925,6 +928,7 @@
         console.log('[cwfm:node] applyVerticalPadding() desiredPx=' + desiredPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
         view.renderer.setAttribute('max-block-size', maxBlockSizePx + 'px');
         view.renderer.render();
+        console.log('[cwfm:align:t] applyVerticalPadding() 結束（render() 呼叫完，但 render() 內部不保證此刻已經跑完，見前面討論）t=' + performance.now().toFixed(1));
     }
 
     // [cwfm] 實驗性功能開關，故意不放進 settings 物件、不透過 saveSettings
@@ -961,6 +965,16 @@
     // 診斷紀錄，下次重現時才能實際比對留白/欄寬數字，不是用猜的。
     // ============================================================
     let cwfmAligningAnchor = false; // 重入鎖：操作進行中，暫停本機記憶/自動同步書籤寫入、進度條畫面更新，避免讀到資料量被動過手腳當下的錯誤瞬間值
+
+    // [cwfm] 純粹的時間軸診斷，跟對齊功能開關無關（一律記錄，不受實驗性
+    // 開關影響）：每一次 relocate 不分原因都記一筆時間點，方便事後比對
+    // 「使用者翻頁的時間點」跟後面「resize/對齊開始執行的時間點」之間
+    // 差多久，查時序問題時不用再去猜。掛在 view.renderer 這一層（不是
+    // view 本身）——查證過 view 重新包裝 relocate 事件時，沒有把 reason
+    // 這個欄位轉傳出來，只有排版引擎自己原始的事件才有。
+    view.renderer.addEventListener('relocate', (e) => {
+        console.log('[cwfm:align:t] relocate 事件 reason=' + e.detail?.reason + ' t=' + performance.now().toFixed(1));
+    });
     let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
 
     function cwfmAncestorChain(node, stopAbove) {
@@ -1033,12 +1047,27 @@
     // 第一個字元，這個記錄本來就有、見功能一）前面的原始內容整批搬走。
     // 呼叫時機：resize 防抖動計時器裡，版面留白套用完之後（見下方 resize
     // 監聽器）。
+    // [cwfm] 診斷用：從某個節點/offset 開始，往後抓幾個字當作文字預覽，
+    // 方便肉眼核對「這次抓到的到底是不是預期的那個位置」，不用自己在
+    // Console 裡展開節點物件慢慢找。
+    function cwfmTextPreview(container, offset, maxLen) {
+        try {
+            const text = container.nodeType === 3 ? container.nodeValue : (container.textContent || '');
+            const start = container.nodeType === 3 ? offset : 0;
+            return JSON.stringify(text.slice(start, start + (maxLen || 12)));
+        } catch (e) {
+            return '(\u7121\u6cd5\u9810\u89bd)';
+        }
+    }
+
     function cwfmAlignAnchorToPageStart() {
         if (!cwfmExperimentalAnchorAlignSession) return;
         if (cwfmAligningAnchor) return;
+        const t0 = performance.now();
+        console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
         try {
             const contents = view.renderer.getContents();
-            if (!contents.length) return;
+            if (!contents.length) { console.log('[cwfm:align:t] 沒有 contents，中止'); return; }
             const { doc: currentDoc, index: currentIndex } = contents[0];
 
             let container, offset, anchorElement, doc, index;
@@ -1060,8 +1089,11 @@
                 const visible = view.renderer.getVisibleRange?.();
                 let liveContainer = visible ? visible.startContainer : null;
                 let liveOffset = visible ? visible.startOffset : 0;
+                console.log('[cwfm:align:t] 沿用暫存分支，getVisibleRange() 抓到 t=' + performance.now().toFixed(1)
+                    + ' 內容=' + (liveContainer ? cwfmTextPreview(liveContainer, liveOffset) : '(null)'));
 
                 cwfmReinsertStash();
+                console.log('[cwfm:align:t] cwfmReinsertStash() 完成 t=' + performance.now().toFixed(1));
 
                 // [cwfm] 邊界情況：如果使用者完全沒有翻頁，抓到的節點會
                 // 剛好落在暫存邊界那個文字節點上，接回去最後一步的
@@ -1073,11 +1105,13 @@
                 if (liveContainer && liveContainer.isConnected) {
                     container = liveContainer;
                     offset = liveOffset;
+                    console.log('[cwfm:align:t] 使用即時節點參照（isConnected=true）');
                 } else {
                     const leaf = stash.originalChain[stash.originalChain.length - 1];
-                    if (!leaf.firstChild) return;
+                    if (!leaf.firstChild) { console.log('[cwfm:align:t] 退回分支也拿不到節點，中止'); return; }
                     container = leaf.firstChild;
                     offset = 0;
+                    console.log('[cwfm:align:t] 即時節點已斷開，退回暫存原始位置 內容=' + cwfmTextPreview(container, offset));
                 }
                 doc = currentDoc;
                 index = currentIndex;
@@ -1089,35 +1123,39 @@
                 // 接回去清掉（不強求對齊，反正它不是目前這一章），再
                 // 照「完全沒有暫存」的正常流程，重新讀一次
                 // view.lastLocation.cfi 對目前真正顯示的這一章重新解析。
+                console.log('[cwfm:align:t] 無暫存或暫存已過期分支，改讀 view.lastLocation.cfi');
                 cwfmReinsertStash();
 
                 const targetCfi = view.lastLocation?.cfi;
-                if (!targetCfi) return;
+                console.log('[cwfm:align:t] view.lastLocation.cfi=' + targetCfi);
+                if (!targetCfi) { console.log('[cwfm:align:t] 沒有 cfi，中止'); return; }
                 const resolved = view.resolveCFI(targetCfi);
-                if (!resolved || resolved.index !== currentIndex) return; // 定位點不在目前這一章，不處理
+                if (!resolved || resolved.index !== currentIndex) { console.log('[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=' + resolved?.index + ' currentIndex=' + currentIndex); return; }
                 const range = resolved.anchor(currentDoc);
-                if (!range) return;
+                if (!range) { console.log('[cwfm:align:t] anchor(doc) 拿不到 range，中止'); return; }
 
                 doc = currentDoc;
                 index = currentIndex;
                 container = range.startContainer;
                 offset = range.startOffset;
                 anchorElement = container.nodeType === 3 ? container.parentNode : container;
+                console.log('[cwfm:align:t] 解析到的位置 內容=' + cwfmTextPreview(container, offset));
             }
 
             const body = doc.body;
-            if (!anchorElement || anchorElement === body) return; // 已經是最外層，沒有東西可搬
+            if (!anchorElement || anchorElement === body) { console.log('[cwfm:align:t] anchorElement 已經是最外層，中止'); return; }
 
             const originalChain = cwfmAncestorChain(anchorElement, body);
 
             const extractRange = doc.createRange();
             extractRange.setStart(body, 0);
             extractRange.setEnd(container, offset);
-            if (extractRange.collapsed) return; // 前面本來就沒有內容，不用處理
+            if (extractRange.collapsed) { console.log('[cwfm:align:t] extractRange 是空的（前面本來就沒內容），中止'); return; }
 
             cwfmAligningAnchor = true;
             const extracted = extractRange.extractContents();
             cwfmAnchorStash = { originalChain, fragment: extracted, sectionIndex: index };
+            console.log('[cwfm:align:t] extractContents() 完成 t=' + performance.now().toFixed(1));
 
             // [cwfm] 搬走之後，定位點文字現在是章節最前面的內容，原本卡在
             // 邊界的那個容器（originalChain 最底層）現在的 firstChild 就是
@@ -1130,6 +1168,7 @@
             if (leaf.firstChild) freshRange.setStart(leaf.firstChild, 0);
             else freshRange.setStart(leaf, 0);
             freshRange.collapse(true);
+            console.log('[cwfm:align:t] 搬移後的定位點內容=' + cwfmTextPreview(leaf.firstChild || leaf, 0));
 
             // [cwfm] 診斷紀錄：使用者上次回報過「切回正常模式後畫面偏移、
             // 沒有置中」，這裡把跟水平留白/欄寬有關的幾個數字記下來，
@@ -1140,13 +1179,22 @@
 
             view.renderer.scrollToAnchor(freshRange)
                 .then(() => {
+                    // [cwfm] 對齊完成後，再問一次 getVisibleRange()，跟
+                    // 上面「搬移後的定位點內容」那行比對，兩者文字應該
+                    // 要一致——不一致就代表 scrollToAnchor() 導覽完之後，
+                    // 實際顯示的第一個字元，跟我們要求它對齊的目標對不
+                    // 起來，這是判斷「這次到底有沒有真的成功」最直接的
+                    // 依據，不是只看有沒有丟例外。
+                    const finalVisible = view.renderer.getVisibleRange?.();
+                    console.log('[cwfm:align:t] scrollToAnchor() 完成 t=' + performance.now().toFixed(1)
+                        + ' 對齊後實際第一個可見內容=' + (finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)'));
                     console.log('[cwfm:align:h] 對齊後 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
                         + ' gap=' + view.renderer.getAttribute('gap')
                         + ' rendererRect.left=' + view.renderer.getBoundingClientRect().left
                         + ' viewerRect.left=' + viewerContainer.getBoundingClientRect().left);
                 })
                 .catch((e) => console.error('[cwfm:align] 對齊後導覽失敗', e))
-                .finally(() => { cwfmAligningAnchor = false; });
+                .finally(() => { cwfmAligningAnchor = false; console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 全部結束 t=' + performance.now().toFixed(1) + '（總耗時 ' + (performance.now() - t0).toFixed(1) + 'ms）'); });
         } catch (e) {
             console.error('[cwfm:align] 定位點對齊失敗', e);
             cwfmAligningAnchor = false;
@@ -1227,11 +1275,11 @@
     let resizeExecCount = 0; // 診斷用：防抖動後實際執行了幾次
     window.addEventListener('resize', () => {
         resizeRawCount++;
-        console.log('[cwfm:resize] 收到原始 resize 通知，累計=' + resizeRawCount);
+        console.log('[cwfm:resize] 收到原始 resize 通知，累計=' + resizeRawCount + ' t=' + performance.now().toFixed(1));
         clearTimeout(resizeDebounceTimer);
         resizeDebounceTimer = setTimeout(() => {
             resizeExecCount++;
-            console.log('[cwfm:resize] 防抖動後真正執行，累計=' + resizeExecCount);
+            console.log('[cwfm:resize] 防抖動後真正執行，累計=' + resizeExecCount + ' t=' + performance.now().toFixed(1));
             if (window.__cwfm.settings) {
                 try {
                     applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
@@ -2247,6 +2295,7 @@
         // 監聽器移除處的說明——這裡改成明確掛在 fullscreenchange 上，
         // 不用再靠巧合。
         document.addEventListener('fullscreenchange', () => {
+            console.log('[cwfm:align:t] fullscreenchange 事件 t=' + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
             renderFullscreenIcon();
             cwfmWakeBars();
         });
