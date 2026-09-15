@@ -224,11 +224,6 @@
     // 不是掛上當下的快照。
     // ============================================================
     view.addEventListener('relocate', (e) => {
-        // [cwfm] 定位點對齊操作進行中（搬走/接回原始內容那段期間），這裡
-        // 先不寫入——那段期間算出來的 cfi 是資料量被動過手腳當下的暫時
-        // 值，寫進去會存到錯的位置。等操作結束、真正確定的新位置出來，
-        // 才會有下一次正常的 relocate 觸發寫入。
-        if (cwfmAligningAnchor) return;
         const settings = window.__cwfm.settings;
         const enabled = settings ? settings.localAutoRemember : true; // 設定選單還沒建立好之前預設開啟
         if (!enabled) return;
@@ -249,9 +244,6 @@
     // ============================================================
     let autoSyncTimer = null;
     view.addEventListener('relocate', (e) => {
-        // [cwfm] 同上，定位點對齊操作進行中不要用這個當下的 cfi 起算同步
-        // 倒數，理由跟上面本機記憶那段一樣。
-        if (cwfmAligningAnchor) return;
         const settings = window.__cwfm.settings;
         clearTimeout(autoSyncTimer);
         if (!settings || !settings.autoSyncEnabled) return;
@@ -304,7 +296,7 @@
             // 當下最新的設定，還沒套用完成前退回預設值，不會整個失效。
             const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
                 || DEFAULT_SETTINGS.pagingKeys;
-            if (pagingKeys.prev.includes(combo)) cwfmGoLeft();
+            if (pagingKeys.prev.includes(combo)) view.goLeft();
             else if (pagingKeys.next.includes(combo)) view.goRight();
         } catch (err) {
             console.error('[cwfm:keydown] 翻頁失敗', err);
@@ -722,9 +714,6 @@
         // 例如 'ArrowLeft'、'Ctrl+Shift+ArrowLeft'。預設維持跟改版前
         // 一樣的行為（左鍵往前、右鍵往後），使用者可以自己增減。
         pagingKeys: { prev: ['ArrowLeft'], next: ['ArrowRight'] },
-        // [cwfm] 注意：實驗性功能開關（縮放/還原書籤時的定位點對齊）故意
-        // 不放在這個物件裡，見下方 cwfmExperimentalAnchorAlignSession
-        // 這個獨立變數的說明。
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
@@ -930,179 +919,6 @@
         view.renderer.render();
     }
 
-    // [cwfm] 實驗性功能開關，故意不放進 settings 物件、不透過 saveSettings
-    // 寫進 GM 儲存——這是使用者明確要求的設計：這套「定位點對齊」邏輯
-    // 目前還沒驗證穩定過，萬一勾選後畫面卡死，下次重新整理頁面時，這個
-    // 變數會跟著整支腳本的執行環境一起歸零，自動回到關閉、安全的狀態，
-    // 不需要使用者自己去 Tampermonkey 裡手動清掉存檔的設定值，才能拿到
-    // 一個能重新測試的乾淨起點。
-    let cwfmExperimentalAnchorAlignSession = false;
-
-    // ============================================================
-    // [cwfm][實驗性] 定位點精準對齊。核心原則：完全不碰排版引擎的計算
-    // 邏輯本身（columnize/expand 這些完全不動），只調整「餵給引擎的原始
-    // 資料量」——具體做法是把定位點文字前面的原始內容整批「暫時搬走」，
-    // 排版引擎看到的資料變少了，定位點自然變成排出來的第一頁開頭，不用
-    // 猜填充量、不用反覆試錯。搬走的內容不是丟棄，是先存在記憶體裡，
-    // 等使用者真的翻到「前面沒有內容了」這個邊界（往回翻），才接回去，
-    // 讓往回翻看到的資料一樣是完整、正確的。
-    //
-    // 已用真實 epubcfi.js 實測驗證過：extractContents() 在跨越多層巢狀
-    // 結構時，瀏覽器會在邊界那幾層另外複製出對應的容器元素（不是把原本
-    // 的容器搬走），插回去如果只是單純把搬走的內容塞回原位，會留下重複
-    // 的容器、導致定位點之後的內容 CFI 跟著跑掉；下面 cwfmMergeCloneChain
-    // 這支函式就是用來把這些邊界複製品合併回原本容器、消除這個副作用，
-    // 已經用多層巢狀、含 span/b 混排的測試頁面驗證過搬走再接回去，前後
-    // 算出來的 CFI（含定位點本身、定位點前面/後面的內容）完全一致。
-    // ============================================================
-    let cwfmAligningAnchor = false; // 重入鎖：操作進行中，暫停本機記憶/自動同步書籤寫入、進度條畫面更新，避免讀到資料量被動過手腳當下的錯誤瞬間值
-    let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
-
-    function cwfmAncestorChain(node, stopAbove) {
-        const chain = [];
-        let cur = node;
-        while (cur && cur !== stopAbove) {
-            chain.unshift(cur);
-            cur = cur.parentNode;
-        }
-        return chain;
-    }
-
-    // [cwfm] 把 extractContents() 在邊界複製出來的容器鏈，合併回原本沒被
-    // 動過的容器——由外而內遞迴：先處理更深一層（真正卡在邊界的那條鏈），
-    // 回來之後再把這一層複製品剩下的所有 children（通常是完全落在搬移
-    // 範圍內、整段被搬走的兄弟節點，例如同一層前面的段落）依序插回原本
-    // 容器最前面，最後把已經清空的複製容器本身移除。insertPoint 故意
-    // 只在迴圈開始前抓一次、不要每次迴圈都重新讀 originalNode.firstChild
-    // ——之前實測過，每次都重新讀會導致每一輪都插在上一輪剛插進去的
-    // 東西前面，順序整個反過來。
-    function cwfmMergeCloneChain(cloneNode, chain, level) {
-        const originalNode = chain[level];
-        if (level + 1 < chain.length) {
-            let deeper = cloneNode.lastChild;
-            while (deeper && deeper.nodeType !== 1) deeper = deeper.previousSibling;
-            if (deeper) cwfmMergeCloneChain(deeper, chain, level + 1);
-        }
-        const insertPoint = originalNode.firstChild;
-        while (cloneNode.firstChild) {
-            originalNode.insertBefore(cloneNode.firstChild, insertPoint);
-        }
-        cloneNode.remove();
-    }
-
-    // [cwfm] 把暫存的內容接回去。呼叫時機有兩種：(1) 使用者往回翻頁翻到
-    // 邊界；(2) 任何其他導覽動作（目錄跳轉、書籤還原、換章節）發生之前
-    // 的安全網，避免暫存內容被晾在記憶體裡忘記接回去。
-    function cwfmReinsertStash() {
-        if (!cwfmAnchorStash) return;
-        const { originalChain, fragment } = cwfmAnchorStash;
-        cwfmAligningAnchor = true;
-        try {
-            const leaf = originalChain[originalChain.length - 1];
-            const doc = leaf.ownerDocument;
-            const body = doc.body;
-            body.insertBefore(fragment, body.firstChild);
-            // [cwfm] 找複製鏈頂層節點：不能假設剛插入的 body.firstChild
-            // 就是它——原始檔案裡如果容器前面夾雜換行造成的空白文字
-            // 節點，firstChild 會抓到那個空白節點，不是真正的容器。改成
-            // 從還留在原地、沒被動過的最外層容器(originalChain[0])往前
-            // 找 previousSibling，跳過文字節點直到找到元素為止，這個做法
-            // 已經實測驗證過。
-            let clonedTop = originalChain[0].previousSibling;
-            while (clonedTop && clonedTop.nodeType !== 1) clonedTop = clonedTop.previousSibling;
-            if (clonedTop) {
-                cwfmMergeCloneChain(clonedTop, originalChain, 0);
-                leaf.normalize();
-            } else {
-                console.error('[cwfm:align] 接回暫存內容時找不到複製容器，DOM 可能已經跟預期不一致');
-            }
-        } catch (e) {
-            console.error('[cwfm:align] 接回暫存內容失敗', e);
-        } finally {
-            cwfmAnchorStash = null;
-            cwfmAligningAnchor = false;
-        }
-    }
-
-    // [cwfm] 定位點對齊本體：把 view.lastLocation.cfi（目前畫面顯示的
-    // 第一個字元，這個記錄本來就有、見功能一）前面的原始內容整批搬走。
-    // 呼叫時機：resize 防抖動計時器裡，版面留白套用完之後（見下方 resize
-    // 監聽器）。
-    function cwfmAlignAnchorToPageStart() {
-        if (!cwfmExperimentalAnchorAlignSession) return;
-        if (cwfmAligningAnchor) return;
-        try {
-            // 先把上一輪可能還沒接回去的暫存內容接回去，不要疊加搬移。
-            cwfmReinsertStash();
-
-            const targetCfi = view.lastLocation?.cfi;
-            if (!targetCfi) return;
-            const contents = view.renderer.getContents();
-            if (!contents.length) return;
-            const { doc, index } = contents[0];
-            const resolved = view.resolveCFI(targetCfi);
-            if (!resolved || resolved.index !== index) return; // 定位點不在目前這一章，不處理
-            const range = resolved.anchor(doc);
-            if (!range) return;
-
-            const container = range.startContainer;
-            const offset = range.startOffset;
-            const anchorElement = container.nodeType === 3 ? container.parentNode : container;
-            const body = doc.body;
-            if (!anchorElement || anchorElement === body) return; // 已經是最外層，沒有東西可搬
-
-            const originalChain = cwfmAncestorChain(anchorElement, body);
-
-            const extractRange = doc.createRange();
-            extractRange.setStart(body, 0);
-            extractRange.setEnd(container, offset);
-            if (extractRange.collapsed) return; // 前面本來就沒有內容，不用處理
-
-            cwfmAligningAnchor = true;
-            const extracted = extractRange.extractContents();
-            cwfmAnchorStash = { originalChain, fragment: extracted, sectionIndex: index };
-
-            // [cwfm] 搬走之後，定位點文字現在是章節最前面的內容，原本卡在
-            // 邊界的那個容器（originalChain 最底層）現在的 firstChild 就是
-            // 精準對應到搬移前定位點所在的位置——不沿用搬移前那個 range
-            // 物件本身（它的邊界節點在 extractContents() 過程中可能已經
-            // 被瀏覽器內部重新指派，直接信任舊物件風險不明），改成重新
-            // 建一個乾淨的 range。
-            const leaf = originalChain[originalChain.length - 1];
-            const freshRange = doc.createRange();
-            if (leaf.firstChild) freshRange.setStart(leaf.firstChild, 0);
-            else freshRange.setStart(leaf, 0);
-            freshRange.collapse(true);
-
-            view.renderer.scrollToAnchor(freshRange)
-                .catch((e) => console.error('[cwfm:align] 對齊後導覽失敗', e))
-                .finally(() => { cwfmAligningAnchor = false; });
-        } catch (e) {
-            console.error('[cwfm:align] 定位點對齊失敗', e);
-            cwfmAligningAnchor = false;
-        }
-    }
-
-    // [cwfm] 往前翻頁的包裝：先判斷目前這一章有沒有暫存內容、而且引擎
-    // 判斷「已經到頭了」(atStart)——是的話代表使用者正好翻到我們搬走
-    // 內容的那個邊界，要先接回去、再繼續往前翻，不能讓原本的 goLeft()
-    // 直接處理，不然引擎不知道這件事被動過手腳，會誤判成整本書已經到
-    // 最前面的章節、直接跳到上一章去（已查證 paginator.js 的 atStart
-    // 判斷邏輯只看『有沒有上一個章節』，不知道目前章節資料量被我們動
-    // 過手腳）。
-    async function cwfmGoLeft() {
-        try {
-            if (cwfmAnchorStash && view.renderer.atStart) {
-                cwfmReinsertStash();
-                await view.goLeft();
-                return;
-            }
-        } catch (e) {
-            console.error('[cwfm:align] 往前翻頁時處理暫存內容失敗', e);
-        }
-        await view.goLeft();
-    }
-
     function applySettings(settings) {
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
@@ -1114,12 +930,6 @@
             applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
-        // [cwfm] 實驗性功能開關：讀 cwfmExperimentalAnchorAlignSession這個
-        // session-only 變數，不是 settings.xxx——不能讓這個值跟著其他一般
-        // 設定一起被存進 GM 儲存，見上方宣告處的說明。
-        try {
-            view.renderer.cwfmAlignAnchor = cwfmExperimentalAnchorAlignSession;
-        } catch (e) { console.error('[cwfm:settings] 套用實驗性功能開關失敗', e); }
         try {
             updateAutoHideEnabled(settings.autoHideToolbar);
         } catch (e) { console.error('[cwfm:settings] 套用自動隱藏開關失敗', e); }
@@ -1164,11 +974,6 @@
                     applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
                     updateDivider(window.__cwfm.settings);
                 } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
-                // [cwfm] 定位點對齊要排在留白套用之後——對齊過程要用到的
-                // this.size（頁面尺寸）必須是新版面留白套用完之後的正確值。
-                try {
-                    cwfmAlignAnchorToPageStart();
-                } catch (e) { console.error('[cwfm:align] resize 後定位點對齊失敗', e); }
             }
         }, CWFM_RESIZE_DEBOUNCE_MS);
     });
@@ -1854,33 +1659,6 @@
         addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
-        // [cwfm] 這個勾選框不能用上面的 addCheckboxField()——那個函式的
-        // change 事件一定會呼叫 saveSettings()，把值寫進 GM 儲存，違反
-        // 「這個開關不存檔、只在這次分頁開啟期間有效」的要求。改成手動
-        // 寫一個結構相同、但只操作 cwfmExperimentalAnchorAlignSession
-        // 這個 session 變數的版本，不碰 settings 物件、不呼叫
-        // saveSettings。
-        (function addExperimentalAnchorAlignField() {
-            const field = document.createElement('div');
-            field.className = 'cwfm-field';
-            const row = document.createElement('div');
-            row.className = 'cwfm-row';
-            const label = document.createElement('label');
-            label.textContent = '\u3010\u5be6\u9a57\u6027\u3011\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede\uff08\u76ee\u524d\u4e0d\u7a69\u5b9a\uff0c\u51fa\u72c0\u6cc1\u8acb\u95dc\u9589\uff09';
-            row.appendChild(label);
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.checked = cwfmExperimentalAnchorAlignSession;
-            input.addEventListener('change', () => {
-                cwfmExperimentalAnchorAlignSession = input.checked;
-                try {
-                    view.renderer.cwfmAlignAnchor = cwfmExperimentalAnchorAlignSession;
-                } catch (e) { console.error('[cwfm:settings] 套用實驗性功能開關失敗', e); }
-            });
-            row.appendChild(input);
-            field.appendChild(row);
-            panelTarget.appendChild(field);
-        })();
 
         // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
         // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
@@ -1960,11 +1738,6 @@
                 // 而整個跳轉失敗（實測 Console 錯誤：t.split is not a
                 // function）。改成直接把原始 href 字串交給 goTo()。
                 try {
-                    // [cwfm] 目錄跳轉是使用者主動導覽到別的地方，如果目前
-                    // 這一章還有定位點對齊搬走、還沒接回去的內容，要先接
-                    // 回去，不要讓它繼續晾在記憶體裡——不然使用者之後如果
-                    // 又跳回這一章，會對到一份少了一截內容的舊暫存。
-                    cwfmReinsertStash();
                     view.goTo(href);
                 } catch (e) {
                     console.error('[cwfm:toc] 跳轉失敗', e);
@@ -2007,7 +1780,7 @@
         prevBtn.textContent = '\u2039';
         prevBtn.setAttribute('aria-label', 'Previous page');
         prevBtn.addEventListener('click', () => {
-            try { cwfmGoLeft(); } catch (e) { console.error('[cwfm:toolbar] goLeft 失敗', e); }
+            try { view.goLeft(); } catch (e) { console.error('[cwfm:toolbar] goLeft 失敗', e); }
         });
         bar.appendChild(prevBtn);
 
@@ -2049,12 +1822,6 @@
         // 依 relocate 事件同步進度條與百分比顯示（使用者正在拖曳時不要被蓋過去）
         view.addEventListener('relocate', (e) => {
             if (sliderDragging) return;
-            // [cwfm] 定位點對齊操作進行中，這一章的內容量暫時被動過手腳，
-            // 這段期間算出來的百分比會不準（本章總頁數暫時變少，比例會
-            // 偏高）。操作期間維持顯示操作前的最後一個正確數字不動，不
-            // 要更新畫面；操作結束後，真正確定的新位置那次 relocate 才
-            // 會讓畫面更新，使用者完全不會看到任何中間閃爍的錯誤數字。
-            if (cwfmAligningAnchor) return;
             const fraction = e.detail?.fraction;
             if (typeof fraction === 'number') {
                 slider.value = String(fraction);
