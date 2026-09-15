@@ -251,9 +251,20 @@
         if (!cfi) return;
         const delayMs = Math.max(1, settings.autoSyncDelaySeconds || 5) * 1000;
         autoSyncTimer = setTimeout(() => {
-            syncBookmarkToServer(cfi).catch((err) =>
-                console.error('[cwfm:bookmark] 停留自動同步失敗', err)
-            );
+            syncBookmarkToServer(cfi)
+                .then(() => {
+                    // [cwfm] 同步成功後要通知書籤圖示重畫（空心→紅色），
+                    // 但 currentServerBookmarkCfi/renderBookmarkIcon 是
+                    // buildToolbar() 裡的區域變數，這裡碰不到，透過
+                    // window.__cwfm 這個既有的共用空間搭一個窗口——
+                    // buildToolbar() 建立時會把實際的更新函式塞進
+                    // onBookmarkSynced，這裡呼叫之前先判斷存不存在（工具
+                    // 列可能還沒建好，或建立失敗），避免噴錯。
+                    window.__cwfm.onBookmarkSynced?.(cfi);
+                })
+                .catch((err) =>
+                    console.error('[cwfm:bookmark] 停留自動同步失敗', err)
+                );
         }, delayMs);
     });
 
@@ -1909,6 +1920,14 @@
             bookmarkBtn.innerHTML = isCurrentLocationBookmarked() ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
         }
         renderBookmarkIcon();
+        // [cwfm] 給停留自動同步（見上面 view.addEventListener('relocate', ...)
+        // 那段功能三的程式碼，跟這裡不在同一個函式作用域）呼叫的窗口，
+        // 同步成功後更新這裡的區域變數並重畫圖示，行為要跟手動按書籤
+        // 按鈕成功後完全一樣。
+        window.__cwfm.onBookmarkSynced = (cfi) => {
+            currentServerBookmarkCfi = wrapCfi(cfi);
+            renderBookmarkIcon();
+        };
         bookmarkBtn.setAttribute('aria-label', '\u66f8\u7c64');
         bookmarkBtn.addEventListener('click', () => {
             const cfi = view.lastLocation?.cfi;
