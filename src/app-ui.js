@@ -977,6 +977,26 @@
     });
     let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
 
+    // [cwfm] 目前鎖定要對齊的目標 cfi。只在真的「資料保證完整、沒被暫存
+    // 動過手腳」的乾淨時機更新（翻頁、目錄跳轉、書本內部超連結跳轉、
+    // 開書），resize/全螢幕切換這些時機完全不碰這個值，只是把它重新
+    // 套用一次而已——這樣就不需要在暫存還沒接回去的當下去讀「現在畫面
+    // 顯示什麼」，繞開了前面反覆查不出根因的那個 bug 類型（getVisibleRange
+    // 抓到的即時節點，被 cwfmReinsertStash() 的 normalize() 影響，
+    // isConnected 判斷不準）。
+    let cwfmLockedAnchorCfi = null;
+    view.renderer.addEventListener('relocate', (e) => {
+        const reason = e.detail?.reason;
+        // 只有「翻頁」「跳轉」這兩種代表使用者/書本內容真的換了位置的
+        // 原因才更新；resize 造成的內部自動重新導覽（reason=anchor）
+        // 不算，我們自己對齊操作觸發的那次也不算（cwfmAligningAnchor
+        // 判斷），不然會變成自己追自己。
+        if (cwfmAligningAnchor) return;
+        if (reason !== 'page' && reason !== 'navigation') return;
+        const cfi = view.lastLocation?.cfi;
+        if (cfi) cwfmLockedAnchorCfi = cfi;
+    });
+
     function cwfmAncestorChain(node, stopAbove) {
         const chain = [];
         let cur = node;
@@ -1066,81 +1086,28 @@
         const t0 = performance.now();
         console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
         try {
+            // [cwfm] 先把任何還沒接回去的暫存內容接回去，確保接下來解析
+            // cwfmLockedAnchorCfi 的時候，文件是完整、沒被動過手腳的乾淨
+            // 狀態——這是這次簡化設計的關鍵：resize/全螢幕切換完全不去
+            // 讀「畫面現在顯示什麼」，只是把已經記錄好的目標重新套用一次。
+            cwfmReinsertStash();
+
             const contents = view.renderer.getContents();
             if (!contents.length) { console.log('[cwfm:align:t] 沒有 contents，中止'); return; }
-            const { doc: currentDoc, index: currentIndex } = contents[0];
+            const { doc, index } = contents[0];
 
-            let container, offset, anchorElement, doc, index;
+            const targetCfi = cwfmLockedAnchorCfi;
+            console.log('[cwfm:align:t] cwfmLockedAnchorCfi=' + targetCfi);
+            if (!targetCfi) { console.log('[cwfm:align:t] 沒有鎖定的定位點，中止'); return; }
+            const resolved = view.resolveCFI(targetCfi);
+            if (!resolved || resolved.index !== index) { console.log('[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=' + resolved?.index + ' currentIndex=' + index); return; }
+            const range = resolved.anchor(doc);
+            if (!range) { console.log('[cwfm:align:t] anchor(doc) 拿不到 range，中止'); return; }
 
-            if (cwfmAnchorStash && cwfmAnchorStash.sectionIndex === currentIndex) {
-                // [cwfm] 已經有暫存、而且是目前這一章的——但不能直接沿用
-                // 暫存記住的那個「第一次」節點：如果使用者在暫存還沒接
-                // 回去的這段期間翻過頁（例如全螢幕裡面翻了幾頁），目前
-                // 真正該鎖住的位置早就不是暫存原本記的那個點了，每次
-                // 翻頁都要當成一個全新的定位點。改成呼叫排版引擎既有的
-                // getVisibleRange()，直接問「現在畫面上第一個可見的節點
-                // 是誰」——拿到的是活的節點參照，不是字串化的 CFI，就算
-                // 接下來把暫存接回去、往前插入內容，這個參照本身依然
-                // 指向同一個真實節點，不會因為前面內容變多而失效或指錯
-                // 地方（CFI 字串重新解析才會，這正是上一輪 DOMException
-                // 的根因）。一定要在接回去之前呼叫，才能抓到「暫存還沒
-                // 接回去、翻頁後」真正的畫面內容。
-                const stash = cwfmAnchorStash;
-                const visible = view.renderer.getVisibleRange?.();
-                let liveContainer = visible ? visible.startContainer : null;
-                let liveOffset = visible ? visible.startOffset : 0;
-                console.log('[cwfm:align:t] 沿用暫存分支，getVisibleRange() 抓到 t=' + performance.now().toFixed(1)
-                    + ' 內容=' + (liveContainer ? cwfmTextPreview(liveContainer, liveOffset) : '(null)'));
-
-                cwfmReinsertStash();
-                console.log('[cwfm:align:t] cwfmReinsertStash() 完成 t=' + performance.now().toFixed(1));
-
-                // [cwfm] 邊界情況：如果使用者完全沒有翻頁，抓到的節點會
-                // 剛好落在暫存邊界那個文字節點上，接回去最後一步的
-                // normalize() 合併文字節點時，這個節點物件本身有可能不是
-                // 存活下來的那一個（依瀏覽器實作而定），參照因此失效。
-                // 用 isConnected 檢查，斷開的話退回暫存自己原本記住的
-                // 位置——這種情況下兩者本來就是同一個位置，退回去用完全
-                // 不影響正確性。
-                if (liveContainer && liveContainer.isConnected) {
-                    container = liveContainer;
-                    offset = liveOffset;
-                    console.log('[cwfm:align:t] 使用即時節點參照（isConnected=true）');
-                } else {
-                    const leaf = stash.originalChain[stash.originalChain.length - 1];
-                    if (!leaf.firstChild) { console.log('[cwfm:align:t] 退回分支也拿不到節點，中止'); return; }
-                    container = leaf.firstChild;
-                    offset = 0;
-                    console.log('[cwfm:align:t] 即時節點已斷開，退回暫存原始位置 內容=' + cwfmTextPreview(container, offset));
-                }
-                doc = currentDoc;
-                index = currentIndex;
-                anchorElement = container.nodeType === 3 ? container.parentNode : container;
-            } else {
-                // [cwfm] 沒有暫存，或者暫存是別的章節留下來的舊資料
-                // （使用者中途跨章節翻頁，不是透過目錄跳轉那條已經有
-                // 安全網的路徑）——舊暫存已經過期，不能沿用，先單純
-                // 接回去清掉（不強求對齊，反正它不是目前這一章），再
-                // 照「完全沒有暫存」的正常流程，重新讀一次
-                // view.lastLocation.cfi 對目前真正顯示的這一章重新解析。
-                console.log('[cwfm:align:t] 無暫存或暫存已過期分支，改讀 view.lastLocation.cfi');
-                cwfmReinsertStash();
-
-                const targetCfi = view.lastLocation?.cfi;
-                console.log('[cwfm:align:t] view.lastLocation.cfi=' + targetCfi);
-                if (!targetCfi) { console.log('[cwfm:align:t] 沒有 cfi，中止'); return; }
-                const resolved = view.resolveCFI(targetCfi);
-                if (!resolved || resolved.index !== currentIndex) { console.log('[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=' + resolved?.index + ' currentIndex=' + currentIndex); return; }
-                const range = resolved.anchor(currentDoc);
-                if (!range) { console.log('[cwfm:align:t] anchor(doc) 拿不到 range，中止'); return; }
-
-                doc = currentDoc;
-                index = currentIndex;
-                container = range.startContainer;
-                offset = range.startOffset;
-                anchorElement = container.nodeType === 3 ? container.parentNode : container;
-                console.log('[cwfm:align:t] 解析到的位置 內容=' + cwfmTextPreview(container, offset));
-            }
+            const container = range.startContainer;
+            const offset = range.startOffset;
+            const anchorElement = container.nodeType === 3 ? container.parentNode : container;
+            console.log('[cwfm:align:t] 解析到的位置 內容=' + cwfmTextPreview(container, offset));
 
             const body = doc.body;
             if (!anchorElement || anchorElement === body) { console.log('[cwfm:align:t] anchorElement 已經是最外層，中止'); return; }
@@ -1164,14 +1131,14 @@
             // 被瀏覽器內部重新指派，直接信任舊物件風險不明），改成重新
             // 建一個乾淨的 range。
             const leaf = originalChain[originalChain.length - 1];
+            const expectedText = cwfmTextPreview(leaf.firstChild || leaf, 0);
             const freshRange = doc.createRange();
             if (leaf.firstChild) freshRange.setStart(leaf.firstChild, 0);
             else freshRange.setStart(leaf, 0);
             freshRange.collapse(true);
-            console.log('[cwfm:align:t] 搬移後的定位點內容=' + cwfmTextPreview(leaf.firstChild || leaf, 0));
+            console.log('[cwfm:align:t] 搬移後的定位點內容=' + expectedText);
 
-            // [cwfm] 診斷紀錄：使用者上次回報過「切回正常模式後畫面偏移、
-            // 沒有置中」，這裡把跟水平留白/欄寬有關的幾個數字記下來，
+            // [cwfm] 診斷紀錄：跟水平留白/欄寬有關的幾個數字記下來，
             // 下次重現時直接比對這些數字，不用再猜是不是留白算錯。
             console.log('[cwfm:align:h] 對齊前 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
                 + ' gap=' + view.renderer.getAttribute('gap')
@@ -1179,15 +1146,21 @@
 
             view.renderer.scrollToAnchor(freshRange)
                 .then(() => {
-                    // [cwfm] 對齊完成後，再問一次 getVisibleRange()，跟
-                    // 上面「搬移後的定位點內容」那行比對，兩者文字應該
-                    // 要一致——不一致就代表 scrollToAnchor() 導覽完之後，
-                    // 實際顯示的第一個字元，跟我們要求它對齊的目標對不
-                    // 起來，這是判斷「這次到底有沒有真的成功」最直接的
-                    // 依據，不是只看有沒有丟例外。
+                    // [cwfm] 程式內部直接校對：對齊完成後，問一次
+                    // getVisibleRange() 拿到實際顯示的內容，跟上面
+                    // 「搬移後的定位點內容」比對——這裡只拿它的文字內容
+                    // 做字串比較，不依賴這個節點參照本身在後續操作裡還
+                    // 保持有效，不會再踩到前面那個 bug。一致/不一致都
+                    // 明確印出結論，不用肉眼比對兩行 log。
                     const finalVisible = view.renderer.getVisibleRange?.();
+                    const actualText = finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)';
+                    const matched = actualText === expectedText;
                     console.log('[cwfm:align:t] scrollToAnchor() 完成 t=' + performance.now().toFixed(1)
-                        + ' 對齊後實際第一個可見內容=' + (finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)'));
+                        + ' 對齊後實際第一個可見內容=' + actualText
+                        + ' | 校對結果：' + (matched ? '一致 ✓' : '不一致 ✗'));
+                    if (!matched) {
+                        console.warn('[cwfm:align] 校對不一致！預期=' + expectedText + ' 實際=' + actualText);
+                    }
                     console.log('[cwfm:align:h] 對齊後 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
                         + ' gap=' + view.renderer.getAttribute('gap')
                         + ' rendererRect.left=' + view.renderer.getBoundingClientRect().left
@@ -2379,6 +2352,19 @@
         // 加上全螢幕切換（見上面 fullscreenchange 監聽器）這兩種明確的
         // 方式喚醒，翻頁不會再誤觸。
     } catch (e) { console.error('[cwfm:autohide] 初始化自動隱藏失敗', e); }
+
+    // [cwfm] 定位點對齊：開書流程走到這裡，位置已經還原完成（本機記憶／
+    // 伺服器書籤／或從頭開始），明確地把當下位置存一次當作起始的鎖定
+    // 目標——不能只靠上面那個 relocate 監聽器（reason 過濾條件只認
+    // page/navigation，開書還原位置這次的 reason 很可能是 anchor，會被
+    // 擋掉，不會自動記錄到，這裡要另外補一次）。
+    try {
+        const initialCfi = view.lastLocation?.cfi;
+        if (initialCfi) {
+            cwfmLockedAnchorCfi = initialCfi;
+            console.log('[cwfm:align:t] 開書完成，初始鎖定定位點=' + initialCfi);
+        }
+    } catch (e) { console.error('[cwfm:align] 初始鎖定定位點失敗', e); }
 
     console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
 })();
