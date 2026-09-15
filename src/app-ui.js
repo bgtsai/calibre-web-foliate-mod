@@ -191,12 +191,17 @@
         }
 
         if (!restored) {
-            const hash = location.hash;
-            if (hash && hash.startsWith('#epubcfi(')) {
+            // [cwfm] 伺服器端的書籤 CFI 不在網址 hash 裡（location.hash 實測
+            // 是空字串），是 Calibre-Web 用 Jinja2 模板注入的全域變數
+            // `calibre.bookmark`。typeof 判斷是保險：我們是 document-start
+            // 執行，理論上會排在頁面內嵌 script 之後才跑到這裡，但沒有
+            // 100% 把握，讀不到就當作沒有伺服器書籤，不要整個掛掉。
+            const serverBookmark = (typeof calibre !== 'undefined' && calibre && calibre.bookmark) || '';
+            if (serverBookmark && serverBookmark.startsWith('epubcfi(')) {
                 try {
-                    await view.goTo(decodeURIComponent(hash.slice(1)));
+                    await view.goTo(serverBookmark);
                     restored = true;
-                    console.log('[cwfm:bookmark] 已還原伺服器書籤位置：', hash);
+                    console.log('[cwfm:bookmark] 已還原伺服器書籤位置：', serverBookmark);
                 } catch (e) {
                     console.error('[cwfm:bookmark] 還原伺服器書籤位置失敗，改從頭開始', e);
                 }
@@ -377,7 +382,7 @@
             // 不會被下面欄位區塊的多欄排版影響。
             '.cwfm-panel-header {',
             '  display: flex; align-items: center; justify-content: space-between;',
-            '  margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #444;',
+            '  margin-bottom: 12px; padding-bottom: 18px; border-bottom: 1px solid #444;',
             '}',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
@@ -653,15 +658,48 @@
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
-    // auto（跟隨系統深色模式，不特別指定顏色，維持原本 color-scheme
-    // 自動切換的行為）、light（亮色）、dark（暗色）、sepia（復古黃，
-    // 長時間閱讀常見的護眼色調）。custom 則用下面兩個 customXxxColor
-    // 設定值，讓使用者自己挑。
+    // light（亮色）、dark（暗色）、sepia（復古黃，長時間閱讀常見的護眼
+    // 色調）。custom 則用下面兩個 customXxxColor 設定值，讓使用者自己挑。
+    // auto 沒有自己的一組固定配色——見下面 resolveThemeColors()。
     const THEME_PRESETS = {
         light: { text: '#1a1a1a', background: '#ffffff' },
         dark: { text: '#e0e0e0', background: '#1a1a1a' },
         sepia: { text: '#4b3621', background: '#f4ecd8' },
     };
+
+    // [cwfm] auto 模式原本交給 CSS 的 color-scheme 屬性讓瀏覽器自己決定
+    // 顏色，但實測查證過：瀏覽器實際怎麼畫這個「預設底色」，沒有辦法用
+    // getComputedStyle 或任何 JS 讀出來——我們自己完全不知道畫面顯示的
+    // 是什麼顏色，導致 #main 這類我們自己控制的元素沒有顏色可以對齊。
+    //
+    // 改成：auto 模式下，只問瀏覽器系統目前偏好深色還是淺色
+    // （matchMedia），問到的結果直接對應到既有的 dark／light 這兩組
+    // 固定配色——等於 auto 在這兩個主題之間自動選一個，書本內容跟
+    // #main（見 applySettings 裡的用法）都呼叫這同一個函式拿顏色，
+    // 保證兩邊查到的結果一致，不會分別查兩次、查到不同結果。
+    function resolveThemeColors(settings) {
+        if (settings.themeName === 'custom') {
+            return { text: settings.customTextColor, background: settings.customBackgroundColor };
+        }
+        if (settings.themeName === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            return prefersDark ? THEME_PRESETS.dark : THEME_PRESETS.light;
+        }
+        return THEME_PRESETS[settings.themeName];
+    }
+
+    // [cwfm] auto 模式下，使用者在看書當下切換作業系統的深色/淺色偏好，
+    // 畫面要即時跟著變、不用重新整理頁面——只在目前真的是 auto 模式時
+    // 才重新套用設定，避免使用者明明選的是 light/dark/sepia/custom，
+    // 系統切換卻無謂觸發一次重排版。applySettings 定義在後面，這裡引用
+    // 沒問題：函式宣告會 hoist，而且這個監聽器要等系統真的切換偏好才會
+    // 觸發，那時候整支腳本早就載入完成。
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        const currentSettings = window.__cwfm && window.__cwfm.settings;
+        if (currentSettings && currentSettings.themeName === 'auto') {
+            applySettings(currentSettings);
+        }
+    });
 
     function loadSettings() {
         try {
@@ -692,12 +730,9 @@
             ? '  * { font-family: ' + JSON.stringify(settings.fontFamily) + ' !important; }'
             : '';
 
-        // [cwfm] 佈景主題：auto 不特別指定顏色，維持原本 color-scheme
-        // 跟隨系統深色模式自動切換的行為；light/dark/sepia 用預設配色；
-        // custom 用使用者自己選的顏色。
-        const theme = settings.themeName === 'custom'
-            ? { text: settings.customTextColor, background: settings.customBackgroundColor }
-            : THEME_PRESETS[settings.themeName];
+        // [cwfm] 佈景主題顏色統一從 resolveThemeColors() 拿（auto 模式在
+        // 裡面會問系統深色/淺色偏好，換算成 dark/light 兩組固定配色之一）。
+        const theme = resolveThemeColors(settings);
 
         // [cwfm] 顏色規則獨立成單獨一條、用萬用選擇器（*）套用，不能跟
         // 字級/行距那條規則（只涵蓋 p/li/blockquote/dd/div）共用——實測
@@ -853,6 +888,18 @@
         try {
             updateAutoHideEnabled(settings.autoHideToolbar);
         } catch (e) { console.error('[cwfm:settings] 套用自動隱藏開關失敗', e); }
+        // [cwfm] #main 是 Calibre-Web 原本介面最底層的容器，原本背景色是
+        // 寫死的白色（Calibre-Web 自己的 main.css），我們自己的工具列背景
+        // 帶透明度（rgba(24,24,24,0.92)），縫隙會透出底下這層顏色，變成
+        // 一條白線。這裡跟書本內容用同一個 resolveThemeColors() 結果，
+        // 用行內樣式蓋掉，每次換主題/自訂顏色都會一起更新，不會再對不
+        // 上；hideOldUI() 裡另外有一條寫死的深色 CSS 規則，只當作這裡
+        // 還沒執行到之前的預設值，不衝突（行內樣式優先權比較高）。
+        try {
+            const theme = resolveThemeColors(settings);
+            const main = document.querySelector('#main');
+            if (main && theme) main.style.setProperty('background', theme.background, 'important');
+        } catch (e) { console.error('[cwfm:settings] 套用 #main 背景色失敗', e); }
         window.__cwfm.settings = settings;
     }
 
@@ -1707,10 +1754,12 @@
         // currentServerBookmarkCfi 記住目前伺服器書籤實際的 CFI 字串值
         // （不只是布林值），每次 relocate 都拿目前位置去精確比對：
         // 相符才顯示紅色，一旦翻頁離開（不再相符）就變回空心。
-        // 初始值從網址列的 #epubcfi(...) 片段取得（Calibre-Web 開書時
-        // 如果這本書已有伺服器書籤，會自動帶在網址上）。
-        let currentServerBookmarkCfi = location.hash.startsWith('#epubcfi(')
-            ? decodeURIComponent(location.hash.slice(1))
+        // 初始值從 Calibre-Web 自己注入的全域變數 calibre.bookmark 取得
+        // （不是網址 hash——查證過 location.hash 實測是空字串，伺服器書籤
+        // 是透過 Jinja2 模板寫進這個全域變數，不在網址上）。typeof 判斷
+        // 是保險：讀不到就當這本書沒有伺服器書籤，不要整個掛掉。
+        let currentServerBookmarkCfi = (typeof calibre !== 'undefined' && calibre && calibre.bookmark)
+            ? wrapCfi(calibre.bookmark)
             : null;
 
         const bookmarkBtn = document.createElement('button');
@@ -1785,18 +1834,18 @@
     }
 
     let tocPanel, settingsPanel, toolbar, topToolbar;
-    try { tocPanel = buildTOCPanel(); } catch (e) { console.error('[cwfm:toc] 建立目錄面板失敗', e); }
-    try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error('[cwfm:settings] 建立設定面板失敗', e); }
-    try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立工具列失敗', e); }
-    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立上方工具列失敗', e); }
 
-    // ============================================================
-    // 自動隱藏工具列（設定開關 autoHideToolbar）。3 秒無動作後，上/下
-    // 工具列各自滑出畫面邊緣；滑鼠移到邊緣感應區（電腦）或點擊原本工具
-    // 列所在位置（觸控，此時工具列已隱藏，點擊會落在感應區上）喚醒；
-    // 翻頁時（relocate）一律先顯示、重新倒數；滑鼠停在工具列本身上面
-    // 時暫停倒數，離開才重新開始，避免操作到一半被收走。
-    // ============================================================
+    // [cwfm] 這幾個狀態變數（CWFM_AUTOHIDE_DELAY_MS 跟下面三個 let，還有
+    // 緊接著的幾個函式）故意放在 buildSettingsPanel() 被呼叫之前：
+    // buildSettingsPanel() 結尾會呼叫 applySettings() →
+    // updateAutoHideEnabled()，會讀寫這幾個變數；原本這段宣告寫在
+    // buildSettingsPanel() 呼叫「之後」，第一次開書那次呼叫會踩到 let 的
+    // TDZ（宣告那行還沒執行到，提前存取會丟 ReferenceError），因為包在
+    // try/catch 裡，錯誤被靜靜吞掉、只印在 console，導致自動隱藏第一次
+    // 永遠不會真的啟動，要手動把設定關掉再開一次（那次呼叫已經晚於這裡
+    // 的宣告）才會生效。這裡只是搬移宣告位置，函式邏輯本身不用動；
+    // toolbar/topToolbar 這時候都還是 undefined，但函式內容要等真正被
+    // 呼叫時才會用到它們（透過 ?. 安全存取），不影響現在先定義函式本身。
     const CWFM_AUTOHIDE_DELAY_MS = 3000;
     let cwfmAutoHideEnabled = false;
     let cwfmAutoHideTimer = null;
@@ -1826,6 +1875,12 @@
         if (cwfmAutoHideEnabled) cwfmWakeBars();
         else cwfmShowBars();
     }
+
+    try { tocPanel = buildTOCPanel(); } catch (e) { console.error('[cwfm:toc] 建立目錄面板失敗', e); }
+    try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error('[cwfm:settings] 建立設定面板失敗', e); }
+    try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立工具列失敗', e); }
+    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立上方工具列失敗', e); }
+
     try {
         const topZone = document.createElement('div');
         topZone.className = 'cwfm-autohide-zone cwfm-top';
