@@ -55,6 +55,13 @@
             // 現在有上下兩條固定工具列（新增了上方工具列），各佔約 44px，
             // 要一併從可用高度扣掉，不能只扣原本那一條。
             '#viewer { width: 100% !important; height: calc(100% - 88px) !important; margin: 0 !important; }',
+            // [cwfm] #main 原本(Calibre-Web 自己的 main.css)背景是純白色
+            // （background:#fff），我們自己的程式碼從沒蓋過這個背景——查證
+            // 用戶回報的「工具列上緣有一條白線」問題時發現：我們的工具列
+            // 背景帶透明度（rgba(24,24,24,0.92)，不是純黑），只要跟深色
+            // 內容之間有一絲縫隙（次像素誤差），底下這層白色就會透出來，
+            // 形成那條線。改成深色，縫隙透出來的也是深色，不會再看到白線。
+            '#main { background: #1a1a1a !important; }',
         ].join('\n');
         document.head.appendChild(style);
 
@@ -99,9 +106,16 @@
     // [cwfm] 關閉鈕用 SVG 畫叉叉，不用文字字元「✕」——文字字元置中位置會
     // 隨作業系統/瀏覽器的字型度量跑掉（實測在不同環境偏差明顯），SVG 用
     // 固定座標系統畫兩條交叉線，任何環境都精準置中。
+    //
+    // [cwfm] 線的端點內縮到 (3.5,3.5)~(10.5,10.5)（原本是幾乎頂到畫布邊緣
+    // 的 (1,1)~(13,13)）：實測比對過新舊兩版截圖，原本文字字元「✕」在
+    // 14px 字級下，墨跡本來就填不滿整個字級方框（一般字型字面通常只佔
+    // 六七成），換成 SVG 後若线画到接近边缘，墨跡量會明顯變多、看起來
+    // 變大——這裡縮小端點範圍，讓墨跡量貼近舊版文字字元的視覺大小，同時
+    // 保留 SVG 不受字型影響、精準置中的好處。
     const CWFM_CLOSE_ICON_SVG = '<svg viewBox="0 0 14 14" width="14" height="14" style="display:block;pointer-events:none;">'
-        + '<line x1="1" y1="1" x2="13" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
-        + '<line x1="13" y1="1" x2="1" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+        + '<line x1="3.5" y1="3.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
+        + '<line x1="10.5" y1="3.5" x2="3.5" y2="10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
         + '</svg>';
     function createCloseBtn(onClick) {
         const btn = document.createElement('button');
@@ -365,7 +379,9 @@
             '  display: flex; align-items: center; justify-content: space-between;',
             '  margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #444;',
             '}',
-            '.cwfm-panel-header h3 { margin: 0; font-size: 15px; }',
+            '.cwfm-panel-header h3 {',
+            '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
+            '}',
             '.cwfm-fields-wrap { column-gap: 24px; }',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
@@ -500,21 +516,29 @@
             '.cwfm-toc-view { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view ol { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view [role="treeitem"] {',
-            '  display: block; padding: 5px 0; color: #ccc; text-decoration: none; cursor: pointer;',
+            '  display: flex; align-items: center; padding: 5px 0; color: #ccc; text-decoration: none; cursor: pointer;',
             '}',
             '.cwfm-toc-view [role="treeitem"]:hover { color: #fff; }',
             '.cwfm-toc-view [role="treeitem"][aria-current="page"] { color: #4ea1ff; font-weight: bold; }',
             '.cwfm-toc-view [aria-expanded="false"] ~ ol { display: none; }',
             // [cwfm] 目錄展開三角形：foliate-js ui/tree.js 產生的 <svg><polygon>
             // 沒有設定 fill，SVG 規格預設黑色，在深色背景幾乎看不見；改成跟
-            // 文字同色，hover 時比照文字變亮，並在 aria-expanded=true 時轉 90
-            // 度（原本完全沒有旋轉動畫）。margin-right 是跟文字之間的間距。
+            // 文字同色，hover 時比照文字變亮。跟文字的垂直置中改用 flex
+            // （見上面 [role="treeitem"] 的 display:flex）取代 vertical-align:
+            // middle——實測過 vertical-align:middle 對中文文字定位不準，有
+            // 固定的幾 px 偏差，flex 置中才是準的。margin-right 是跟文字的間距。
+            //
+            // 方向：SVG 本身未旋轉時尖角朝下（polygon 座標畫的是下三角）。
+            // 收合狀態要讓尖角指向文字（朝右），轉 -90 度；展開狀態維持
+            // 原本朝下的樣子，不用轉。原本寫反了（在 expanded 時轉
+            // +90 度，變成收合朝下、展開朝左，跟一般慣例相反），這裡修正。
             '.cwfm-toc-view [role="treeitem"] svg {',
-            '  fill: #ccc; margin-right: 6px; flex-shrink: 0; vertical-align: middle;',
+            '  fill: #ccc; margin-right: 6px; flex-shrink: 0;',
             '  transition: fill 0.15s ease, transform 0.15s ease;',
+            '  transform: rotate(-90deg);',
             '}',
             '.cwfm-toc-view [role="treeitem"]:hover svg { fill: #fff; }',
-            '.cwfm-toc-view [role="treeitem"][aria-expanded="true"] > svg { transform: rotate(90deg); }',
+            '.cwfm-toc-view [role="treeitem"][aria-expanded="true"] > svg { transform: rotate(0deg); }',
             '.cwfm-empty-hint { color: #888; font-size: 12px; }',
             // [cwfm] 面板變暗遮罩：原本會把畫面調暗，但這個遮罩本身沒有接
             // 任何點擊關閉的事件（純視覺效果），使用者調整顏色設定時看不清
