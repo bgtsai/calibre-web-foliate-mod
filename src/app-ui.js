@@ -1091,6 +1091,36 @@
         }
     }
 
+    // [cwfm] 共用的「排版引擎是否真的穩定下來」偵測——量測 paginator.js
+    // 新增的 cwfmLayoutChangedAt 這個時間戳（expand()/render() 真正被
+    // 呼叫時就會更新），不是靠猜畫面內容或猜要等多久。requireTriggerFirst
+    // 為 true 時，要先真的看到這個時間戳變動過一次，才會進入「安靜多久
+    // 才算穩定」的判斷——避免呼叫這支函式時，剛好 ResizeObserver 還沒
+    // 來得及觸發第一次，被誤判成「從頭到尾都沒變、早就穩定」。設有總
+    // 等待時間上限，避免真的卡住（例如使用者自己一直在正常翻頁，這個
+    // 時間戳本來就會持續更新，這種情況下等不到穩定是對的，不是機制壞了）。
+    async function cwfmWaitForLayoutSettle(requireTriggerFirst) {
+        const CWFM_SETTLE_QUIET_MS = 50;
+        const CWFM_SETTLE_TIMEOUT_MS = 800;
+        const settleStart = performance.now();
+        let lastSeenChangedAt = view.renderer.cwfmLayoutChangedAt ?? 0;
+        let sawTrigger = !requireTriggerFirst;
+        let quietSince = performance.now();
+        while (performance.now() - settleStart < CWFM_SETTLE_TIMEOUT_MS) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            const changedAt = view.renderer.cwfmLayoutChangedAt ?? 0;
+            const now = performance.now();
+            if (changedAt !== lastSeenChangedAt) {
+                lastSeenChangedAt = changedAt;
+                quietSince = now;
+                sawTrigger = true;
+            } else if (sawTrigger && now - quietSince >= CWFM_SETTLE_QUIET_MS) {
+                break;
+            }
+        }
+        return { lastSeenChangedAt, elapsed: performance.now() - settleStart, sawTrigger };
+    }
+
     function cwfmAlignAnchorToPageStart() {
         if (!window.__cwfm.settings?.preciseAnchorAlign) return;
         if (cwfmAligningAnchor) return;
@@ -1167,34 +1197,12 @@
                     // 就會觸發它，而 expand() 調整容器尺寸的動作，可能又
                     // 讓內容跟著微調、再度觸發同一個監看器，形成一個會自己
                     // 反覆修正好幾輪才穩定下來的回饋迴圈，把畫面帶離我們
-                    // 剛剛才對齊好的位置。原本用「畫面內容看起來像不像
-                    // 沒變」去間接猜有沒有穩定，改成直接量測
-                    // paginator.js 新增的 cwfmLayoutChangedAt 這個時間戳
-                    // （expand()/render() 真正被呼叫時就會更新）——只要這個
-                    // 時間戳一段時間（CWFM_SETTLE_QUIET_MS）沒有再更新過，
-                    // 才代表排版引擎真的沒有再被觸發，比看畫面內容更直接、
-                    // 更準。設一個總等待時間上限避免真的卡住（例如使用者
-                    // 自己也在正常翻頁，這個時間戳本來就會一直更新，這種
-                    // 情況下等不到穩定是對的，不是我們的機制壞了）。
-                    const CWFM_SETTLE_QUIET_MS = 50;
-                    const CWFM_SETTLE_TIMEOUT_MS = 800;
-                    const settleStart = performance.now();
-                    let lastSeenChangedAt = view.renderer.cwfmLayoutChangedAt ?? 0;
-                    let quietSince = performance.now();
-                    while (performance.now() - settleStart < CWFM_SETTLE_TIMEOUT_MS) {
-                        await new Promise((resolve) => requestAnimationFrame(resolve));
-                        const changedAt = view.renderer.cwfmLayoutChangedAt ?? 0;
-                        const now = performance.now();
-                        if (changedAt !== lastSeenChangedAt) {
-                            lastSeenChangedAt = changedAt;
-                            quietSince = now;
-                        } else if (now - quietSince >= CWFM_SETTLE_QUIET_MS) {
-                            break;
-                        }
-                    }
-                    const settleElapsed = (performance.now() - settleStart).toFixed(1);
+                    // 剛剛才對齊好的位置。用共用的 cwfmWaitForLayoutSettle()
+                    // 直接量測 cwfmLayoutChangedAt 時間戳，不是猜畫面內容
+                    // 或猜要等多久。
+                    const { lastSeenChangedAt, elapsed: settleElapsed } = await cwfmWaitForLayoutSettle(true);
                     console.log('[cwfm:align:t] 排版引擎穩定偵測結束 t=' + performance.now().toFixed(1)
-                        + ' 耗時=' + settleElapsed + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
+                        + ' 耗時=' + settleElapsed.toFixed(1) + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
 
                     // [cwfm] 不管穩定與否，都強制校正一次——穩定的情況下這
                     // 次呼叫應該幾乎沒有變化（本來就在對的位置）；等到上限
@@ -1240,19 +1248,19 @@
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
         try {
+            // [cwfm] 這裡曾經加過一行 view.renderer.expand()，想強制立刻
+            // 重算頁數，解決接回內容後翻頁卡在頁碼 0 不動的問題——但已經
+            // 實測確認：關掉這個功能就不會複現「往前翻跨章節、卻落在
+            // 新章節開頭而不是結尾」這個問題，開啟才會，代表就是這行
+            // expand() 造成的副作用（很可能干擾了引擎自己判斷『跨章節
+            // 要落在哪個 anchor 分數』的計算），已經移除，不要再加回來。
+            // 改成不自己插手呼叫 expand()，接回內容之後，用共用的
+            // cwfmWaitForLayoutSettle() 等瀏覽器自己的 ResizeObserver
+            // 按照它原本的方式、原本的時機把頁數重算完，才繼續判斷翻頁
+            // ——比自己直接呼叫更保守，理論上不會有插手時機不對的副作用。
             if (cwfmAnchorStash) {
                 cwfmReinsertStash();
-                // [cwfm] 接回去之後，「這一章總共有幾頁」這個數字不會
-                // 立刻自動更新——平常是靠 ResizeObserver 監看內容尺寸
-                // 變化、延後到下一個畫面更新週期才觸發 expand() 重算。
-                // 緊接著馬上執行 view.goLeft() 的話，引擎讀到的頁數可能
-                // 還是接回去之前、內容缺一截時的舊數字，拿舊數字去判斷
-                // 撞不撞得到章節邊界、要不要自動跨到下一章，會誤判——
-                // 已查證撞到這個問題時，會卡在頁碼 0（排版用的墊底空白
-                // 頁）不動，原本該有的自動跨章節接續判斷被這個時間差
-                // 打斷。expand() 本來就是公開方法，直接同步呼叫一次，
-                // 強制立刻重算頁數，不用等 ResizeObserver 自己延後觸發。
-                view.renderer.expand?.();
+                await cwfmWaitForLayoutSettle(true);
             }
         } catch (e) {
             console.error('[cwfm:align] 往前翻頁時處理暫存內容失敗', e);
@@ -1266,8 +1274,7 @@
         try {
             if (cwfmAnchorStash) {
                 cwfmReinsertStash();
-                // [cwfm] 同上，往後翻頁一樣要強制重算頁數。
-                view.renderer.expand?.();
+                await cwfmWaitForLayoutSettle(true);
             }
         } catch (e) {
             console.error('[cwfm:align] 往後翻頁時處理暫存內容失敗', e);
