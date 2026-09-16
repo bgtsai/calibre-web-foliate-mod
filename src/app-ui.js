@@ -1162,36 +1162,44 @@
                     console.log('[cwfm:align:t] scrollToAnchor() 第一次完成 t=' + performance.now().toFixed(1)
                         + ' 內容=' + firstText);
 
-                    // [cwfm] 排版引擎內部有兩個獨立的 ResizeObserver（一個看
-                    // 書本內容尺寸→呼叫 expand()，一個看外層容器尺寸→呼叫
-                    // render() 重新導覽），我們搬移/接回內容會觸發第一個，
-                    // 連帶可能牽動第二個，形成一個小連鎖反應，把畫面帶離
-                    // 我們剛剛才對齊好的位置——查證過 ResizeObserver 規格：
-                    // 這類連鎖不保證在同一個畫面更新週期內結束，可能拖過
-                    // 好幾輪，所以不能用「固定等待幾次」這種做法，改成
-                    // 持續偵測，直到連續兩次結果一樣才視為穩定；設一個
-                    // 次數上限避免真的卡住。穩定之後再明確校正一次，把
-                    // 畫面強制拉回我們原本要鎖住的目標，不管中間那個連鎖
-                    // 反應把它帶去哪裡。
-                    const CWFM_SETTLE_MAX_FRAMES = 15;
-                    let prevText = firstText;
-                    let settledAt = -1;
-                    for (let i = 0; i < CWFM_SETTLE_MAX_FRAMES; i++) {
+                    // [cwfm] 排版引擎自己內部有一個 ResizeObserver 監看書本
+                    // 內容尺寸，一變就呼叫 expand()；我們搬移/接回內容本身
+                    // 就會觸發它，而 expand() 調整容器尺寸的動作，可能又
+                    // 讓內容跟著微調、再度觸發同一個監看器，形成一個會自己
+                    // 反覆修正好幾輪才穩定下來的回饋迴圈，把畫面帶離我們
+                    // 剛剛才對齊好的位置。原本用「畫面內容看起來像不像
+                    // 沒變」去間接猜有沒有穩定，改成直接量測
+                    // paginator.js 新增的 cwfmLayoutChangedAt 這個時間戳
+                    // （expand()/render() 真正被呼叫時就會更新）——只要這個
+                    // 時間戳一段時間（CWFM_SETTLE_QUIET_MS）沒有再更新過，
+                    // 才代表排版引擎真的沒有再被觸發，比看畫面內容更直接、
+                    // 更準。設一個總等待時間上限避免真的卡住（例如使用者
+                    // 自己也在正常翻頁，這個時間戳本來就會一直更新，這種
+                    // 情況下等不到穩定是對的，不是我們的機制壞了）。
+                    const CWFM_SETTLE_QUIET_MS = 50;
+                    const CWFM_SETTLE_TIMEOUT_MS = 800;
+                    const settleStart = performance.now();
+                    let lastSeenChangedAt = view.renderer.cwfmLayoutChangedAt ?? 0;
+                    let quietSince = performance.now();
+                    while (performance.now() - settleStart < CWFM_SETTLE_TIMEOUT_MS) {
                         await new Promise((resolve) => requestAnimationFrame(resolve));
-                        const v = view.renderer.getVisibleRange?.();
-                        const t = v ? cwfmTextPreview(v.startContainer, v.startOffset) : null;
-                        if (t !== null && t === prevText) { settledAt = i + 1; break; }
-                        prevText = t;
+                        const changedAt = view.renderer.cwfmLayoutChangedAt ?? 0;
+                        const now = performance.now();
+                        if (changedAt !== lastSeenChangedAt) {
+                            lastSeenChangedAt = changedAt;
+                            quietSince = now;
+                        } else if (now - quietSince >= CWFM_SETTLE_QUIET_MS) {
+                            break;
+                        }
                     }
-                    console.log('[cwfm:align:t] 連鎖反應偵測結束 t=' + performance.now().toFixed(1)
-                        + ' ' + (settledAt >= 0 ? ('第 ' + settledAt + ' 個畫面更新週期後穩定') : ('超過 ' + CWFM_SETTLE_MAX_FRAMES + ' 個週期仍未穩定，放棄等待'))
-                        + ' 穩定前最後內容=' + prevText);
+                    const settleElapsed = (performance.now() - settleStart).toFixed(1);
+                    console.log('[cwfm:align:t] 排版引擎穩定偵測結束 t=' + performance.now().toFixed(1)
+                        + ' 耗時=' + settleElapsed + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
 
                     // [cwfm] 不管穩定與否，都強制校正一次——穩定的情況下這
-                    // 次呼叫應該幾乎沒有變化（本來就在對的位置）；沒能在
-                    // 上限內穩定的情況下，這是最後一道防線，把畫面拉回
-                    // 我們原本要鎖住的目標，不留給那個還沒停下來的連鎖
-                    // 反應繼續帶偏。
+                    // 次呼叫應該幾乎沒有變化（本來就在對的位置）；等到上限
+                    // 還沒穩定的情況下，這是最後一道防線，把畫面拉回我們
+                    // 原本要鎖住的目標。
                     await view.renderer.scrollToAnchor(freshRange);
 
                     const finalVisible = view.renderer.getVisibleRange?.();
@@ -1228,7 +1236,7 @@
         // [cwfm] 對齊操作（含連鎖反應偵測+最後校正）進行中的這一小段
         // 空檔，先等它結束，避免翻頁跟校正動作前後重疊、其中一個結果
         // 被另一個蓋掉。等待有次數上限，不會真的卡死。
-        for (let i = 0; i < 30 && cwfmAligningAnchor; i++) {
+        for (let i = 0; i < 60 && cwfmAligningAnchor; i++) {
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
         try {
@@ -1239,7 +1247,7 @@
         await view.goLeft();
     }
     async function cwfmGoRight() {
-        for (let i = 0; i < 30 && cwfmAligningAnchor; i++) {
+        for (let i = 0; i < 60 && cwfmAligningAnchor; i++) {
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
         try {
