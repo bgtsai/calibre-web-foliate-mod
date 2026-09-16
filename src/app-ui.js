@@ -457,6 +457,37 @@
             '.cwfm-keychip-add:hover { color: #fff; border-color: #999; }',
             '.cwfm-keychip-add:disabled { color: #4ea1ff; border-color: #4ea1ff; cursor: default; }',
             '.cwfm-keylist-hint { color: #e0a030; font-size: 12px; margin-top: 4px; }',
+            // [cwfm] 字型名稱記憶清單：手動輸入過的名稱跟上傳字型共用
+            // .cwfm-keychip 這個既有樣式，上傳的另外加 .cwfm-keychip-uploaded
+            // 修飾（帶一點藍色調 + 小上傳圖示），視覺上一眼分得出「這是
+            // 上傳的字型」跟「這是打字打進去、指望系統已安裝的字型名稱」。
+            '.cwfm-keychip-uploaded { border-color: #4ea1ff; background: #22364a; }',
+            '.cwfm-keychip-icon { color: #4ea1ff; font-size: 11px; margin-right: 2px; }',
+            '.cwfm-keychip span:not(.cwfm-keychip-icon) { cursor: pointer; }',
+            '.cwfm-keychip-edit {',
+            '  background: #222; border: 1px solid #4ea1ff; border-radius: 3px;',
+            '  color: #eee; font-size: 12px; padding: 2px 4px; width: 90px;',
+            '}',
+            // [cwfm] 刪除上傳字型的確認對話框，獨立蓋在整個畫面最上層。
+            '.cwfm-confirm-overlay {',
+            '  position: fixed; inset: 0; background: rgba(0,0,0,0.6);',
+            '  z-index: 1000000; display: flex; align-items: center; justify-content: center;',
+            '}',
+            '.cwfm-confirm-box {',
+            '  background: #262626; border: 1px solid #555; border-radius: 8px;',
+            '  padding: 20px; max-width: 360px; box-shadow: 0 8px 28px rgba(0,0,0,0.5);',
+            '  font-family: sans-serif;',
+            '}',
+            '.cwfm-confirm-box h4 { margin: 0 0 10px; color: #eee; font-size: 15px; }',
+            '.cwfm-confirm-box p { margin: 0 0 16px; color: #ccc; font-size: 13px; line-height: 1.6; }',
+            '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
+            '.cwfm-confirm-cancel, .cwfm-confirm-ok {',
+            '  border-radius: 4px; padding: 6px 14px; font-size: 13px; cursor: pointer;',
+            '}',
+            '.cwfm-confirm-cancel { background: none; border: 1px solid #666; color: #ccc; }',
+            '.cwfm-confirm-cancel:hover { border-color: #999; color: #fff; }',
+            '.cwfm-confirm-ok { background: #b03030; border: 1px solid #d04040; color: #fff; }',
+            '.cwfm-confirm-ok:hover { background: #c03838; }',
             '.cwfm-panel[data-side="left"] { left: 0; transform: translateX(-105%); }',
             '.cwfm-panel[data-side="left"].cwfm-open { transform: translateX(0); }',
             '.cwfm-panel[data-side="right"] { right: 0; transform: translateX(105%); }',
@@ -698,6 +729,18 @@
     // ============================================================
     const DEFAULT_SETTINGS = {
         fontFamily: '',
+        // [cwfm] 字型名稱記憶：手動輸入過、確定生效的名稱（change 事件才
+        // 記，不是每打一個字就存）。跟下面 uploadedFonts 分開存——這兩種
+        // 名稱行為不一樣：手動輸入的只是純文字，刪除就單純刪一筆；
+        // uploadedFonts 每一筆背後對應 IndexedDB 裡一個真正的字型檔案。
+        fontNameHistory: [],
+        // [cwfm] 使用者上傳的字型。id 是內部產生的識別碼，對應
+        // IndexedDB 裡實際的檔案二進位資料。不收 .ttc（見下方
+        // cwfmParseUploadedFontNames 的說明），只收天生「一個檔案一個
+        // 字型」的 .ttf/.otf/.woff，所以一筆對應剛好一個名稱，不用像
+        // 合集格式那樣處理一個檔案多個名稱的情況。format 存副檔名，
+        // 套用時要組對應的 MIME type。
+        uploadedFonts: [], // [{ id, fileName, format, name }]
         fontSize: 100,     // 百分比
         letterSpacing: 0,  // em
         lineSpacing: 1.4,
@@ -797,6 +840,229 @@
         }
     }
 
+    // ============================================================
+    // [cwfm] 使用者上傳字型：實際的字型二進位資料存進 IndexedDB（不用
+    // GM_setValue，那套鍵值儲存不適合放大檔案），套用到書本內容時轉成
+    // Base64 的 @font-face 規則字串——這個字串跟書本內容是同一份文件、
+    // 不管在哪個 iframe 顯示都能直接生效，不用管理 Blob URL 的生命週期、
+    // 也沒有跨文件存取限制的問題。
+    // ============================================================
+    const CWFM_FONT_DB_NAME = 'cwfm-fonts';
+    const CWFM_FONT_STORE = 'fonts';
+    function cwfmOpenFontDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(CWFM_FONT_DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                req.result.createObjectStore(CWFM_FONT_STORE, { keyPath: 'id' });
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function cwfmSaveFontBlob(id, arrayBuffer, format) {
+        const db = await cwfmOpenFontDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(CWFM_FONT_STORE, 'readwrite');
+            tx.objectStore(CWFM_FONT_STORE).put({ id, data: arrayBuffer, format });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+    async function cwfmLoadFontBlob(id) {
+        const db = await cwfmOpenFontDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(CWFM_FONT_STORE, 'readonly');
+            const req = tx.objectStore(CWFM_FONT_STORE).get(id);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function cwfmDeleteFontBlob(id) {
+        const db = await cwfmOpenFontDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(CWFM_FONT_STORE, 'readwrite');
+            tx.objectStore(CWFM_FONT_STORE).delete(id);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    // [cwfm] 解析 sfnt（.ttf/.otf/.ttc）格式裡的 'name' 表，讀出字型
+    // 內部記錄的名稱。優先取 nameID=4（完整名稱），沒有才退回 nameID=1
+    // （家族名稱）；平台 3（Windows/Unicode）跟 0（Unicode）用 UTF-16BE
+    // 解碼，其餘（例如 Mac Roman）簡化當單位元組字串處理——這些是舊式
+    // 平台編碼，現在的字型檔案絕大多數都會同時附上平台 3 的記錄，實務
+    // 上不太會真的走到這個退回分支。
+    function cwfmParseNameTable(dv, tableOffset) {
+        const count = dv.getUint16(tableOffset + 2);
+        const stringAreaOffset = tableOffset + dv.getUint16(tableOffset + 4);
+        let best = null;
+        let fallback = null;
+        for (let i = 0; i < count; i++) {
+            const recOffset = tableOffset + 6 + i * 12;
+            const platformID = dv.getUint16(recOffset);
+            const nameID = dv.getUint16(recOffset + 6);
+            const length = dv.getUint16(recOffset + 8);
+            const strOffset = dv.getUint16(recOffset + 10);
+            if (nameID !== 4 && nameID !== 1) continue;
+            let str;
+            try {
+                const bytes = [];
+                if (platformID === 3 || platformID === 0) {
+                    for (let j = 0; j < length; j += 2) bytes.push(dv.getUint16(stringAreaOffset + strOffset + j));
+                } else {
+                    for (let j = 0; j < length; j++) bytes.push(dv.getUint8(stringAreaOffset + strOffset + j));
+                }
+                str = String.fromCharCode.apply(null, bytes);
+            } catch (e) { continue; }
+            if (nameID === 4) { best = str; break; }
+            if (nameID === 1 && !fallback) fallback = str;
+        }
+        return best || fallback;
+    }
+    function cwfmParseSfntName(dv, baseOffset) {
+        const numTables = dv.getUint16(baseOffset + 4);
+        for (let i = 0; i < numTables; i++) {
+            const recOffset = baseOffset + 12 + i * 16;
+            const tag = String.fromCharCode(dv.getUint8(recOffset), dv.getUint8(recOffset + 1), dv.getUint8(recOffset + 2), dv.getUint8(recOffset + 3));
+            if (tag !== 'name') continue;
+            const nameTableOffset = dv.getUint32(recOffset + 8);
+            return cwfmParseNameTable(dv, nameTableOffset);
+        }
+        return null;
+    }
+    // [cwfm] .woff 內部表格用 zlib（RFC 1950）壓縮——查證過瀏覽器原生
+    // DecompressionStream('deflate') 解壓縮的正是這個格式，不用自己實作
+    // 解壓縮演算法、也不用額外的函式庫。
+    async function cwfmParseWoffName(dv) {
+        const numTables = dv.getUint16(12);
+        for (let i = 0; i < numTables; i++) {
+            const recOffset = 44 + i * 20;
+            const tag = String.fromCharCode(dv.getUint8(recOffset), dv.getUint8(recOffset + 1), dv.getUint8(recOffset + 2), dv.getUint8(recOffset + 3));
+            if (tag !== 'name') continue;
+            const tableOffset = dv.getUint32(recOffset + 4);
+            const compLength = dv.getUint32(recOffset + 8);
+            const origLength = dv.getUint32(recOffset + 12);
+            const raw = new Uint8Array(dv.buffer, dv.byteOffset + tableOffset, compLength);
+            let bytes;
+            if (compLength === origLength) {
+                bytes = raw;
+            } else {
+                const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate'));
+                bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+            }
+            return cwfmParseNameTable(new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);
+        }
+        return null;
+    }
+    function cwfmStripExt(fileName) {
+        return fileName.replace(/\.[^.]+$/, '');
+    }
+
+    // [cwfm] 共用的確認對話框，回傳一個 Promise，使用者按確定為 true、
+    // 取消或點背景為 false。目前只有刪除上傳字型會用到（規則規定一律
+    // 要跳確認，不看背後掛了幾個名稱），寫成共用函式方便之後其他地方
+    // 需要「刪除前先確認」的時候重複使用。
+    function cwfmConfirmDialog(title, message) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'cwfm-confirm-overlay';
+            const box = document.createElement('div');
+            box.className = 'cwfm-confirm-box';
+            const h = document.createElement('h4');
+            h.textContent = title;
+            const p = document.createElement('p');
+            p.textContent = message;
+            const btnRow = document.createElement('div');
+            btnRow.className = 'cwfm-confirm-buttons';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.textContent = '\u53d6\u6d88';
+            cancelBtn.className = 'cwfm-confirm-cancel';
+            const okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.textContent = '\u78ba\u5b9a\u522a\u9664';
+            okBtn.className = 'cwfm-confirm-ok';
+            function close(result) {
+                overlay.remove();
+                resolve(result);
+            }
+            cancelBtn.addEventListener('click', () => close(false));
+            okBtn.addEventListener('click', () => close(true));
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+            btnRow.appendChild(cancelBtn);
+            btnRow.appendChild(okBtn);
+            box.appendChild(h);
+            box.appendChild(p);
+            box.appendChild(btnRow);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+        });
+    }
+    // [cwfm] 上傳字型解析的統一入口。.woff2 內部用 Brotli 壓縮、資料排列
+    // 方式也不一樣，沒有現成的簡單做法可以解出名稱——查證過、已跟使用者
+    // 確認：.woff2 退回用檔名當預設名稱，不影響字型本身套用顯示（顯示
+    // 是瀏覽器原生 @font-face 機制處理，跟這裡讀不讀得到名稱無關）。
+    // [cwfm] 不收 .ttc（TrueType Collection，一個檔案包好幾個字型）：
+    // 查證過 CSS 規格，@font-face 設計上就是「一條規則對應一個單一字型
+    // 資源」，沒有標準化的方式指定「這個檔案裡要用第幾個」，實測踩坑
+    // 回報也證實直接把 .ttc 丟進 src 會顯示錯的字型——這條路在瀏覽器
+    // 規格層級就走不通，不是我們自己能解決的，乾脆不收這個格式，只收
+    // 天生「一個檔案一個字型」的 .ttf/.otf/.woff，不會有這個歧義問題。
+    async function cwfmParseUploadedFontNames(arrayBuffer, fileName) {
+        try {
+            const dv = new DataView(arrayBuffer);
+            const sig = dv.getUint32(0);
+            if (sig === 0x774F4646) { // 'wOFF'
+                const name = await cwfmParseWoffName(dv);
+                return name || cwfmStripExt(fileName);
+            }
+            if (sig === 0x774F4632) { // 'wOF2'，.woff2，解不開，退回檔名
+                return cwfmStripExt(fileName);
+            }
+            // 其餘當作一般 .ttf/.otf
+            const name = cwfmParseSfntName(dv, 0);
+            return name || cwfmStripExt(fileName);
+        } catch (e) {
+            console.error('[cwfm:font] 解析字型名稱失敗，退回用檔名', e);
+            return cwfmStripExt(fileName);
+        }
+    }
+
+    // [cwfm] 目前實際套用中的上傳字型 @font-face CSS 快取——只有在選用
+    // 的字型名稱真的換成不同的上傳字型時，才重新去 IndexedDB 讀取、轉
+    // Base64（這兩步都是耗時的非同步操作），其餘設定變動（留白、字級
+    // 這些）沿用同一份已經算好的字串，不會每次都重新處理一次大檔案。
+    let cwfmActiveFontFaceCSS = '';
+    let cwfmActiveFontFaceKey = null;
+    const CWFM_FONT_MIME = { ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2' };
+    async function cwfmRefreshActiveFontFace(settings) {
+        const match = (settings.uploadedFonts || []).find((f) => f.name === settings.fontFamily);
+        if (!match) {
+            if (cwfmActiveFontFaceKey !== null) {
+                cwfmActiveFontFaceCSS = '';
+                cwfmActiveFontFaceKey = null;
+                applySettings(settings);
+            }
+            return;
+        }
+        if (match.id === cwfmActiveFontFaceKey) return; // 已經是目前套用中的這個，不用重讀
+        try {
+            const record = await cwfmLoadFontBlob(match.id);
+            if (!record) { console.error('[cwfm:font] IndexedDB 裡找不到這個上傳字型的資料', match.id); return; }
+            const bytes = new Uint8Array(record.data);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            const base64 = btoa(binary);
+            const mime = CWFM_FONT_MIME[record.format] || 'truetype';
+            cwfmActiveFontFaceCSS = '@font-face { font-family: ' + JSON.stringify(settings.fontFamily) + '; src: url(data:font/' + mime + ';base64,' + base64 + ') format("' + mime + '"); }';
+            cwfmActiveFontFaceKey = match.id;
+            applySettings(settings); // 重新套用一次，這次帶著已經準備好的 @font-face
+        } catch (e) {
+            console.error('[cwfm:font] 套用上傳字型失敗', e);
+        }
+    }
+
     function getTypographyCSS(settings) {
         const fontFamilyRule = settings.fontFamily
             ? '  * { font-family: ' + JSON.stringify(settings.fontFamily) + ' !important; }'
@@ -838,6 +1104,7 @@
             'html { color-scheme: light dark; }',
             themeRule,
             universalColorRule,
+            cwfmActiveFontFaceCSS,
             fontFamilyRule,
             'p, li, blockquote, dd, div {',
             '  font-size: ' + settings.fontSize + '% !important;',
@@ -1286,6 +1553,12 @@
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error('[cwfm:settings] 套用字體樣式失敗', e); }
+        // [cwfm] 非同步、不 await——applySettings() 本身是同步函式，這裡
+        // 只負責「檢查目前選用的字型是不是換成了不同的上傳字型，是的話
+        // 去讀取、準備好之後再重新呼叫一次 applySettings()」。cwfmRefreshActiveFontFace
+        // 內部自己會判斷要不要真的重讀（同一個字型不重複讀 IndexedDB），
+        // 這裡每次呼叫的成本很低。
+        cwfmRefreshActiveFontFace(settings).catch((e) => console.error('[cwfm:font] 檢查上傳字型失敗', e));
         try {
             view.renderer.setAttribute('flow', settings.flow);
             view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
@@ -1995,7 +2268,183 @@
         addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
         addCheckboxField('\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09', 'preferOriginalTextColor');
 
-        addTextField('\u5B57\u9AD4\uFF08\u8F38\u5165\u672C\u6A5F\u5DF2\u5B89\u88DD\u7684\u5B57\u9AD4\u540D\u7A31\uFF09', 'fontFamily', '\u4F8B\u5982\uFF1ATC_JBMM_1111');
+        const fontFamilyInput = addTextField('\u5B57\u9AD4\uFF08\u8F38\u5165\u672C\u6A5F\u5DF2\u5B89\u88DD\u7684\u5B57\u9AD4\u540D\u7A31\u3001\u6216\u9078\u7528\u4E0B\u65B9\u4E0A\u50B3\u904E\u7684\u5B57\u9AD4\uFF09', 'fontFamily', '\u4F8B\u5982\uFF1ATC_JBMM_1111');
+
+        // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
+        // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
+        // 檔案存在 IndexedDB，這裡只放中繼資料）共用同一排標籤顯示，
+        // 上傳的用不同顏色/圖示區分。
+        (function buildFontChipsUI() {
+            const wrap = document.createElement('div');
+            wrap.className = 'cwfm-keylist';
+            panelTarget.appendChild(wrap);
+
+            const uploadInput = document.createElement('input');
+            uploadInput.type = 'file';
+            uploadInput.accept = '.ttf,.otf,.woff';
+            uploadInput.style.display = 'none';
+            panelTarget.appendChild(uploadInput);
+
+            function selectFont(name) {
+                settings.fontFamily = name;
+                fontFamilyInput.value = name;
+                saveSettings(settings);
+                applySettings(settings);
+            }
+
+            function removeHistoryName(name) {
+                const idx = settings.fontNameHistory.indexOf(name);
+                if (idx >= 0) { settings.fontNameHistory.splice(idx, 1); saveSettings(settings); render(); }
+            }
+
+            async function removeUploadedFont(entry) {
+                // [cwfm] 規則：上傳字型的刪除一律先跳確認視窗，不管這個
+                // 檔案背後掛著幾個名稱（現在固定是 1 個，但這個規則本身
+                // 跟數量無關，是「上傳字型」這個類型整體的規則）。
+                const confirmed = await cwfmConfirmDialog(
+                    '\u522a\u9664\u4e0a\u50b3\u5b57\u578b',
+                    '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + entry.name + '\u300d\u55ce\uff1f\u522a\u9664\u5f8c\uff0c\u9019\u500b\u5b57\u578b\u6703\u5f9e\u6e05\u55ae\u4e2d\u79fb\u9664\uff0c\u76ee\u524d\u82e5\u6b63\u5728\u4f7f\u7528\u9019\u500b\u5b57\u578b\uff0c\u6703\u6539\u56de\u4f7f\u7528\u9810\u8a2d\u5b57\u578b\u3002'
+                );
+                if (!confirmed) return;
+                try { await cwfmDeleteFontBlob(entry.id); } catch (e) { console.error('[cwfm:font] 刪除字型資料失敗', e); }
+                const idx = settings.uploadedFonts.findIndex((f) => f.id === entry.id);
+                if (idx >= 0) settings.uploadedFonts.splice(idx, 1);
+                if (settings.fontFamily === entry.name) {
+                    settings.fontFamily = '';
+                    fontFamilyInput.value = '';
+                }
+                saveSettings(settings);
+                applySettings(settings);
+                render();
+            }
+
+            function startRename(textEl, currentValue, onCommit) {
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.value = currentValue;
+                editInput.className = 'cwfm-keychip-edit';
+                textEl.replaceWith(editInput);
+                editInput.focus();
+                editInput.select();
+                let done = false;
+                function commit() {
+                    if (done) return;
+                    done = true;
+                    const newValue = editInput.value.trim();
+                    if (newValue && newValue !== currentValue) onCommit(newValue);
+                    render();
+                }
+                editInput.addEventListener('blur', commit);
+                editInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') editInput.blur();
+                    else if (e.key === 'Escape') { editInput.value = currentValue; editInput.blur(); }
+                });
+            }
+
+            function render() {
+                wrap.innerHTML = '';
+                (settings.fontNameHistory || []).forEach((name) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'cwfm-keychip';
+                    const text = document.createElement('span');
+                    text.textContent = name;
+                    text.addEventListener('click', () => selectFont(name));
+                    text.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        startRename(text, name, (newName) => {
+                            const idx = settings.fontNameHistory.indexOf(name);
+                            if (idx >= 0) settings.fontNameHistory[idx] = newName;
+                            if (settings.fontFamily === name) selectFont(newName);
+                            else saveSettings(settings);
+                        });
+                    });
+                    chip.appendChild(text);
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'cwfm-keychip-remove';
+                    removeBtn.textContent = '\u00d7';
+                    removeBtn.setAttribute('aria-label', '\u522a\u9664\u9019\u7b46\u8a18\u61b6');
+                    removeBtn.addEventListener('click', () => removeHistoryName(name));
+                    chip.appendChild(removeBtn);
+                    wrap.appendChild(chip);
+                });
+                (settings.uploadedFonts || []).forEach((entry) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'cwfm-keychip cwfm-keychip-uploaded';
+                    const icon = document.createElement('span');
+                    icon.className = 'cwfm-keychip-icon';
+                    icon.textContent = '\u2191';
+                    chip.appendChild(icon);
+                    const text = document.createElement('span');
+                    text.textContent = entry.name;
+                    text.addEventListener('click', () => selectFont(entry.name));
+                    text.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        startRename(text, entry.name, (newName) => {
+                            const wasActive = settings.fontFamily === entry.name;
+                            entry.name = newName;
+                            if (wasActive) selectFont(newName);
+                            else saveSettings(settings);
+                        });
+                    });
+                    chip.appendChild(text);
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'cwfm-keychip-remove';
+                    removeBtn.textContent = '\u00d7';
+                    removeBtn.setAttribute('aria-label', '\u522a\u9664\u9019\u500b\u4e0a\u50b3\u5b57\u578b');
+                    removeBtn.addEventListener('click', () => removeUploadedFont(entry));
+                    chip.appendChild(removeBtn);
+                    wrap.appendChild(chip);
+                });
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'cwfm-keychip-add';
+                addBtn.textContent = '+ \u4e0a\u50b3\u5b57\u578b';
+                addBtn.addEventListener('click', () => uploadInput.click());
+                wrap.appendChild(addBtn);
+            }
+
+            uploadInput.addEventListener('change', async () => {
+                const file = uploadInput.files[0];
+                uploadInput.value = '';
+                if (!file) return;
+                const CWFM_MAX_FONT_SIZE = 200 * 1024 * 1024;
+                if (file.size > CWFM_MAX_FONT_SIZE) {
+                    alert('\u9019\u500b\u5b57\u578b\u6a94\u6848\u8d85\u904e 200MB \u7684\u4e0a\u9650\uff0c\u6c92\u6709\u4e0a\u50b3\u3002');
+                    return;
+                }
+                const ext = (file.name.split('.').pop() || '').toLowerCase();
+                if (!['ttf', 'otf', 'woff'].includes(ext)) {
+                    alert('\u53ea\u652f\u63f4 .ttf / .otf / .woff \u6a94\u6848\u3002');
+                    return;
+                }
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const name = await cwfmParseUploadedFontNames(arrayBuffer, file.name);
+                    const id = 'cwfm-font-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+                    await cwfmSaveFontBlob(id, arrayBuffer, ext);
+                    settings.uploadedFonts.push({ id, fileName: file.name, format: ext, name });
+                    saveSettings(settings);
+                    render();
+                } catch (e) {
+                    console.error('[cwfm:font] 上傳字型失敗', e);
+                    alert('\u4e0a\u50b3\u5931\u6557\uff0c\u8acb\u67e5\u770b\u4e3b\u63a7\u53f0\u932f\u8aa4\u8a0a\u606f\u3002');
+                }
+            });
+
+            // 手動輸入完成（失焦或按 Enter，不是每打一個字就記）才存進歷史。
+            fontFamilyInput.addEventListener('change', () => {
+                const value = fontFamilyInput.value.trim();
+                if (value && !settings.fontNameHistory.includes(value) && !settings.uploadedFonts.some((f) => f.name === value)) {
+                    settings.fontNameHistory.push(value);
+                    saveSettings(settings);
+                    render();
+                }
+            });
+
+            render();
+        })();
         addRangeField('\u5B57\u7D1A', 'fontSize', 70, 200, 5, '%');
         addRangeField('\u5B57\u8DDD', 'letterSpacing', -0.05, 0.3, 0.01, 'em');
         addRangeField('\u884C\u8DDD', 'lineSpacing', 1, 2.5, 0.1, '');
