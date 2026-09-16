@@ -1156,17 +1156,48 @@
                 + ' maxColumnCount=' + view.renderer.getAttribute('max-column-count'));
 
             view.renderer.scrollToAnchor(freshRange)
-                .then(() => {
-                    // [cwfm] 程式內部直接校對：對齊完成後，問一次
-                    // getVisibleRange() 拿到實際顯示的內容，跟上面
-                    // 「搬移後的定位點內容」比對——這裡只拿它的文字內容
-                    // 做字串比較，不依賴這個節點參照本身在後續操作裡還
-                    // 保持有效，不會再踩到前面那個 bug。一致/不一致都
-                    // 明確印出結論，不用肉眼比對兩行 log。
+                .then(async () => {
+                    const firstVisible = view.renderer.getVisibleRange?.();
+                    const firstText = firstVisible ? cwfmTextPreview(firstVisible.startContainer, firstVisible.startOffset) : '(null)';
+                    console.log('[cwfm:align:t] scrollToAnchor() 第一次完成 t=' + performance.now().toFixed(1)
+                        + ' 內容=' + firstText);
+
+                    // [cwfm] 排版引擎內部有兩個獨立的 ResizeObserver（一個看
+                    // 書本內容尺寸→呼叫 expand()，一個看外層容器尺寸→呼叫
+                    // render() 重新導覽），我們搬移/接回內容會觸發第一個，
+                    // 連帶可能牽動第二個，形成一個小連鎖反應，把畫面帶離
+                    // 我們剛剛才對齊好的位置——查證過 ResizeObserver 規格：
+                    // 這類連鎖不保證在同一個畫面更新週期內結束，可能拖過
+                    // 好幾輪，所以不能用「固定等待幾次」這種做法，改成
+                    // 持續偵測，直到連續兩次結果一樣才視為穩定；設一個
+                    // 次數上限避免真的卡住。穩定之後再明確校正一次，把
+                    // 畫面強制拉回我們原本要鎖住的目標，不管中間那個連鎖
+                    // 反應把它帶去哪裡。
+                    const CWFM_SETTLE_MAX_FRAMES = 15;
+                    let prevText = firstText;
+                    let settledAt = -1;
+                    for (let i = 0; i < CWFM_SETTLE_MAX_FRAMES; i++) {
+                        await new Promise((resolve) => requestAnimationFrame(resolve));
+                        const v = view.renderer.getVisibleRange?.();
+                        const t = v ? cwfmTextPreview(v.startContainer, v.startOffset) : null;
+                        if (t !== null && t === prevText) { settledAt = i + 1; break; }
+                        prevText = t;
+                    }
+                    console.log('[cwfm:align:t] 連鎖反應偵測結束 t=' + performance.now().toFixed(1)
+                        + ' ' + (settledAt >= 0 ? ('第 ' + settledAt + ' 個畫面更新週期後穩定') : ('超過 ' + CWFM_SETTLE_MAX_FRAMES + ' 個週期仍未穩定，放棄等待'))
+                        + ' 穩定前最後內容=' + prevText);
+
+                    // [cwfm] 不管穩定與否，都強制校正一次——穩定的情況下這
+                    // 次呼叫應該幾乎沒有變化（本來就在對的位置）；沒能在
+                    // 上限內穩定的情況下，這是最後一道防線，把畫面拉回
+                    // 我們原本要鎖住的目標，不留給那個還沒停下來的連鎖
+                    // 反應繼續帶偏。
+                    await view.renderer.scrollToAnchor(freshRange);
+
                     const finalVisible = view.renderer.getVisibleRange?.();
                     const actualText = finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)';
                     const matched = actualText === expectedText;
-                    console.log('[cwfm:align:t] scrollToAnchor() 完成 t=' + performance.now().toFixed(1)
+                    console.log('[cwfm:align:t] 最終校正完成 t=' + performance.now().toFixed(1)
                         + ' 對齊後實際第一個可見內容=' + actualText
                         + ' | 校對結果：' + (matched ? '一致 ✓' : '不一致 ✗'));
                     if (!matched) {
@@ -1194,6 +1225,12 @@
     // 如果暫存還沒接回去，relocate 算出來的 cfi 是對著殘缺的樹算的，
     // 之後拿去解析會撞到 Range 邊界超出範圍的例外）。
     async function cwfmGoLeft() {
+        // [cwfm] 對齊操作（含連鎖反應偵測+最後校正）進行中的這一小段
+        // 空檔，先等它結束，避免翻頁跟校正動作前後重疊、其中一個結果
+        // 被另一個蓋掉。等待有次數上限，不會真的卡死。
+        for (let i = 0; i < 30 && cwfmAligningAnchor; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        }
         try {
             if (cwfmAnchorStash) cwfmReinsertStash();
         } catch (e) {
@@ -1202,6 +1239,9 @@
         await view.goLeft();
     }
     async function cwfmGoRight() {
+        for (let i = 0; i < 30 && cwfmAligningAnchor; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        }
         try {
             if (cwfmAnchorStash) cwfmReinsertStash();
         } catch (e) {
