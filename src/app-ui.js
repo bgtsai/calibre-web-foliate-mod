@@ -305,7 +305,7 @@
             const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
                 || DEFAULT_SETTINGS.pagingKeys;
             if (pagingKeys.prev.includes(combo)) cwfmGoLeft();
-            else if (pagingKeys.next.includes(combo)) view.goRight();
+            else if (pagingKeys.next.includes(combo)) cwfmGoRight();
         } catch (err) {
             console.error('[cwfm:keydown] 翻頁失敗', err);
         }
@@ -993,6 +993,16 @@
         // 判斷），不然會變成自己追自己。
         if (cwfmAligningAnchor) return;
         if (reason !== 'page' && reason !== 'navigation') return;
+        // [cwfm] 防呆：正常情況下，翻頁/跳轉一定會先經過 cwfmGoLeft()/
+        // cwfmGoRight()（已經先接回暫存才真正翻頁），這裡不該再看到
+        // cwfmAnchorStash 還存在。萬一還是看到了（已知的殘留缺口：書本
+        // 內容內部的超連結點擊，不會經過我們包的翻頁函式），代表這次
+        // 算出來的 cfi 可能是對著殘缺的樹算出來的、不可靠——寧可不更新，
+        // 也不要記錄一個可能有問題的值進去。
+        if (cwfmAnchorStash) {
+            console.warn('[cwfm:align] relocate(reason=' + reason + ') 發生時仍有暫存未接回去，跳過更新鎖定的定位點（可能來自書內超連結等未包裝的跳轉路徑）');
+            return;
+        }
         const cfi = view.lastLocation?.cfi;
         if (cfi) cwfmLockedAnchorCfi = cfi;
     });
@@ -1174,34 +1184,29 @@
         }
     }
 
-    // [cwfm] 往前翻頁的包裝：先判斷目前這一章有沒有暫存內容、而且引擎
-    // 判斷「已經到頭了」(atStart)——是的話代表使用者正好翻到我們搬走
-    // 內容的那個邊界，要先接回去、再繼續往前翻，不能讓原本的 goLeft()
-    // 直接處理，不然引擎不知道這件事被動過手腳，會誤判成整本書已經到
-    // 最前面的章節、直接跳到上一章去（已查證 paginator.js 的 atStart
-    // 判斷邏輯只看『有沒有上一個章節』，不知道目前章節資料量被我們動
-    // 過手腳）。
+    // [cwfm] 往前/往後翻頁的包裝：不管有沒有翻到邊界、暫存屬於哪個章節，
+    // 只要還有暫存沒接回去，一律先接回去、確保文件是完整的，才真正
+    // 執行翻頁——這樣「真正翻頁」這個動作發生的當下，文件保證完整，
+    // relocate 事件算出來的 cfi 自然是對的，不需要再另外判斷邊界、比對
+    // 章節，範圍反而比原本兩層判斷更寬，涵蓋原本想擋的情況。這是修正
+    // 「全螢幕裡翻頁後鎖定失效」那個 DOMException 根因用的（翻頁當下
+    // 如果暫存還沒接回去，relocate 算出來的 cfi 是對著殘缺的樹算的，
+    // 之後拿去解析會撞到 Range 邊界超出範圍的例外）。
     async function cwfmGoLeft() {
         try {
-            if (cwfmAnchorStash && view.renderer.atStart) {
-                // [cwfm] 暫存有可能是別的章節留下的舊資料（使用者中途
-                // 跨章節翻頁，不是透過目錄跳轉那條已經有安全網的路徑）
-                // ——這種情況不能當成「翻到搬走內容的邊界」處理，只是
-                // 單純把過期的暫存接回去清掉（不影響目前這一章），然後
-                // 照完全沒有我們這套機制介入的方式繼續。
-                const contents = view.renderer.getContents();
-                const currentIndex = contents[0]?.index;
-                if (cwfmAnchorStash.sectionIndex === currentIndex) {
-                    cwfmReinsertStash();
-                    await view.goLeft();
-                    return;
-                }
-                cwfmReinsertStash();
-            }
+            if (cwfmAnchorStash) cwfmReinsertStash();
         } catch (e) {
             console.error('[cwfm:align] 往前翻頁時處理暫存內容失敗', e);
         }
         await view.goLeft();
+    }
+    async function cwfmGoRight() {
+        try {
+            if (cwfmAnchorStash) cwfmReinsertStash();
+        } catch (e) {
+            console.error('[cwfm:align] 往後翻頁時處理暫存內容失敗', e);
+        }
+        await view.goRight();
     }
 
     function applySettings(settings) {
@@ -2132,7 +2137,7 @@
         nextBtn.textContent = '\u203A';
         nextBtn.setAttribute('aria-label', 'Next page');
         nextBtn.addEventListener('click', () => {
-            try { view.goRight(); } catch (e) { console.error('[cwfm:toolbar] goRight 失敗', e); }
+            try { cwfmGoRight(); } catch (e) { console.error('[cwfm:toolbar] goRight 失敗', e); }
         });
         bar.appendChild(nextBtn);
 
