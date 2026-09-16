@@ -722,6 +722,11 @@
         // 例如 'ArrowLeft'、'Ctrl+Shift+ArrowLeft'。預設維持跟改版前
         // 一樣的行為（左鍵往前、右鍵往後），使用者可以自己增減。
         pagingKeys: { prev: ['ArrowLeft'], next: ['ArrowRight'] },
+        // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only、故意不
+        // 存檔——當初這樣設計是因為功能還不穩定，怕存檔後下次開書直接
+        // 卡住畫面沒辦法簡單復原。現在已經穩定到不會弄壞整個介面，改成
+        // 正常存檔，跟其他設定一樣。
+        preciseAnchorAlign: false,
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
@@ -931,13 +936,9 @@
         console.log('[cwfm:align:t] applyVerticalPadding() 結束（render() 呼叫完，但 render() 內部不保證此刻已經跑完，見前面討論）t=' + performance.now().toFixed(1));
     }
 
-    // [cwfm] 實驗性功能開關，故意不放進 settings 物件、不透過 saveSettings
-    // 寫進 GM 儲存——這是使用者明確要求的設計：這套「定位點對齊」邏輯
-    // 目前還沒驗證穩定過，萬一勾選後畫面卡死，下次重新整理頁面時，這個
-    // 變數會跟著整支腳本的執行環境一起歸零，自動回到關閉、安全的狀態，
-    // 不需要使用者自己去 Tampermonkey 裡手動清掉存檔的設定值，才能拿到
-    // 一個能重新測試的乾淨起點。
-    let cwfmExperimentalAnchorAlignSession = false;
+    // [cwfm] 翻頁精準定位（原本叫「實驗性功能」）的存檔開關已經改到
+    // DEFAULT_SETTINGS 裡的 preciseAnchorAlign（見上方定義處的說明），
+    // 這裡不再需要獨立的 session-only 變數。
 
     // ============================================================
     // [cwfm][實驗性] 定位點精準對齊。核心原則：完全不碰排版引擎的計算
@@ -1091,7 +1092,7 @@
     }
 
     function cwfmAlignAnchorToPageStart() {
-        if (!cwfmExperimentalAnchorAlignSession) return;
+        if (!window.__cwfm.settings?.preciseAnchorAlign) return;
         if (cwfmAligningAnchor) return;
         const t0 = performance.now();
         console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
@@ -1954,30 +1955,10 @@
         addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
-        // [cwfm] 這個勾選框不能用上面的 addCheckboxField()——那個函式的
-        // change 事件一定會呼叫 saveSettings()，把值寫進 GM 儲存，違反
-        // 「這個開關不存檔、只在這次分頁開啟期間有效」的要求。改成手動
-        // 寫一個結構相同、但只操作 cwfmExperimentalAnchorAlignSession
-        // 這個 session 變數的版本，不碰 settings 物件、不呼叫
-        // saveSettings。
-        (function addExperimentalAnchorAlignField() {
-            const field = document.createElement('div');
-            field.className = 'cwfm-field';
-            const row = document.createElement('div');
-            row.className = 'cwfm-row';
-            const label = document.createElement('label');
-            label.textContent = '\u3010\u5be6\u9a57\u6027\u3011\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede\uff08\u76ee\u524d\u4e0d\u7a69\u5b9a\uff0c\u51fa\u72c0\u6cc1\u8acb\u95dc\u9589\uff09';
-            row.appendChild(label);
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.checked = cwfmExperimentalAnchorAlignSession;
-            input.addEventListener('change', () => {
-                cwfmExperimentalAnchorAlignSession = input.checked;
-            });
-            row.appendChild(input);
-            field.appendChild(row);
-            panelTarget.appendChild(field);
-        })();
+        // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
+        // ——現在已經穩定到不會弄壞整個介面，改用一般的 addCheckboxField()，
+        // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
+        addCheckboxField('\u7ffb\u9801\u7cbe\u6e96\u5b9a\u4f4d\uff1a\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede', 'preciseAnchorAlign');
 
         // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
         // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
