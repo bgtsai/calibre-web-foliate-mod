@@ -1240,7 +1240,20 @@
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
         try {
-            if (cwfmAnchorStash) cwfmReinsertStash();
+            if (cwfmAnchorStash) {
+                cwfmReinsertStash();
+                // [cwfm] 接回去之後，「這一章總共有幾頁」這個數字不會
+                // 立刻自動更新——平常是靠 ResizeObserver 監看內容尺寸
+                // 變化、延後到下一個畫面更新週期才觸發 expand() 重算。
+                // 緊接著馬上執行 view.goLeft() 的話，引擎讀到的頁數可能
+                // 還是接回去之前、內容缺一截時的舊數字，拿舊數字去判斷
+                // 撞不撞得到章節邊界、要不要自動跨到下一章，會誤判——
+                // 已查證撞到這個問題時，會卡在頁碼 0（排版用的墊底空白
+                // 頁）不動，原本該有的自動跨章節接續判斷被這個時間差
+                // 打斷。expand() 本來就是公開方法，直接同步呼叫一次，
+                // 強制立刻重算頁數，不用等 ResizeObserver 自己延後觸發。
+                view.renderer.expand?.();
+            }
         } catch (e) {
             console.error('[cwfm:align] 往前翻頁時處理暫存內容失敗', e);
         }
@@ -1251,7 +1264,11 @@
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
         try {
-            if (cwfmAnchorStash) cwfmReinsertStash();
+            if (cwfmAnchorStash) {
+                cwfmReinsertStash();
+                // [cwfm] 同上，往後翻頁一樣要強制重算頁數。
+                view.renderer.expand?.();
+            }
         } catch (e) {
             console.error('[cwfm:align] 往後翻頁時處理暫存內容失敗', e);
         }
