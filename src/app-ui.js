@@ -741,6 +741,11 @@
         // 合集格式那樣處理一個檔案多個名稱的情況。format 存副檔名，
         // 套用時要組對應的 MIME type。
         uploadedFonts: [], // [{ id, fileName, format, name }]
+        // [cwfm] 使用者自己另存的「主題」——只存排版/外觀相關那 13 個
+        // 欄位（見 CWFM_THEME_FIELD_KEYS），不含快速鍵、自動隱藏這類
+        // 裝置操作偏好，也不含字型記憶清單/上傳字型這個素材庫本身
+        // （素材庫全部主題共用同一份，不會各存一份）。
+        savedThemes: [], // [{ id, name, values: { ...13 個欄位 } }]
         fontSize: 100,     // 百分比
         letterSpacing: 0,  // em
         lineSpacing: 1.4,
@@ -998,6 +1003,51 @@
             overlay.appendChild(box);
             document.body.appendChild(overlay);
         });
+    }
+
+    // [cwfm] 「主題」只涵蓋排版/外觀相關的欄位——跟使用者一起確認過的
+    // 分類：不含快速鍵、自動隱藏、自動同步這類裝置操作偏好，也不含
+    // 字型記憶清單/上傳字型這個所有主題共用的素材庫本身。存主題、套用
+    // 主題都只動這份清單裡列出的欄位，其餘設定不受影響。
+    const CWFM_THEME_FIELD_KEYS = [
+        'fontFamily', 'fontSize', 'letterSpacing', 'lineSpacing', 'justify',
+        'hyphenate', 'disableLigatures', 'flow', 'topBottomPadding',
+        'leftRightPadding', 'maxColumnCount', 'themeName', 'customTextColor',
+        'customBackgroundColor', 'preferOriginalTextColor',
+    ];
+    function cwfmSaveCurrentAsTheme(settings, name) {
+        const values = {};
+        CWFM_THEME_FIELD_KEYS.forEach((key) => { values[key] = settings[key]; });
+        // [cwfm] 存主題的當下，順便記一個布林值：目前這個字型名稱，是不
+        // 是對應到「此刻」素材庫裡真的存在的一筆上傳字型——這樣套用時
+        // 才分得出「是上傳字型、可以查存不存在」還是「是手動輸入的名稱、
+        // 沒辦法查」，不用另外用字串內容去猜（猜不出來，兩種名稱長得
+        // 一樣，只是來源不同）。
+        const fontWasUpload = !!values.fontFamily && settings.uploadedFonts.some((f) => f.name === values.fontFamily);
+        const id = 'cwfm-theme-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        settings.savedThemes.push({ id, name, values, fontWasUpload });
+        saveSettings(settings);
+        return id;
+    }
+    function cwfmDeleteTheme(settings, id) {
+        const idx = settings.savedThemes.findIndex((t) => t.id === id);
+        if (idx >= 0) settings.savedThemes.splice(idx, 1);
+        saveSettings(settings);
+    }
+    // [cwfm] 套用主題：上傳字型能百分之百確定存不存在（我們自己掌控的
+    // 素材庫，直接查 uploadedFonts 有沒有這個名稱）；手動輸入、指望本機
+    // 系統已安裝的字型名稱，瀏覽器基於隱私考量沒有提供查詢字型是否已
+    // 安裝的正式方式，沒辦法事先確認，只能照原本名稱設定上去，套不套
+    // 得到要使用者自己看畫面判斷。
+    function cwfmApplyTheme(settings, theme) {
+        const fontName = theme.values.fontFamily;
+        CWFM_THEME_FIELD_KEYS.forEach((key) => { settings[key] = theme.values[key]; });
+        if (theme.fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
+            settings.fontFamily = '';
+            alert('\u9019\u500b\u4e3b\u984c\u539f\u672c\u4f7f\u7528\u7684\u4e0a\u50b3\u5b57\u578b\u300c' + fontName + '\u300d\u5df2\u7d93\u88ab\u522a\u9664\uff0c\u9019\u6b21\u5957\u7528\u6539\u7528\u9810\u8a2d\u5b57\u578b\u3002');
+        }
+        saveSettings(settings);
+        applySettings(settings);
     }
     // [cwfm] 上傳字型解析的統一入口。.woff2 內部用 Brotli 壓縮、資料排列
     // 方式也不一樣，沒有現成的簡單做法可以解出名稱——查證過、已跟使用者
@@ -2009,6 +2059,81 @@
         fieldsWrap.className = 'cwfm-fields-wrap';
         panel.appendChild(fieldsWrap);
         const panelTarget = fieldsWrap; // add*Field() 系列函式改成往這裡塞
+
+        // [cwfm] 主題功能，先做最陽春堪用的介面（下拉選單 + 三個按鈕），
+        // 核心機制（存/套用/刪除）確認邏輯沒問題之後，再回頭處理介面
+        // 分區、群組這類排版問題——跟使用者討論過，故意先分開，避免
+        // 機制邏輯的問題跟排版調整的問題混在一起，難以分辨是哪邊出錯。
+        (function buildThemeUI() {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const label = document.createElement('label');
+            label.textContent = '\u4e3b\u984c';
+            field.appendChild(label);
+
+            const select = document.createElement('select');
+            select.className = 'cwfm-theme-select';
+
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.textContent = '\u53e6\u5b58\u65b0\u4e3b\u984c';
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.textContent = '\u522a\u9664';
+
+            function render() {
+                const prevValue = select.value;
+                select.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = '\u2014 \u9078\u64c7\u4e00\u500b\u4e3b\u984c\u5957\u7528 \u2014';
+                select.appendChild(placeholder);
+                settings.savedThemes.forEach((t) => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.name;
+                    select.appendChild(opt);
+                });
+                select.value = settings.savedThemes.some((t) => t.id === prevValue) ? prevValue : '';
+                deleteBtn.disabled = !select.value;
+            }
+
+            select.addEventListener('change', () => {
+                deleteBtn.disabled = !select.value;
+                if (!select.value) return;
+                const theme = settings.savedThemes.find((t) => t.id === select.value);
+                if (theme) cwfmApplyTheme(settings, theme);
+            });
+
+            saveBtn.addEventListener('click', () => {
+                const name = prompt('\u9019\u500b\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f');
+                if (!name || !name.trim()) return;
+                const id = cwfmSaveCurrentAsTheme(settings, name.trim());
+                render();
+                select.value = id;
+                deleteBtn.disabled = false;
+            });
+
+            deleteBtn.addEventListener('click', async () => {
+                if (!select.value) return;
+                const theme = settings.savedThemes.find((t) => t.id === select.value);
+                if (!theme) return;
+                const confirmed = await cwfmConfirmDialog(
+                    '\u522a\u9664\u4e3b\u984c',
+                    '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + theme.name + '\u300d\u9019\u500b\u4e3b\u984c\u55ce\uff1f\u9019\u53ea\u6703\u522a\u9664\u4e3b\u984c\u8a18\u9304\u672c\u8eab\uff0c\u4e0d\u6703\u5f71\u97ff\u76ee\u524d\u756b\u9762\u4e0a\u5df2\u7d93\u5957\u7528\u7684\u8a2d\u5b9a\u3002'
+                );
+                if (!confirmed) return;
+                cwfmDeleteTheme(settings, theme.id);
+                render();
+            });
+
+            field.appendChild(select);
+            field.appendChild(saveBtn);
+            field.appendChild(deleteBtn);
+            panelTarget.appendChild(field);
+            render();
+        })();
+
 
         function addTextField(labelText, key, placeholder) {
             const field = document.createElement('div');
