@@ -463,7 +463,18 @@
             // 上傳的字型」跟「這是打字打進去、指望系統已安裝的字型名稱」。
             '.cwfm-keychip-uploaded { border-color: #4ea1ff; background: #22364a; }',
             '.cwfm-keychip-icon { color: #4ea1ff; font-size: 11px; margin-right: 2px; }',
-            '.cwfm-keychip span:not(.cwfm-keychip-icon) { cursor: pointer; }',
+            '.cwfm-keychip-text { cursor: pointer; }',
+            // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
+            // 沒有 hover 的時候標籤保持乾淨，不會一堆小圖示擠在一起；
+            // 位置排在文字後面、叉叉前面（業界常見清單項目「編輯」「刪除」
+            // 排在一起、靠最後面的慣例，操作時滑鼠移動距離也比較短）。
+            '.cwfm-keychip-rename {',
+            '  background: none; border: none; color: #999; cursor: pointer;',
+            '  font-size: 11px; line-height: 1; padding: 2px 3px; border-radius: 3px;',
+            '  opacity: 0; transition: opacity 0.15s ease;',
+            '}',
+            '.cwfm-keychip:hover .cwfm-keychip-rename { opacity: 1; }',
+            '.cwfm-keychip-rename:hover { color: #fff; background: #4a4a4a; }',
             '.cwfm-keychip-edit {',
             '  background: #222; border: 1px solid #4ea1ff; border-radius: 3px;',
             '  color: #eee; font-size: 12px; padding: 2px 4px; width: 90px;',
@@ -485,6 +496,22 @@
             '  font-size: 13px; padding: 6px 8px; margin-bottom: 16px;',
             '}',
             '.cwfm-prompt-input:focus { border-color: #4ea1ff; outline: none; }',
+            // [cwfm] 字型輸入框的膠囊造型：輸入區 + 細分隔線 + 一顆代表
+            // Enter 的小按鈕，按下去效果等同按鍵盤 Enter，讓「打完要確認」
+            // 這件事看得見，不用使用者自己猜。
+            '.cwfm-pill-input {',
+            '  display: flex; align-items: stretch; background: #1a1a1a;',
+            '  border: 1px solid #555; border-radius: 4px; overflow: hidden;',
+            '}',
+            '.cwfm-pill-input input {',
+            '  flex: 1; min-width: 0; background: none; border: none; color: #eee;',
+            '  font-size: 13px; padding: 5px 8px; outline: none;',
+            '}',
+            '.cwfm-pill-enter {',
+            '  flex: 0 0 auto; background: #262626; border: none; border-left: 1px solid #555;',
+            '  color: #999; font-size: 14px; padding: 0 10px; cursor: pointer;',
+            '}',
+            '.cwfm-pill-enter:hover { color: #fff; background: #333; }',
             '.cwfm-confirm-box p { margin: 0 0 16px; color: #ccc; font-size: 13px; line-height: 1.6; }',
             '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
             '.cwfm-confirm-cancel, .cwfm-confirm-ok {',
@@ -1096,6 +1123,81 @@
             overlay.appendChild(box);
             document.body.appendChild(overlay);
         });
+    }
+
+    // [cwfm] 標籤(chip)改名共用邏輯：平常顯示純文字，呼叫這支函式把
+    // 文字換成一個編輯用的輸入框，失焦或按 Enter 才真正提交、按 Esc
+    // 取消——字型記憶清單、上傳字型、佈景主題這三處的改名都共用同一套，
+    // 行為要完全一致。onCommit(newValue) 只在真的有變動（非空、跟原本
+    // 不一樣）才會被呼叫；onDone() 不管有沒有真的改名都一定會呼叫，
+    // 用來讓呼叫端重新畫一次清單（把編輯框換回正常的標籤顯示）。
+    function cwfmStartChipRename(textEl, currentValue, onCommit, onDone) {
+        const editInput = document.createElement('input');
+        editInput.type = 'text';
+        editInput.value = currentValue;
+        editInput.className = 'cwfm-keychip-edit';
+        editInput.addEventListener('click', (e) => e.stopPropagation());
+        textEl.replaceWith(editInput);
+        editInput.focus();
+        editInput.select();
+        let done = false;
+        function commit() {
+            if (done) return;
+            done = true;
+            const newValue = editInput.value.trim();
+            if (newValue && newValue !== currentValue) onCommit(newValue);
+            onDone();
+        }
+        editInput.addEventListener('blur', commit);
+        editInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') editInput.blur();
+            else if (e.key === 'Escape') { editInput.value = currentValue; editInput.blur(); }
+        });
+    }
+
+    // [cwfm] 共用的標籤(chip)建構函式：字型記憶清單、上傳字型、佈景
+    // 主題三處共用，外觀跟互動要完全一致。icon 是選用的小圖示（上傳
+    // 字型用來跟手動輸入的名稱做區分）；onRename 是選用的（翻頁快速鍵
+    // 的標籤不該有改名功能，那裡呼叫這支函式時不傳 onRename 就好）；
+    // 改名圖示平常隱藏，只有滑鼠移到整個標籤上面才淡入顯示（CSS 處理，
+    // 見 .cwfm-keychip:hover .cwfm-keychip-rename）。
+    function cwfmBuildChip(text, opts) {
+        const chip = document.createElement('span');
+        chip.className = 'cwfm-keychip' + (opts.extraClass ? ' ' + opts.extraClass : '');
+        if (opts.icon) {
+            const icon = document.createElement('span');
+            icon.className = 'cwfm-keychip-icon';
+            icon.textContent = opts.icon;
+            chip.appendChild(icon);
+        }
+        const textEl = document.createElement('span');
+        textEl.className = 'cwfm-keychip-text';
+        textEl.textContent = text;
+        if (opts.onSelect) textEl.addEventListener('click', opts.onSelect);
+        chip.appendChild(textEl);
+
+        if (opts.onRename) {
+            const renameBtn = document.createElement('button');
+            renameBtn.type = 'button';
+            renameBtn.className = 'cwfm-keychip-rename';
+            renameBtn.textContent = '\u270e';
+            renameBtn.setAttribute('aria-label', '\u91cd\u65b0\u547d\u540d');
+            renameBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                cwfmStartChipRename(textEl, text, opts.onRename, opts.onRenameDone || (() => {}));
+            });
+            chip.appendChild(renameBtn);
+        }
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'cwfm-keychip-remove';
+        removeBtn.textContent = '\u00d7';
+        if (opts.removeLabel) removeBtn.setAttribute('aria-label', opts.removeLabel);
+        removeBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRemove(); });
+        chip.appendChild(removeBtn);
+
+        return chip;
     }
 
     // [cwfm] 「主題」只涵蓋排版/外觀相關的欄位——跟使用者一起確認過的
@@ -2164,65 +2266,43 @@
             label.textContent = '\u4f48\u666f\u4e3b\u984c';
             field.appendChild(label);
 
-            const select = document.createElement('select');
-            select.className = 'cwfm-theme-select';
-
-            const saveBtn = document.createElement('button');
-            saveBtn.type = 'button';
-            saveBtn.textContent = '\u53e6\u5b58\u65b0\u4e3b\u984c';
-            const deleteBtn = document.createElement('button');
-            deleteBtn.type = 'button';
-            deleteBtn.textContent = '\u522a\u9664';
+            const wrap = document.createElement('div');
+            wrap.className = 'cwfm-keylist';
+            field.appendChild(wrap);
 
             function render() {
-                const prevValue = select.value;
-                select.innerHTML = '';
-                const placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = '\u2014 \u9078\u64c7\u4e00\u500b\u4e3b\u984c\u5957\u7528 \u2014';
-                select.appendChild(placeholder);
-                settings.savedThemes.forEach((t) => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.textContent = t.name;
-                    select.appendChild(opt);
+                wrap.innerHTML = '';
+                settings.savedThemes.forEach((theme) => {
+                    const chip = cwfmBuildChip(theme.name, {
+                        onSelect: () => cwfmApplyTheme(settings, theme),
+                        onRename: (newName) => { theme.name = newName; saveSettings(settings); },
+                        onRenameDone: render,
+                        onRemove: async () => {
+                            const confirmed = await cwfmConfirmDialog(
+                                '\u522a\u9664\u4f48\u666f\u4e3b\u984c',
+                                '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + theme.name + '\u300d\u9019\u500b\u4f48\u666f\u4e3b\u984c\u55ce\uff1f\u9019\u53ea\u6703\u522a\u9664\u4e3b\u984c\u8a18\u9304\u672c\u8eab\uff0c\u4e0d\u6703\u5f71\u97ff\u76ee\u524d\u756b\u9762\u4e0a\u5df2\u7d93\u5957\u7528\u7684\u8a2d\u5b9a\u3002'
+                            );
+                            if (!confirmed) return;
+                            cwfmDeleteTheme(settings, theme.id);
+                            render();
+                        },
+                        removeLabel: '\u522a\u9664\u9019\u500b\u4f48\u666f\u4e3b\u984c',
+                    });
+                    wrap.appendChild(chip);
                 });
-                select.value = settings.savedThemes.some((t) => t.id === prevValue) ? prevValue : '';
-                deleteBtn.disabled = !select.value;
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'cwfm-keychip-add';
+                addBtn.textContent = '+ \u53e6\u5b58\u65b0\u4f48\u666f\u4e3b\u984c';
+                addBtn.addEventListener('click', async () => {
+                    const name = await cwfmPromptDialog('\u9019\u500b\u4f48\u666f\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u8b80\u5c0f\u8aaa\u7528');
+                    if (!name) return;
+                    cwfmSaveCurrentAsTheme(settings, name);
+                    render();
+                });
+                wrap.appendChild(addBtn);
             }
 
-            select.addEventListener('change', () => {
-                deleteBtn.disabled = !select.value;
-                if (!select.value) return;
-                const theme = settings.savedThemes.find((t) => t.id === select.value);
-                if (theme) cwfmApplyTheme(settings, theme);
-            });
-
-            saveBtn.addEventListener('click', async () => {
-                const name = await cwfmPromptDialog('\u9019\u500b\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u8b80\u5c0f\u8aaa\u7528');
-                if (!name) return;
-                const id = cwfmSaveCurrentAsTheme(settings, name);
-                render();
-                select.value = id;
-                deleteBtn.disabled = false;
-            });
-
-            deleteBtn.addEventListener('click', async () => {
-                if (!select.value) return;
-                const theme = settings.savedThemes.find((t) => t.id === select.value);
-                if (!theme) return;
-                const confirmed = await cwfmConfirmDialog(
-                    '\u522a\u9664\u4e3b\u984c',
-                    '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + theme.name + '\u300d\u9019\u500b\u4e3b\u984c\u55ce\uff1f\u9019\u53ea\u6703\u522a\u9664\u4e3b\u984c\u8a18\u9304\u672c\u8eab\uff0c\u4e0d\u6703\u5f71\u97ff\u76ee\u524d\u756b\u9762\u4e0a\u5df2\u7d93\u5957\u7528\u7684\u8a2d\u5b9a\u3002'
-                );
-                if (!confirmed) return;
-                cwfmDeleteTheme(settings, theme.id);
-                render();
-            });
-
-            field.appendChild(select);
-            field.appendChild(saveBtn);
-            field.appendChild(deleteBtn);
             panelTarget.appendChild(field);
             render();
         })();
@@ -2234,6 +2314,14 @@
             const label = document.createElement('label');
             label.textContent = labelText;
             field.appendChild(label);
+            // [cwfm] 輸入框改成「輸入區 + 分隔線 + 小按鈕」的膠囊造型，
+            // 按鈕等同按 Enter——原本沒有任何提示告訴使用者「打完字要按
+            // Enter 才會存進記憶清單」，加這顆按鈕讓這件事看得見。按鈕
+            // 用 dispatchEvent 觸發跟真正按 Enter 一樣的 change 事件，
+            // 不用另外寫一份重複的邏輯，字型記憶清單那段既有的 change
+            // 監聽器會接住這個事件、正常記錄。
+            const pill = document.createElement('div');
+            pill.className = 'cwfm-pill-input';
             const input = document.createElement('input');
             input.type = 'text';
             input.value = settings[key] || '';
@@ -2243,7 +2331,24 @@
                 saveSettings(settings);
                 applySettings(settings);
             });
-            field.appendChild(input);
+            // [cwfm] 鍵盤直接按 Enter，效果要跟按右邊那顆按鈕一樣——純文字
+            // 輸入框沒有包在 <form> 裡，按 Enter 預設不會觸發任何事，原本
+            // 完全要靠失去焦點才會記錄，這裡補上明確的鍵盤支援。
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') input.dispatchEvent(new Event('change'));
+            });
+            const enterBtn = document.createElement('button');
+            enterBtn.type = 'button';
+            enterBtn.className = 'cwfm-pill-enter';
+            enterBtn.textContent = '\u23ce'; // ⏎ 業界慣用代表 Enter 的符號
+            enterBtn.setAttribute('aria-label', '\u78ba\u8a8d\u8f38\u5165\uff08\u7b49\u540c\u6309 Enter\uff09');
+            enterBtn.addEventListener('click', () => {
+                input.dispatchEvent(new Event('change'));
+                input.focus();
+            });
+            pill.appendChild(input);
+            pill.appendChild(enterBtn);
+            field.appendChild(pill);
             panelTarget.appendChild(field);
             return input;
         }
@@ -2536,83 +2641,38 @@
                 render();
             }
 
-            function startRename(textEl, currentValue, onCommit) {
-                const editInput = document.createElement('input');
-                editInput.type = 'text';
-                editInput.value = currentValue;
-                editInput.className = 'cwfm-keychip-edit';
-                textEl.replaceWith(editInput);
-                editInput.focus();
-                editInput.select();
-                let done = false;
-                function commit() {
-                    if (done) return;
-                    done = true;
-                    const newValue = editInput.value.trim();
-                    if (newValue && newValue !== currentValue) onCommit(newValue);
-                    render();
-                }
-                editInput.addEventListener('blur', commit);
-                editInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') editInput.blur();
-                    else if (e.key === 'Escape') { editInput.value = currentValue; editInput.blur(); }
-                });
-            }
-
             function render() {
                 wrap.innerHTML = '';
                 (settings.fontNameHistory || []).forEach((name) => {
-                    const chip = document.createElement('span');
-                    chip.className = 'cwfm-keychip';
-                    const text = document.createElement('span');
-                    text.textContent = name;
-                    text.addEventListener('click', () => selectFont(name));
-                    text.addEventListener('dblclick', (e) => {
-                        e.stopPropagation();
-                        startRename(text, name, (newName) => {
+                    const chip = cwfmBuildChip(name, {
+                        onSelect: () => selectFont(name),
+                        onRename: (newName) => {
                             const idx = settings.fontNameHistory.indexOf(name);
                             if (idx >= 0) settings.fontNameHistory[idx] = newName;
                             if (settings.fontFamily === name) selectFont(newName);
                             else saveSettings(settings);
-                        });
+                        },
+                        onRemove: () => removeHistoryName(name),
+                        removeLabel: '\u522a\u9664\u9019\u7b46\u8a18\u61b6',
+                        onRenameDone: render,
                     });
-                    chip.appendChild(text);
-                    const removeBtn = document.createElement('button');
-                    removeBtn.type = 'button';
-                    removeBtn.className = 'cwfm-keychip-remove';
-                    removeBtn.textContent = '\u00d7';
-                    removeBtn.setAttribute('aria-label', '\u522a\u9664\u9019\u7b46\u8a18\u61b6');
-                    removeBtn.addEventListener('click', () => removeHistoryName(name));
-                    chip.appendChild(removeBtn);
                     wrap.appendChild(chip);
                 });
                 (settings.uploadedFonts || []).forEach((entry) => {
-                    const chip = document.createElement('span');
-                    chip.className = 'cwfm-keychip cwfm-keychip-uploaded';
-                    const icon = document.createElement('span');
-                    icon.className = 'cwfm-keychip-icon';
-                    icon.textContent = '\u2191';
-                    chip.appendChild(icon);
-                    const text = document.createElement('span');
-                    text.textContent = entry.name;
-                    text.addEventListener('click', () => selectFont(entry.name));
-                    text.addEventListener('dblclick', (e) => {
-                        e.stopPropagation();
-                        startRename(text, entry.name, (newName) => {
+                    const chip = cwfmBuildChip(entry.name, {
+                        icon: '\u2191',
+                        extraClass: 'cwfm-keychip-uploaded',
+                        onSelect: () => selectFont(entry.name),
+                        onRename: (newName) => {
                             const wasActive = settings.fontFamily === entry.name;
                             entry.name = newName;
                             if (wasActive) selectFont(newName);
                             else saveSettings(settings);
-                        });
+                        },
+                        onRemove: () => removeUploadedFont(entry),
+                        removeLabel: '\u522a\u9664\u9019\u500b\u4e0a\u50b3\u5b57\u578b',
+                        onRenameDone: render,
                     });
-                    chip.appendChild(text);
-                    const removeBtn = document.createElement('button');
-                    removeBtn.type = 'button';
-                    removeBtn.className = 'cwfm-keychip-remove';
-                    removeBtn.textContent = '\u00d7';
-                    removeBtn.setAttribute('aria-label', '\u522a\u9664\u9019\u500b\u4e0a\u50b3\u5b57\u578b');
-                    removeBtn.addEventListener('click', () => removeUploadedFont(entry));
-                    chip.appendChild(removeBtn);
                     wrap.appendChild(chip);
                 });
                 const addBtn = document.createElement('button');
