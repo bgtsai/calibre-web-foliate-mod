@@ -476,8 +476,13 @@
             '.cwfm-keychip:hover .cwfm-keychip-rename { opacity: 1; }',
             '.cwfm-keychip-rename:hover { color: #fff; background: #4a4a4a; }',
             '.cwfm-keychip-edit {',
-            '  background: #222; border: 1px solid #4ea1ff; border-radius: 3px;',
-            '  color: #eee; font-size: 12px; padding: 2px 4px; width: 90px;',
+            // [cwfm] 故意不設自己的邊框/背景——融入標籤原本的顏色，改用
+            // 底線表示「現在可以打字」。原本自己另外帶一圈藍色邊框，
+            // 跟標籤本身既有的灰色邊框疊在一起，看起來像框中框，不乾淨。
+            '  background: none; border: none; border-bottom: 1px solid #4ea1ff;',
+            '  border-radius: 0; color: #eee; font-size: 12px; padding: 1px 2px;',
+            '  width: 90px; outline: none; box-shadow: none;',
+            '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
             '}',
             // [cwfm] 刪除上傳字型的確認對話框，獨立蓋在整個畫面最上層。
             '.cwfm-confirm-overlay {',
@@ -505,12 +510,18 @@
             '}',
             '.cwfm-pill-input input {',
             '  flex: 1; min-width: 0; background: none; border: none; color: #eee;',
-            '  font-size: 13px; padding: 5px 8px; outline: none;',
+            '  font-size: 13px; padding: 5px 8px; outline: none; box-shadow: none;',
+            '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
+            '  border-radius: 0;',
             '}',
             '.cwfm-pill-enter {',
             '  flex: 0 0 auto; background: #262626; border: none; border-left: 1px solid #555;',
-            '  color: #999; font-size: 14px; padding: 0 10px; cursor: pointer;',
+            '  border-radius: 0; color: #999; padding: 0 10px; cursor: pointer;',
+            '  display: flex; align-items: center; justify-content: center;',
+            '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
+            '  outline: none; box-shadow: none;',
             '}',
+            '.cwfm-pill-enter svg { width: 14px; height: 14px; display: block; pointer-events: none; }',
             '.cwfm-pill-enter:hover { color: #fff; background: #333; }',
             '.cwfm-confirm-box p { margin: 0 0 16px; color: #ccc; font-size: 13px; line-height: 1.6; }',
             '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
@@ -1132,6 +1143,12 @@
     // 不一樣）才會被呼叫；onDone() 不管有沒有真的改名都一定會呼叫，
     // 用來讓呼叫端重新畫一次清單（把編輯框換回正常的標籤顯示）。
     function cwfmStartChipRename(textEl, currentValue, onCommit, onDone) {
+        // [cwfm] 改名的當下，先把改名圖示自己藏起來——編輯狀態下圖示、
+        // 輸入框、叉叉全部擠在一起會顯得雜亂，先讓畫面只剩「圖示(如果
+        // 有)+ 輸入框 + 叉叉」，減少視覺干擾。onDone() 觸發整個標籤清單
+        // 重新畫過，藏起來的按鈕不用自己再顯示回來。
+        const renameBtn = textEl.parentElement && textEl.parentElement.querySelector('.cwfm-keychip-rename');
+        if (renameBtn) renameBtn.style.display = 'none';
         const editInput = document.createElement('input');
         editInput.type = 'text';
         editInput.value = currentValue;
@@ -2340,7 +2357,11 @@
             const enterBtn = document.createElement('button');
             enterBtn.type = 'button';
             enterBtn.className = 'cwfm-pill-enter';
-            enterBtn.textContent = '\u23ce'; // ⏎ 業界慣用代表 Enter 的符號
+            // [cwfm] 用 SVG 畫「轉角向下再向左」的箭頭代表 Enter，不用
+            // Unicode 符號——那種符號的長相依賴系統/瀏覽器內建字型，
+            // 線條粗細、置中位置在不同環境會不一樣，自己畫的向量圖形
+            // 不管在哪裡看都是同一種乾淨的樣子。
+            enterBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>';
             enterBtn.setAttribute('aria-label', '\u78ba\u8a8d\u8f38\u5165\uff08\u7b49\u540c\u6309 Enter\uff09');
             enterBtn.addEventListener('click', () => {
                 input.dispatchEvent(new Event('change'));
