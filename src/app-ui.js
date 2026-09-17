@@ -445,6 +445,12 @@
             '  background: #333; border: 1px solid #555; border-radius: 4px;',
             '  padding: 3px 4px 3px 8px; font-size: 12px; color: #eee;',
             '}',
+            // [cwfm] 明確關掉：改名時，裡面的輸入框拿到焦點，某些瀏覽器
+            // (查證過 Firefox 有這個行為) 會自己在這個容器外面畫一圈
+            // 焦點提示框，不是我們自己的 CSS 畫的——這裡強制關掉，不管
+            // 瀏覽器內部實際的觸發機制是什麼，都不會再套用任何額外的
+            // 外框/陰影效果到標籤本身。
+            '.cwfm-keychip:focus-within { outline: none; box-shadow: none; }',
             '.cwfm-keychip-remove {',
             '  background: none; border: none; color: #999; cursor: pointer;',
             '  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 3px;',
@@ -462,6 +468,13 @@
             // 修飾（帶一點藍色調 + 小上傳圖示），視覺上一眼分得出「這是
             // 上傳的字型」跟「這是打字打進去、指望系統已安裝的字型名稱」。
             '.cwfm-keychip-uploaded { border-color: #4ea1ff; background: #22364a; }',
+            // [cwfm] 「配色」是固定五選一的內建選項，不是使用者自己新增/
+            // 命名/刪除的清單，用比較單純的標籤樣式（沒有叉叉、沒有改名
+            // 圖示），但要明確標示「目前選的是哪一個」。
+            '.cwfm-keychip-option { cursor: pointer; }',
+            '.cwfm-keychip-option.cwfm-keychip-selected {',
+            '  border-color: #4ea1ff; background: #22364a; color: #fff;',
+            '}',
             '.cwfm-keychip-icon { color: #4ea1ff; font-size: 11px; margin-right: 2px; }',
             '.cwfm-keychip-text { cursor: pointer; }',
             // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
@@ -516,7 +529,12 @@
             '}',
             '.cwfm-pill-enter {',
             '  flex: 0 0 auto; background: #262626; border: none; border-left: 1px solid #555;',
-            '  border-radius: 0; color: #999; padding: 0 10px; cursor: pointer;',
+            // [cwfm] 按鈕右邊兩個角，明確設成跟外層膠囊一樣的圓角弧度
+            // （不是單純設 0，是設成「右上右下圓角、左邊直角」）——原本
+            // 只靠外層 overflow:hidden 去裁切，實測某些瀏覽器對按鈕元素
+            // 的原生外觀處理不夠乾淨，角度會跟外層對不齊，看起來像多一
+            // 層。兩邊都明確設定，不只靠裁切這一種保險。
+            '  border-radius: 0 4px 4px 0; margin: 0; color: #999; padding: 0 10px; cursor: pointer;',
             '  display: flex; align-items: center; justify-content: center;',
             '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
             '  outline: none; box-shadow: none;',
@@ -2310,7 +2328,7 @@
                 const addBtn = document.createElement('button');
                 addBtn.type = 'button';
                 addBtn.className = 'cwfm-keychip-add';
-                addBtn.textContent = '+ \u53e6\u5b58\u65b0\u4f48\u666f\u4e3b\u984c';
+                addBtn.textContent = '+ \u65b0\u589e\uff0f\u53e6\u5b58\u4e3b\u984c';
                 addBtn.addEventListener('click', async () => {
                     const name = await cwfmPromptDialog('\u9019\u500b\u4f48\u666f\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u8b80\u5c0f\u8aaa\u7528');
                     if (!name) return;
@@ -2586,7 +2604,7 @@
                     // 選色時自動把 themeName 也一併切成 custom。
                     if (settings.themeName !== 'custom') {
                         settings.themeName = 'custom';
-                        if (themeSelect) themeSelect.value = 'custom';
+                        colorSchemeState.setValue('custom');
                     }
                     saveSettings(settings);
                     applySettings(settings);
@@ -2601,13 +2619,55 @@
         // [cwfm] 佈景主題：先給幾個常用配色，auto 是預設值（跟隨系統深色
         // 模式，不特別指定顏色）。custom 選項另外顯示兩個顏色選擇器，讓
         // 使用者自訂文字/背景顏色。
-        const themeSelect = addSelectField('\u914D\u8272', 'themeName', [
-            ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
-            ['light', '\u4eae\u8272'],
-            ['dark', '\u6697\u8272'],
-            ['sepia', '\u5fa9\u53e4\u9ec3'],
-            ['custom', '\u81ea\u8a02'],
-        ]);
+        // [cwfm] 「配色」改成跟其他標籤清單一致的視覺語言，但這五個是
+        // 固定的內建選項，不是使用者自己管理的清單——不做叉叉/改名，
+        // 只做「點選套用 + 標示目前選中哪一個」。colorSchemeState 提供
+        // 一個 setValue()，讓下面 addColorField 的 change 事件（使用者
+        // 自己調整顏色時，要自動切成「自訂」這個選項）可以呼叫。
+        const colorSchemeState = (function buildColorSchemeUI() {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const label = document.createElement('label');
+            label.textContent = '\u914D\u8272';
+            field.appendChild(label);
+            const wrap = document.createElement('div');
+            wrap.className = 'cwfm-keylist';
+            field.appendChild(wrap);
+
+            const options = [
+                ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
+                ['light', '\u4eae\u8272'],
+                ['dark', '\u6697\u8272'],
+                ['sepia', '\u5fa9\u53e4\u9ec3'],
+                ['custom', '\u81ea\u8a02'],
+            ];
+
+            function render() {
+                wrap.innerHTML = '';
+                options.forEach(([value, labelText]) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'cwfm-keychip cwfm-keychip-option'
+                        + (settings.themeName === value ? ' cwfm-keychip-selected' : '');
+                    chip.textContent = labelText;
+                    chip.addEventListener('click', () => {
+                        settings.themeName = value;
+                        saveSettings(settings);
+                        applySettings(settings);
+                        render();
+                    });
+                    wrap.appendChild(chip);
+                });
+            }
+
+            panelTarget.appendChild(field);
+            render();
+            return {
+                setValue(value) {
+                    settings.themeName = value;
+                    render();
+                },
+            };
+        })();
         addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
         addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
         addCheckboxField('\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09', 'preferOriginalTextColor');
