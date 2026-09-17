@@ -479,6 +479,12 @@
             '  font-family: sans-serif;',
             '}',
             '.cwfm-confirm-box h4 { margin: 0 0 10px; color: #eee; font-size: 15px; }',
+            '.cwfm-prompt-input {',
+            '  width: 100%; box-sizing: border-box; background: #1a1a1a;',
+            '  border: 1px solid #666; border-radius: 4px; color: #eee;',
+            '  font-size: 13px; padding: 6px 8px; margin-bottom: 16px;',
+            '}',
+            '.cwfm-prompt-input:focus { border-color: #4ea1ff; outline: none; }',
             '.cwfm-confirm-box p { margin: 0 0 16px; color: #ccc; font-size: 13px; line-height: 1.6; }',
             '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
             '.cwfm-confirm-cancel, .cwfm-confirm-ok {',
@@ -1005,6 +1011,93 @@
         });
     }
 
+    // [cwfm] 自己畫的輸入文字對話框，取代瀏覽器原生 window.prompt()——
+    // 查證過：Chrome 從第 61 版起，只要跳出原生 alert()/confirm()/
+    // prompt() 這類對話框，就會自動把全螢幕模式關掉（刻意的安全設計，
+    // 不是我們能關閉的行為），這是全螢幕底下按「另存新主題」看不到
+    // 對話框的真正原因。自己畫的對話框（跟上面 cwfmConfirmDialog 同一
+    // 套 overlay 樣式）不會觸發這個行為，全螢幕下操作也正常。回傳
+    // Promise，使用者按確定回傳輸入的文字（trim 過），取消或空白回傳
+    // null。
+    function cwfmPromptDialog(title, placeholder) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'cwfm-confirm-overlay';
+            const box = document.createElement('div');
+            box.className = 'cwfm-confirm-box';
+            const h = document.createElement('h4');
+            h.textContent = title;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'cwfm-prompt-input';
+            if (placeholder) input.placeholder = placeholder;
+            const btnRow = document.createElement('div');
+            btnRow.className = 'cwfm-confirm-buttons';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.textContent = '\u53d6\u6d88';
+            cancelBtn.className = 'cwfm-confirm-cancel';
+            const okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.textContent = '\u78ba\u5b9a';
+            okBtn.className = 'cwfm-confirm-ok';
+            let done = false;
+            function close(result) {
+                if (done) return;
+                done = true;
+                overlay.remove();
+                resolve(result);
+            }
+            cancelBtn.addEventListener('click', () => close(null));
+            okBtn.addEventListener('click', () => close(input.value.trim() || null));
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') close(input.value.trim() || null);
+                else if (e.key === 'Escape') close(null);
+            });
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+            btnRow.appendChild(cancelBtn);
+            btnRow.appendChild(okBtn);
+            box.appendChild(h);
+            box.appendChild(input);
+            box.appendChild(btnRow);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+            input.focus();
+        });
+    }
+
+    // [cwfm] 自己畫的單純提示對話框，取代原生 window.alert()——同一個
+    // 全螢幕會被強制退出的問題，只是這裡不需要輸入、也不需要取消，
+    // 只有一個「知道了」按鈕。不回傳有意義的值（呼叫端本來就不需要
+    // 判斷使用者選了什麼，原生 alert() 也是同樣的單向通知性質）。
+    function cwfmAlertDialog(title, message) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'cwfm-confirm-overlay';
+            const box = document.createElement('div');
+            box.className = 'cwfm-confirm-box';
+            const h = document.createElement('h4');
+            h.textContent = title;
+            const p = document.createElement('p');
+            p.textContent = message;
+            const btnRow = document.createElement('div');
+            btnRow.className = 'cwfm-confirm-buttons';
+            const okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.textContent = '\u77e5\u9053\u4e86';
+            okBtn.className = 'cwfm-confirm-ok';
+            function close() { overlay.remove(); resolve(); }
+            okBtn.addEventListener('click', close);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+            btnRow.appendChild(okBtn);
+            box.appendChild(h);
+            box.appendChild(p);
+            box.appendChild(btnRow);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+        });
+    }
+
     // [cwfm] 「主題」只涵蓋排版/外觀相關的欄位——跟使用者一起確認過的
     // 分類：不含快速鍵、自動隱藏、自動同步這類裝置操作偏好，也不含
     // 字型記憶清單/上傳字型這個所有主題共用的素材庫本身。存主題、套用
@@ -1044,7 +1137,7 @@
         CWFM_THEME_FIELD_KEYS.forEach((key) => { settings[key] = theme.values[key]; });
         if (theme.fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
             settings.fontFamily = '';
-            alert('\u9019\u500b\u4e3b\u984c\u539f\u672c\u4f7f\u7528\u7684\u4e0a\u50b3\u5b57\u578b\u300c' + fontName + '\u300d\u5df2\u7d93\u88ab\u522a\u9664\uff0c\u9019\u6b21\u5957\u7528\u6539\u7528\u9810\u8a2d\u5b57\u578b\u3002');
+            cwfmAlertDialog('\u4e0a\u50b3\u5b57\u578b\u5df2\u522a\u9664', '\u9019\u500b\u4e3b\u984c\u539f\u672c\u4f7f\u7528\u7684\u4e0a\u50b3\u5b57\u578b\u300c' + fontName + '\u300d\u5df2\u7d93\u88ab\u522a\u9664\uff0c\u9019\u6b21\u5957\u7528\u6539\u7528\u9810\u8a2d\u5b57\u578b\u3002');
         }
         saveSettings(settings);
         applySettings(settings);
@@ -2068,7 +2161,7 @@
             const field = document.createElement('div');
             field.className = 'cwfm-field';
             const label = document.createElement('label');
-            label.textContent = '\u4e3b\u984c';
+            label.textContent = '\u4f48\u666f\u4e3b\u984c';
             field.appendChild(label);
 
             const select = document.createElement('select');
@@ -2105,10 +2198,10 @@
                 if (theme) cwfmApplyTheme(settings, theme);
             });
 
-            saveBtn.addEventListener('click', () => {
-                const name = prompt('\u9019\u500b\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f');
-                if (!name || !name.trim()) return;
-                const id = cwfmSaveCurrentAsTheme(settings, name.trim());
+            saveBtn.addEventListener('click', async () => {
+                const name = await cwfmPromptDialog('\u9019\u500b\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u8b80\u5c0f\u8aaa\u7528');
+                if (!name) return;
+                const id = cwfmSaveCurrentAsTheme(settings, name);
                 render();
                 select.value = id;
                 deleteBtn.disabled = false;
@@ -2382,7 +2475,7 @@
         // [cwfm] 佈景主題：先給幾個常用配色，auto 是預設值（跟隨系統深色
         // 模式，不特別指定顏色）。custom 選項另外顯示兩個顏色選擇器，讓
         // 使用者自訂文字/背景顏色。
-        const themeSelect = addSelectField('\u4f48\u666f\u4e3b\u984c', 'themeName', [
+        const themeSelect = addSelectField('\u914D\u8272', 'themeName', [
             ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
             ['light', '\u4eae\u8272'],
             ['dark', '\u6697\u8272'],
@@ -2536,12 +2629,12 @@
                 if (!file) return;
                 const CWFM_MAX_FONT_SIZE = 200 * 1024 * 1024;
                 if (file.size > CWFM_MAX_FONT_SIZE) {
-                    alert('\u9019\u500b\u5b57\u578b\u6a94\u6848\u8d85\u904e 200MB \u7684\u4e0a\u9650\uff0c\u6c92\u6709\u4e0a\u50b3\u3002');
+                    await cwfmAlertDialog('\u6a94\u6848\u904e\u5927', '\u9019\u500b\u5b57\u578b\u6a94\u6848\u8d85\u904e 200MB \u7684\u4e0a\u9650\uff0c\u6c92\u6709\u4e0a\u50b3\u3002');
                     return;
                 }
                 const ext = (file.name.split('.').pop() || '').toLowerCase();
                 if (!['ttf', 'otf', 'woff'].includes(ext)) {
-                    alert('\u53ea\u652f\u63f4 .ttf / .otf / .woff \u6a94\u6848\u3002');
+                    await cwfmAlertDialog('\u4e0d\u652f\u63f4\u7684\u683c\u5f0f', '\u53ea\u652f\u63f4 .ttf / .otf / .woff \u6a94\u6848\u3002');
                     return;
                 }
                 try {
@@ -2554,7 +2647,7 @@
                     render();
                 } catch (e) {
                     console.error('[cwfm:font] 上傳字型失敗', e);
-                    alert('\u4e0a\u50b3\u5931\u6557\uff0c\u8acb\u67e5\u770b\u4e3b\u63a7\u53f0\u932f\u8aa4\u8a0a\u606f\u3002');
+                    await cwfmAlertDialog('\u4e0a\u50b3\u5931\u6557', '\u4e0a\u50b3\u5931\u6557\uff0c\u8acb\u67e5\u770b\u4e3b\u63a7\u53f0\u932f\u8aa4\u8a0a\u606f\u3002');
                 }
             });
 
