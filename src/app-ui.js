@@ -445,11 +445,10 @@
             '  background: #333; border: 1px solid #555; border-radius: 4px;',
             '  padding: 3px 4px 3px 8px; font-size: 12px; color: #eee;',
             '}',
-            // [cwfm] 明確關掉：改名時，裡面的輸入框拿到焦點，某些瀏覽器
-            // (查證過 Firefox 有這個行為) 會自己在這個容器外面畫一圈
-            // 焦點提示框，不是我們自己的 CSS 畫的——這裡強制關掉，不管
-            // 瀏覽器內部實際的觸發機制是什麼，都不會再套用任何額外的
-            // 外框/陰影效果到標籤本身。
+            // [cwfm] 上一輪誤以為是 Firefox 特有的焦點外框行為，後來查
+            // 出真正原因是選擇器優先權（見 .cwfm-panel .cwfm-keychip-edit
+            // 那條的說明），不是瀏覽器行為——這條規則其實不是必要的，
+            // 但留著當一層額外的保險，無害。
             '.cwfm-keychip:focus-within { outline: none; box-shadow: none; }',
             '.cwfm-keychip-remove {',
             '  background: none; border: none; color: #999; cursor: pointer;',
@@ -488,10 +487,12 @@
             '}',
             '.cwfm-keychip:hover .cwfm-keychip-rename { opacity: 1; }',
             '.cwfm-keychip-rename:hover { color: #fff; background: #4a4a4a; }',
-            '.cwfm-keychip-edit {',
-            // [cwfm] 故意不設自己的邊框/背景——融入標籤原本的顏色，改用
-            // 底線表示「現在可以打字」。原本自己另外帶一圈藍色邊框，
-            // 跟標籤本身既有的灰色邊框疊在一起，看起來像框中框，不乾淨。
+            '.cwfm-panel .cwfm-keychip-edit[type="text"] {',
+            // [cwfm] 這次真正的原因：.cwfm-panel input[type="text"] 這條
+            // 套用在整個面板所有文字輸入框的通用規則，優先權比原本這裡
+            // 寫的規則高，把想清掉的邊框/背景蓋回去了——不是瀏覽器自己
+            // 的行為，選擇器故意寫得更具體，確保這裡的重置贏過那條通用
+            // 規則。
             '  background: none; border: none; border-bottom: 1px solid #4ea1ff;',
             '  border-radius: 0; color: #eee; font-size: 12px; padding: 1px 2px;',
             '  width: 90px; outline: none; box-shadow: none;',
@@ -521,19 +522,27 @@
             '  display: flex; align-items: stretch; background: #1a1a1a;',
             '  border: 1px solid #555; border-radius: 4px; overflow: hidden;',
             '}',
-            '.cwfm-pill-input input {',
+            '.cwfm-pill-input:focus-within { border-color: #4ea1ff; }',
+            '.cwfm-panel .cwfm-pill-input input[type="text"] {',
+            // [cwfm] 選擇器故意寫得比 .cwfm-panel input[type="text"](下面
+            // 那條套用在整個面板所有文字輸入框的通用規則)優先權更高——
+            // 上面那條規則權重比這裡原本寫的規則高，會把這裡想清掉的
+            // 邊框/背景蓋回去，這才是「嵌套」真正的原因，不是瀏覽器
+            // 自己的行為。
             '  flex: 1; min-width: 0; background: none; border: none; color: #eee;',
             '  font-size: 13px; padding: 5px 8px; outline: none; box-shadow: none;',
             '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
             '  border-radius: 0;',
             '}',
             '.cwfm-pill-enter {',
-            '  flex: 0 0 auto; background: #262626; border: none; border-left: 1px solid #555;',
-            // [cwfm] 按鈕右邊兩個角，明確設成跟外層膠囊一樣的圓角弧度
-            // （不是單純設 0，是設成「右上右下圓角、左邊直角」）——原本
-            // 只靠外層 overflow:hidden 去裁切，實測某些瀏覽器對按鈕元素
-            // 的原生外觀處理不夠乾淨，角度會跟外層對不齊，看起來像多一
-            // 層。兩邊都明確設定，不只靠裁切這一種保險。
+            // [cwfm] 查了自己另一支腳本(route-rain/RouteRain.user.js)裡
+            // 密碼輸入框旁邊那顆眼睛圖示按鈕，已經驗證能用的做法——按鈕
+            // 背景是透明的，跟輸入區共用同一塊底色，只靠一條細分隔線
+            // 區分，沒有另外畫一塊不同顏色的矩形。之前兩輪一直在修圓角，
+            // 但真正的根因是背景色不同：只要按鈕跟輸入區顏色不一樣，
+            // 不管圓角修得多準，視覺上都會像兩塊拼起來的矩形，圓角反而
+            // 是次要問題。這裡改成跟輸入區同一個背景色。
+            '  flex: 0 0 auto; background: none; border: none; border-left: 1px solid #555;',
             '  border-radius: 0 4px 4px 0; margin: 0; color: #999; padding: 0 10px; cursor: pointer;',
             '  display: flex; align-items: center; justify-content: center;',
             '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
@@ -808,6 +817,11 @@
         // 裝置操作偏好，也不含字型記憶清單/上傳字型這個素材庫本身
         // （素材庫全部主題共用同一份，不會各存一份）。
         savedThemes: [], // [{ id, name, values: { ...13 個欄位 } }]
+        // [cwfm] 使用者自己存的自訂配色組合，可以存不止一組——內建的
+        // 跟隨系統/亮色/暗色/復古黃這四個是固定選項，不能刪、不能改名；
+        // 這份清單專門放「自訂」類型的顏色組合，跟其他標籤清單（字型、
+        // 佈景主題）用同一套邏輯：可以存多組、點選套用、改名、刪除。
+        savedColorSchemes: [], // [{ id, name, textColor, backgroundColor }]
         fontSize: 100,     // 百分比
         letterSpacing: 0,  // em
         lineSpacing: 1.4,
@@ -2634,29 +2648,91 @@
             wrap.className = 'cwfm-keylist';
             field.appendChild(wrap);
 
-            const options = [
+            // [cwfm] 只有這四個是固定的內建選項，不能刪、不能改名——
+            // 「自訂」不再是這裡的固定第五個選項，改成下面 savedColorSchemes
+            // 那份使用者自己管理的清單，可以存不止一組。
+            const builtinOptions = [
                 ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
                 ['light', '\u4eae\u8272'],
                 ['dark', '\u6697\u8272'],
                 ['sepia', '\u5fa9\u53e4\u9ec3'],
-                ['custom', '\u81ea\u8a02'],
             ];
+
+            function applyBuiltin(value) {
+                settings.themeName = value;
+                saveSettings(settings);
+                applySettings(settings);
+                render();
+            }
+
+            function applyCustomScheme(scheme) {
+                settings.themeName = 'custom';
+                settings.customTextColor = scheme.textColor;
+                settings.customBackgroundColor = scheme.backgroundColor;
+                saveSettings(settings);
+                applySettings(settings);
+                // [cwfm] 顏色欄位(下面 addColorField 建立的取色器色塊)要
+                // 跟著同步更新顯示——這兩個按鈕變數在這個函式定義的當下
+                // 還沒宣告(addColorField 排在後面才呼叫)，但這個函式只
+                // 會在使用者點擊標籤時才真正執行，那時候變數早就指派好
+                // 了，安全，跟這份程式碼裡其他地方引用「稍後才宣告的
+                // 變數」的做法一致。
+                textColorSwatchBtn.style.background = scheme.textColor;
+                bgColorSwatchBtn.style.background = scheme.backgroundColor;
+                render();
+            }
 
             function render() {
                 wrap.innerHTML = '';
-                options.forEach(([value, labelText]) => {
+                builtinOptions.forEach(([value, labelText]) => {
                     const chip = document.createElement('span');
                     chip.className = 'cwfm-keychip cwfm-keychip-option'
                         + (settings.themeName === value ? ' cwfm-keychip-selected' : '');
                     chip.textContent = labelText;
-                    chip.addEventListener('click', () => {
-                        settings.themeName = value;
-                        saveSettings(settings);
-                        applySettings(settings);
-                        render();
+                    chip.addEventListener('click', () => applyBuiltin(value));
+                    wrap.appendChild(chip);
+                });
+                (settings.savedColorSchemes || []).forEach((scheme) => {
+                    const isActive = settings.themeName === 'custom'
+                        && settings.customTextColor === scheme.textColor
+                        && settings.customBackgroundColor === scheme.backgroundColor;
+                    const chip = cwfmBuildChip(scheme.name, {
+                        extraClass: 'cwfm-keychip-option' + (isActive ? ' cwfm-keychip-selected' : ''),
+                        onSelect: () => applyCustomScheme(scheme),
+                        onRename: (newName) => { scheme.name = newName; saveSettings(settings); },
+                        onRenameDone: render,
+                        onRemove: async () => {
+                            const confirmed = await cwfmConfirmDialog(
+                                '\u522a\u9664\u81ea\u8a02\u914d\u8272',
+                                '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + scheme.name + '\u300d\u9019\u7d44\u81ea\u8a02\u914d\u8272\u55ce\uff1f'
+                            );
+                            if (!confirmed) return;
+                            const idx = settings.savedColorSchemes.findIndex((s) => s.id === scheme.id);
+                            if (idx >= 0) settings.savedColorSchemes.splice(idx, 1);
+                            saveSettings(settings);
+                            render();
+                        },
+                        removeLabel: '\u522a\u9664\u9019\u7d44\u81ea\u8a02\u914d\u8272',
                     });
                     wrap.appendChild(chip);
                 });
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'cwfm-keychip-add';
+                addBtn.textContent = '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272';
+                addBtn.addEventListener('click', async () => {
+                    const name = await cwfmPromptDialog('\u9019\u7d44\u81ea\u8a02\u914d\u8272\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u591c\u9592\u95b1\u8b80');
+                    if (!name) return;
+                    const id = 'cwfm-scheme-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+                    settings.savedColorSchemes.push({
+                        id, name,
+                        textColor: settings.customTextColor,
+                        backgroundColor: settings.customBackgroundColor,
+                    });
+                    saveSettings(settings);
+                    render();
+                });
+                wrap.appendChild(addBtn);
             }
 
             panelTarget.appendChild(field);
@@ -2668,8 +2744,8 @@
                 },
             };
         })();
-        addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
-        addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
+        const textColorSwatchBtn = addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
+        const bgColorSwatchBtn = addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
         addCheckboxField('\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09', 'preferOriginalTextColor');
 
         const fontFamilyInput = addTextField('\u5B57\u9AD4\uFF08\u8F38\u5165\u672C\u6A5F\u5DF2\u5B89\u88DD\u7684\u5B57\u9AD4\u540D\u7A31\u3001\u6216\u9078\u7528\u4E0B\u65B9\u4E0A\u50B3\u904E\u7684\u5B57\u9AD4\uFF09', 'fontFamily', '\u4F8B\u5982\uFF1ATC_JBMM_1111');
