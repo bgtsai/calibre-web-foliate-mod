@@ -462,19 +462,25 @@
             '.cwfm-keychip-add:hover { color: #fff; border-color: #999; }',
             '.cwfm-keychip-add:disabled { color: #4ea1ff; border-color: #4ea1ff; cursor: default; }',
             '.cwfm-keylist-hint { color: #e0a030; font-size: 12px; margin-top: 4px; }',
-            // [cwfm] 字型名稱記憶清單：手動輸入過的名稱跟上傳字型共用
-            // .cwfm-keychip 這個既有樣式，上傳的另外加 .cwfm-keychip-uploaded
-            // 修飾（帶一點藍色調 + 小上傳圖示），視覺上一眼分得出「這是
-            // 上傳的字型」跟「這是打字打進去、指望系統已安裝的字型名稱」。
-            '.cwfm-keychip-uploaded { border-color: #4ea1ff; background: #22364a; }',
+            // [cwfm] 「藍色」現在統一只代表「目前選中」（見下面
+            // .cwfm-keychip-selected），不再另外給上傳字型專屬的藍色
+            // 底色——兩種意思疊在同一個顏色上會讓使用者分不清楚「這個
+            // 藍色是選中了、還是這是上傳的」。是不是上傳字型，純粹靠
+            // 下面的徽章圖示本身判斷。
+            '.cwfm-keychip-selected { border-color: #4ea1ff; background: #22364a; color: #fff; }',
             // [cwfm] 「配色」是固定五選一的內建選項，不是使用者自己新增/
             // 命名/刪除的清單，用比較單純的標籤樣式（沒有叉叉、沒有改名
             // 圖示），但要明確標示「目前選的是哪一個」。
             '.cwfm-keychip-option { cursor: pointer; }',
-            '.cwfm-keychip-option.cwfm-keychip-selected {',
-            '  border-color: #4ea1ff; background: #22364a; color: #fff;',
+            // [cwfm] 上傳字型的圖示做成小圓底徽章（外面一圈淡色填底 +
+            // 對比色圖示），不是裸露的一個箭頭符號——現在是唯一用來
+            // 判斷「這是不是上傳字型」的依據，要夠顯眼、不會被忽略。
+            '.cwfm-keychip-icon {',
+            '  display: inline-flex; align-items: center; justify-content: center;',
+            '  width: 14px; height: 14px; border-radius: 50%;',
+            '  background: rgba(78,161,255,0.25); color: #4ea1ff;',
+            '  font-size: 9px; line-height: 1; margin-right: 2px; flex-shrink: 0;',
             '}',
-            '.cwfm-keychip-icon { color: #4ea1ff; font-size: 11px; margin-right: 2px; }',
             '.cwfm-keychip-text { cursor: pointer; }',
             // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
             // 沒有 hover 的時候標籤保持乾淨，不會一堆小圖示擠在一起；
@@ -2357,55 +2363,6 @@
         })();
 
 
-        function addTextField(labelText, key, placeholder) {
-            const field = document.createElement('div');
-            field.className = 'cwfm-field';
-            const label = document.createElement('label');
-            label.textContent = labelText;
-            field.appendChild(label);
-            // [cwfm] 輸入框改成「輸入區 + 分隔線 + 小按鈕」的膠囊造型，
-            // 按鈕等同按 Enter——原本沒有任何提示告訴使用者「打完字要按
-            // Enter 才會存進記憶清單」，加這顆按鈕讓這件事看得見。按鈕
-            // 用 dispatchEvent 觸發跟真正按 Enter 一樣的 change 事件，
-            // 不用另外寫一份重複的邏輯，字型記憶清單那段既有的 change
-            // 監聽器會接住這個事件、正常記錄。
-            const pill = document.createElement('div');
-            pill.className = 'cwfm-pill-input';
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = settings[key] || '';
-            if (placeholder) input.placeholder = placeholder;
-            input.addEventListener('input', () => {
-                settings[key] = input.value;
-                saveSettings(settings);
-                applySettings(settings);
-            });
-            // [cwfm] 鍵盤直接按 Enter，效果要跟按右邊那顆按鈕一樣——純文字
-            // 輸入框沒有包在 <form> 裡，按 Enter 預設不會觸發任何事，原本
-            // 完全要靠失去焦點才會記錄，這裡補上明確的鍵盤支援。
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') input.dispatchEvent(new Event('change'));
-            });
-            const enterBtn = document.createElement('button');
-            enterBtn.type = 'button';
-            enterBtn.className = 'cwfm-pill-enter';
-            // [cwfm] 用 SVG 畫「轉角向下再向左」的箭頭代表 Enter，不用
-            // Unicode 符號——那種符號的長相依賴系統/瀏覽器內建字型，
-            // 線條粗細、置中位置在不同環境會不一樣，自己畫的向量圖形
-            // 不管在哪裡看都是同一種乾淨的樣子。
-            enterBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>';
-            enterBtn.setAttribute('aria-label', '\u78ba\u8a8d\u8f38\u5165\uff08\u7b49\u540c\u6309 Enter\uff09');
-            enterBtn.addEventListener('click', () => {
-                input.dispatchEvent(new Event('change'));
-                input.focus();
-            });
-            pill.appendChild(input);
-            pill.appendChild(enterBtn);
-            field.appendChild(pill);
-            panelTarget.appendChild(field);
-            return input;
-        }
-
         function addRangeField(labelText, key, min, max, step, unitSuffix) {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
@@ -2748,16 +2705,22 @@
         const bgColorSwatchBtn = addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
         addCheckboxField('\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09', 'preferOriginalTextColor');
 
-        const fontFamilyInput = addTextField('\u5B57\u9AD4\uFF08\u8F38\u5165\u672C\u6A5F\u5DF2\u5B89\u88DD\u7684\u5B57\u9AD4\u540D\u7A31\u3001\u6216\u9078\u7528\u4E0B\u65B9\u4E0A\u50B3\u904E\u7684\u5B57\u9AD4\uFF09', 'fontFamily', '\u4F8B\u5982\uFF1ATC_JBMM_1111');
-
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
         // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
-        // 檔案存在 IndexedDB，這裡只放中繼資料）共用同一排標籤顯示，
-        // 上傳的用不同顏色/圖示區分。
+        // 檔案存在 IndexedDB，這裡只放中繼資料）共用同一排標籤顯示。
+        // 不再用一個常駐的文字輸入框讓使用者打字——跟其他標籤清單
+        // （佈景主題、配色）用同一套介面語言：點「+」跳出對話框輸入
+        // 名稱，輸入完直接變成一個新標籤並套用，不用另外留一個輸入框。
         (function buildFontChipsUI() {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const label = document.createElement('label');
+            label.textContent = '\u5B57\u9AD4';
+            field.appendChild(label);
             const wrap = document.createElement('div');
             wrap.className = 'cwfm-keylist';
-            panelTarget.appendChild(wrap);
+            field.appendChild(wrap);
+            panelTarget.appendChild(field);
 
             const uploadInput = document.createElement('input');
             uploadInput.type = 'file';
@@ -2767,7 +2730,6 @@
 
             function selectFont(name) {
                 settings.fontFamily = name;
-                fontFamilyInput.value = name;
                 saveSettings(settings);
                 applySettings(settings);
             }
@@ -2789,10 +2751,7 @@
                 try { await cwfmDeleteFontBlob(entry.id); } catch (e) { console.error('[cwfm:font] 刪除字型資料失敗', e); }
                 const idx = settings.uploadedFonts.findIndex((f) => f.id === entry.id);
                 if (idx >= 0) settings.uploadedFonts.splice(idx, 1);
-                if (settings.fontFamily === entry.name) {
-                    settings.fontFamily = '';
-                    fontFamilyInput.value = '';
-                }
+                if (settings.fontFamily === entry.name) settings.fontFamily = '';
                 saveSettings(settings);
                 applySettings(settings);
                 render();
@@ -2802,6 +2761,7 @@
                 wrap.innerHTML = '';
                 (settings.fontNameHistory || []).forEach((name) => {
                     const chip = cwfmBuildChip(name, {
+                        extraClass: settings.fontFamily === name ? 'cwfm-keychip-selected' : '',
                         onSelect: () => selectFont(name),
                         onRename: (newName) => {
                             const idx = settings.fontNameHistory.indexOf(name);
@@ -2818,7 +2778,12 @@
                 (settings.uploadedFonts || []).forEach((entry) => {
                     const chip = cwfmBuildChip(entry.name, {
                         icon: '\u2191',
-                        extraClass: 'cwfm-keychip-uploaded',
+                        // [cwfm] 「藍色」在其他標籤清單(佈景主題、配色)裡
+                        // 代表「目前選中」，這個標籤不管有沒有被選中都是
+                        // 藍色，會混淆——拿掉專屬色，套用中的時候一樣用
+                        // 通用的 cwfm-keychip-selected，是不是上傳字型
+                        // 純粹靠圖示本身分辨。
+                        extraClass: settings.fontFamily === entry.name ? 'cwfm-keychip-selected' : '',
                         onSelect: () => selectFont(entry.name),
                         onRename: (newName) => {
                             const wasActive = settings.fontFamily === entry.name;
@@ -2832,6 +2797,23 @@
                     });
                     wrap.appendChild(chip);
                 });
+                const addNameBtn = document.createElement('button');
+                addNameBtn.type = 'button';
+                addNameBtn.className = 'cwfm-keychip-add';
+                addNameBtn.textContent = '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31';
+                addNameBtn.addEventListener('click', async () => {
+                    const name = await cwfmPromptDialog(
+                        '\u8f38\u5165\u5b57\u578b\u540d\u7a31',
+                        '\u672c\u6a5f\u5df2\u5b89\u88dd\u7684\u5b57\u578b\u540d\u7a31\uff0c\u4f8b\u5982\uff1aTC_JBMM_1011'
+                    );
+                    if (!name) return;
+                    if (!settings.fontNameHistory.includes(name) && !settings.uploadedFonts.some((f) => f.name === name)) {
+                        settings.fontNameHistory.push(name);
+                    }
+                    selectFont(name);
+                    render();
+                });
+                wrap.appendChild(addNameBtn);
                 const addBtn = document.createElement('button');
                 addBtn.type = 'button';
                 addBtn.className = 'cwfm-keychip-add';
@@ -2865,16 +2847,6 @@
                 } catch (e) {
                     console.error('[cwfm:font] 上傳字型失敗', e);
                     await cwfmAlertDialog('\u4e0a\u50b3\u5931\u6557', '\u4e0a\u50b3\u5931\u6557\uff0c\u8acb\u67e5\u770b\u4e3b\u63a7\u53f0\u932f\u8aa4\u8a0a\u606f\u3002');
-                }
-            });
-
-            // 手動輸入完成（失焦或按 Enter，不是每打一個字就記）才存進歷史。
-            fontFamilyInput.addEventListener('change', () => {
-                const value = fontFamilyInput.value.trim();
-                if (value && !settings.fontNameHistory.includes(value) && !settings.uploadedFonts.some((f) => f.name === value)) {
-                    settings.fontNameHistory.push(value);
-                    saveSettings(settings);
-                    render();
                 }
             });
 
