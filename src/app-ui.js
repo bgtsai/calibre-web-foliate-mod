@@ -449,7 +449,14 @@
             '  position: fixed; top: 0; bottom: 0; width: 320px; max-width: 85vw;',
             '  background: var(--cwfm-bg); color: var(--cwfm-text); z-index: 1000000;',
             '  box-shadow: 0 0 24px rgba(0,0,0,0.6);',
-            '  overflow-y: auto; padding: 18px; box-sizing: border-box;',
+            // [cwfm] padding 從這裡整個拿掉，改分別放到標題列（自己上/左/
+            // 右）跟下面的內容區塊（左/右/下）——position:sticky 的子
+            // 元素跟「會捲動的容器自己帶 padding」搭在一起，捲動基準點
+            // 容易對不齊，導致捲動時內容跑到標題列上面去（已由使用者
+            // 截圖回報，這是這類排版已知會踩到的坑）。讓這層容器本身
+            // 完全沒有 padding，sticky 的 top:0 才會精準對齊真正的頂端，
+            // 沒有模糊地帶。
+            '  overflow-y: auto; box-sizing: border-box;',
             '  font-family: sans-serif; font-size: 13px;',
             '  transition: transform 0.2s ease;',
             '}',
@@ -459,10 +466,12 @@
             // 目錄面板的章節清單有時候很長，原本要關閉面板得先往上捲到
             // 最頂端才點得到關閉按鈕，現在關閉按鈕全程都在，隨時可以點。
             // background 明確設成跟面板本體一樣的顏色，蓋住底下捲動經過
-            // 的內容，不會透出來。z-index 確保疊在清單內容之上。
+            // 的內容，不會透出來。z-index 確保疊在清單內容之上。padding
+            // 補回上/左/右（原本整層容器的 18px），不含下方——下面那條
+            // margin-bottom/border-bottom 已經負責跟內容的間隔。
             '.cwfm-panel-header {',
             '  display: flex; align-items: center; justify-content: space-between;',
-            '  margin-bottom: 12px; padding-bottom: 18px;',
+            '  margin-bottom: 12px; padding: 18px 18px 18px 18px;',
             '  border-bottom: 1px solid var(--cwfm-border);',
             '  position: sticky; top: 0; z-index: 1;',
             '  background: var(--cwfm-bg);',
@@ -471,7 +480,12 @@
             '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
             '  color: var(--cwfm-text);',
             '}',
-            '.cwfm-fields-wrap { column-gap: 24px; }',
+            // [cwfm] 內容區塊補回左/右/下的 padding（上面已經被標題列自己
+            // 的 padding 取代，這裡不用再補一次上）。設定面板的欄位區塊
+            // 跟目錄面板的章節清單/空白提示，各自都要補。
+            '.cwfm-fields-wrap { column-gap: 24px; padding: 0 18px 18px 18px; }',
+            '.cwfm-toc-view { padding: 0 18px 18px 18px; }',
+            '.cwfm-empty-hint { padding: 0 18px 18px 18px; }',
             // [cwfm] 分組卡片：把性質相同的欄位包在一起，用「陰影模擬
             // 邊界」取代一般的實線邊框——參考 Cal.com 設計規格
             // （vibeui.top/design-md/cal）裡這個做法：一層極細的環狀陰影
@@ -517,12 +531,12 @@
             '  background: none; border: none; color: var(--cwfm-text-secondary); cursor: pointer;',
             '  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 3px;',
             '}',
-            '.cwfm-keychip-remove:hover { color: #fff; background: var(--cwfm-border); }',
+            '.cwfm-keychip-remove:hover { color: var(--cwfm-text); background: var(--cwfm-border); }',
             '.cwfm-keychip-add {',
             '  background: none; border: 1px dashed var(--cwfm-border-light); border-radius: 4px;',
             '  color: var(--cwfm-text-secondary); font-size: 12px; padding: 3px 8px; cursor: pointer;',
             '}',
-            '.cwfm-keychip-add:hover { color: #fff; border-color: var(--cwfm-text-secondary); }',
+            '.cwfm-keychip-add:hover { color: var(--cwfm-text); border-color: var(--cwfm-text-secondary); }',
             '.cwfm-keychip-add:disabled { color: var(--cwfm-accent); border-color: var(--cwfm-accent); cursor: default; }',
             '.cwfm-keylist-hint { color: #e0a030; font-size: 12px; margin-top: 4px; }',
             // [cwfm] 「藍色」現在統一只代表「目前選中」（見下面
@@ -530,7 +544,11 @@
             // 底色——兩種意思疊在同一個顏色上會讓使用者分不清楚「這個
             // 藍色是選中了、還是這是上傳的」。是不是上傳字型，純粹靠
             // 下面的徽章圖示本身判斷。
-            '.cwfm-keychip-selected { border-color: var(--cwfm-accent); background: var(--cwfm-accent-bg); color: #fff; }',
+            // [cwfm] 文字顏色改用跟著深淺模式換的變數，不要寫死白色——
+            // 淺色模式下背景是很淺的淺藍色調，白字幾乎看不清楚，這正是
+            // 使用者截圖回報的問題。深色模式下 var(--cwfm-text) 本身就是
+            // 接近白色的淺灰，效果跟原本寫死的白色差不了多少。
+            '.cwfm-keychip-selected { border-color: var(--cwfm-accent); background: var(--cwfm-accent-bg); color: var(--cwfm-text); }',
             // [cwfm] 「配色」是固定五選一的內建選項，不是使用者自己新增/
             // 命名/刪除的清單，用比較單純的標籤樣式（沒有叉叉、沒有改名
             // 圖示），但要明確標示「目前選的是哪一個」。
@@ -555,7 +573,7 @@
             '  opacity: 0; transition: opacity 0.15s ease;',
             '}',
             '.cwfm-keychip:hover .cwfm-keychip-rename { opacity: 1; }',
-            '.cwfm-keychip-rename:hover { color: #fff; background: var(--cwfm-border); }',
+            '.cwfm-keychip-rename:hover { color: var(--cwfm-text); background: var(--cwfm-border); }',
             '.cwfm-panel .cwfm-keychip-edit[type="text"] {',
             // [cwfm] 這次真正的原因：.cwfm-panel input[type="text"] 這條
             // 套用在整個面板所有文字輸入框的通用規則，優先權比原本這裡
@@ -618,14 +636,14 @@
             '  outline: none; box-shadow: none;',
             '}',
             '.cwfm-pill-enter svg { width: 14px; height: 14px; display: block; pointer-events: none; }',
-            '.cwfm-pill-enter:hover { color: #fff; background: var(--cwfm-surface-elevated); }',
+            '.cwfm-pill-enter:hover { color: var(--cwfm-text); background: var(--cwfm-surface-elevated); }',
             '.cwfm-confirm-box p { margin: 0 0 16px; color: var(--cwfm-text-secondary); font-size: 13px; line-height: 1.6; }',
             '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
             '.cwfm-confirm-cancel, .cwfm-confirm-ok {',
             '  border-radius: 4px; padding: 6px 14px; font-size: 13px; cursor: pointer;',
             '}',
             '.cwfm-confirm-cancel { background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text-secondary); }',
-            '.cwfm-confirm-cancel:hover { border-color: var(--cwfm-text-secondary); color: #fff; }',
+            '.cwfm-confirm-cancel:hover { border-color: var(--cwfm-text-secondary); color: var(--cwfm-text); }',
             '.cwfm-confirm-ok { background: #b03030; border: 1px solid #d04040; color: #fff; }',
             '.cwfm-confirm-ok:hover { background: #c03838; }',
             '.cwfm-panel[data-side="left"] { left: 0; transform: translateX(-105%); }',
@@ -647,6 +665,14 @@
             '}',
             '.cwfm-panel .cwfm-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
+            // [cwfm] 核取方塊改用獨立的排列方式，不跟範圍/顏色欄位共用
+            // .cwfm-row 的 space-between——核取方塊要跟它的文字標籤靠在
+            // 一起、方塊在前面，不是分別頂在整行的兩端。
+            '.cwfm-panel .cwfm-checkbox-row {',
+            '  display: flex; align-items: center; gap: 8px; margin: 14px 0 4px;',
+            '}',
+            '.cwfm-panel .cwfm-checkbox-row label { margin: 0; order: 2; }',
+            '.cwfm-panel .cwfm-checkbox-row input[type="checkbox"] { order: 1; margin: 0; flex-shrink: 0; }',
             '.cwfm-panel select {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
@@ -658,11 +684,14 @@
             '  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;',
             '  color: var(--cwfm-text-secondary); font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
             '}',
-            '.cwfm-close-btn:hover { color: #fff; border-color: var(--cwfm-text-secondary); }',
+            '.cwfm-close-btn:hover { color: var(--cwfm-text); border-color: var(--cwfm-text-secondary); }',
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
-            '  width: 48px; height: 28px; border-radius: 4px;',
+            // [cwfm] 原本 48×28px，長方形，比面板裡其他控制項(大約
+            // 28~32px 高的方塊)明顯寬、比例不協調——改成正方形，跟其他
+            // 控制項的視覺節奏一致。
+            '  width: 32px; height: 32px; border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
             // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
@@ -759,7 +788,7 @@
             '.cwfm-toc-view [role="treeitem"] {',
             '  display: flex; align-items: center; padding: 5px 0; color: var(--cwfm-text-secondary); text-decoration: none; cursor: pointer;',
             '}',
-            '.cwfm-toc-view [role="treeitem"]:hover { color: #fff; }',
+            '.cwfm-toc-view [role="treeitem"]:hover { color: var(--cwfm-text); }',
             '.cwfm-toc-view [role="treeitem"][aria-current="page"] { color: var(--cwfm-accent); font-weight: bold; }',
             '.cwfm-toc-view [aria-expanded="false"] ~ ol { display: none; }',
             // [cwfm] 目錄展開三角形：foliate-js ui/tree.js 產生的 <svg><polygon>
@@ -778,7 +807,7 @@
             '  transition: fill 0.15s ease, transform 0.15s ease;',
             '  transform: rotate(-90deg);',
             '}',
-            '.cwfm-toc-view [role="treeitem"]:hover svg { fill: #fff; }',
+            '.cwfm-toc-view [role="treeitem"]:hover svg { fill: var(--cwfm-text); }',
             '.cwfm-toc-view [role="treeitem"][aria-expanded="true"] > svg { transform: rotate(0deg); }',
             '.cwfm-empty-hint { color: var(--cwfm-text-secondary); font-size: 12px; }',
             // [cwfm] 面板變暗遮罩：原本會把畫面調暗，但這個遮罩本身沒有接
@@ -2501,7 +2530,7 @@
             const field = document.createElement('div');
             field.className = 'cwfm-field';
             const row = document.createElement('div');
-            row.className = 'cwfm-row';
+            row.className = 'cwfm-checkbox-row';
             const label = document.createElement('label');
             label.textContent = labelText;
             row.appendChild(label);
