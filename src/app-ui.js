@@ -695,12 +695,30 @@
             '}',
             // [cwfm] 原本只有寬度設定，其餘完全是瀏覽器原生外觀——這正是
             // 使用者回報「圓點顏色太深、不協調」的根因：原生外觀不會跟著
-            // 我們的深淺色配色變數走。改用 accent-color 這個 CSS 屬性，
-            // 專門用來幫原生表單控制項（range/checkbox/radio）重新著色，
-            // 不用整個重寫滑桿外觀——這樣原本瀏覽器原生「拖到哪、顏色就
-            // 填到哪」那個軌道填色效果會維持原樣（使用者只針對圓點顏色
-            // 提出問題，沒有抱怨填色效果，不該連沒問題的部分也動掉）。
-            '.cwfm-panel input[type="range"] { width: 100%; accent-color: var(--cwfm-accent); }',
+            // 我們的深淺色配色變數走。
+            // [cwfm] accent-color 這個做法查證過兩次、理論上都該有效，
+            // 實測在使用者的環境裡完全沒有可見效果——不再繼續往這個
+            // 方向猜，改用進度條那邊已經證實真的有效的做法：直接用
+            // 偽元素明確畫出圓點顏色，不透過瀏覽器自己判斷的間接方式。
+            // 代價是原生「拖到哪填到哪」的軌道填色效果會消失，但兩害
+            // 相權，先求真的有效果。
+            '.cwfm-panel input[type="range"] {',
+            '  width: 100%; -webkit-appearance: none; appearance: none;',
+            '  background: transparent; height: 16px; margin: 8px 0;',
+            '}',
+            '.cwfm-panel input[type="range"]::-webkit-slider-runnable-track {',
+            '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
+            '}',
+            '.cwfm-panel input[type="range"]::-webkit-slider-thumb {',
+            '  -webkit-appearance: none; margin-top: -5px;',
+            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-accent); border: none; cursor: pointer;',
+            '}',
+            '.cwfm-panel input[type="range"]::-moz-range-track {',
+            '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
+            '}',
+            '.cwfm-panel input[type="range"]::-moz-range-thumb {',
+            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-accent); border: none; cursor: pointer;',
+            '}',
             '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; }',
             '.cwfm-value-input {',
             '  width: 4em; box-sizing: border-box; padding: 2px 4px;',
@@ -730,8 +748,37 @@
             '  display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px;',
             '}',
             '.cwfm-panel .cwfm-checkbox-row label { margin: 0; order: 2; }',
-            '.cwfm-panel .cwfm-checkbox-row input[type="checkbox"] {',
-            '  order: 1; margin: 0; flex-shrink: 0;',
+            // [cwfm] 滑動開關本身：膠囊軌道 + 圓形滑塊，關閉是中性灰色，
+            // 開啟是強調色，跟現在整體配色一致。底層真正的 <input> 藏
+            // 起來（opacity:0，但還是佔滿整個區域接收點擊/鍵盤操作），
+            // 用 ::before 畫出滑塊本身，開關切換靠 :checked 這個原生
+            // 狀態去驅動樣式變化，不用自己寫額外的 JS 去同步視覺狀態。
+            // 開關這種小圖示元件用文字基準線對齊會顯得太低，改成
+            // align-self: center，只針對這個元件覆蓋掉整行 baseline 的
+            // 對齊方式。
+            '.cwfm-switch {',
+            '  position: relative; display: inline-block; width: 34px; height: 20px;',
+            '  flex-shrink: 0; order: 1; cursor: pointer; align-self: center;',
+            '}',
+            '.cwfm-switch input {',
+            '  position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer;',
+            '}',
+            '.cwfm-switch-track {',
+            '  position: absolute; inset: 0; background: var(--cwfm-border-light);',
+            '  border-radius: 10px; transition: background 0.15s ease;',
+            '}',
+            '.cwfm-switch-track::before {',
+            '  content: ""; position: absolute; top: 2px; left: 2px;',
+            '  width: 16px; height: 16px; border-radius: 50%;',
+            '  background: var(--cwfm-text-secondary);',
+            '  transition: transform 0.15s ease, background 0.15s ease;',
+            '}',
+            '.cwfm-switch input:checked + .cwfm-switch-track { background: var(--cwfm-accent-bg); }',
+            '.cwfm-switch input:checked + .cwfm-switch-track::before {',
+            '  transform: translateX(14px); background: var(--cwfm-accent);',
+            '}',
+            '.cwfm-switch input:focus-visible + .cwfm-switch-track {',
+            '  outline: 2px solid var(--cwfm-accent); outline-offset: 2px;',
             '}',
             '.cwfm-panel select {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
@@ -2642,6 +2689,13 @@
             const label = document.createElement('label');
             label.textContent = labelText;
             row.appendChild(label);
+            // [cwfm] 改成滑動開關（膠囊軌道 + 圓形滑塊），不是原生核取
+            // 方塊——底層還是用真正的 <input type="checkbox">（螢幕閱讀器、
+            // 鍵盤操作、表單語意都靠它），只是把它原生的視覺外觀藏起來，
+            // 用旁邊一個 <span> 畫出開關的樣子，這是業界做這種開關最常見
+            // 的做法，不是重新發明一個假的控制項。
+            const switchWrap = document.createElement('label');
+            switchWrap.className = 'cwfm-switch';
             const input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = !!settings[key];
@@ -2650,7 +2704,11 @@
                 saveSettings(settings);
                 applySettings(settings);
             });
-            row.appendChild(input);
+            const track = document.createElement('span');
+            track.className = 'cwfm-switch-track';
+            switchWrap.appendChild(input);
+            switchWrap.appendChild(track);
+            row.appendChild(switchWrap);
             field.appendChild(row);
             panelTarget.appendChild(field);
             return input;
