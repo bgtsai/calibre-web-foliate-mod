@@ -407,15 +407,22 @@
             '.cwfm-progress-wrap input[type="range"]::-webkit-slider-runnable-track {',
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
             '}',
+            // [cwfm] 圓點改用強調色，不是中性灰色——查了參考資料，這個
+            // 元件（進度條/滑桿的位置指示器）確實沒有涵蓋到，是自己另外
+            // 設計的。中性灰色在深淺兩種背景上視覺效果不對稱（深色底顯得
+            // 亮、淺色底顯得重），業界代表「目前位置」的滑桿指示器慣例
+            // 用強調色，不是灰階——強調色數值深淺模式完全相同，換掉之後
+            // 兩種模式下的效果會一致，不會再有深色順眼、淺色卻顯得重的
+            // 不對稱狀況。
             '.cwfm-progress-wrap input[type="range"]::-webkit-slider-thumb {',
             '  -webkit-appearance: none; margin-top: -5px;',
-            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-text-secondary); border: none; cursor: pointer;',
+            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-accent); border: none; cursor: pointer;',
             '}',
             '.cwfm-progress-wrap input[type="range"]::-moz-range-track {',
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
             '}',
             '.cwfm-progress-wrap input[type="range"]::-moz-range-thumb {',
-            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-text-secondary); border: none; cursor: pointer;',
+            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-accent); border: none; cursor: pointer;',
             '}',
             '.cwfm-progress-label { flex: 0 0 auto; min-width: 3.5em; text-align: right; color: var(--cwfm-text-secondary); font-size: 12px; }',
             // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
@@ -671,10 +678,17 @@
             // .cwfm-row 的 space-between——核取方塊要跟它的文字標籤靠在
             // 一起、方塊在前面，不是分別頂在整行的兩端。
             '.cwfm-panel .cwfm-checkbox-row {',
-            '  display: flex; align-items: center; gap: 8px; margin: 14px 0 4px;',
+            // [cwfm] 原本 align-items:center 會把核取方塊對齊「整段文字
+            // 的正中央」——文字只有一行時看不出差別，超過一行就會整個
+            // 往下沉，跟第一行對不上。改成 flex-start，讓方塊固定對齊
+            // 第一行，不管後面文字折成幾行都一樣。
+            '  display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 4px;',
             '}',
             '.cwfm-panel .cwfm-checkbox-row label { margin: 0; order: 2; }',
-            '.cwfm-panel .cwfm-checkbox-row input[type="checkbox"] { order: 1; margin: 0; flex-shrink: 0; }',
+            '.cwfm-panel .cwfm-checkbox-row input[type="checkbox"] {',
+            '  order: 1; margin: 0; flex-shrink: 0;',
+            '  margin-top: 2px;', // 微調跟第一行文字的視覺對齊，不是頂到最上緣
+            '}',
             '.cwfm-panel select {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
@@ -882,6 +896,10 @@
         if (dimming) return dimming;
         dimming = document.createElement('div');
         dimming.className = 'cwfm-dimming';
+        // [cwfm] 點擊面板以外的區域（這個遮罩本來就只蓋在面板以外，
+        // 面板自己的 z-index 比較高，疊在遮罩上面，點面板本身不會傳到
+        // 這裡）直接關閉面板，不用非得點叉叉。
+        dimming.addEventListener('click', () => closeAllPanels());
         document.body.appendChild(dimming);
         return dimming;
     }
