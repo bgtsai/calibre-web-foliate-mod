@@ -781,37 +781,29 @@
             '.cwfm-switch input {',
             '  position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer;',
             '}',
+            // [cwfm] 改用 iOS/Material 這種公認的經典做法，不再自己發明：
+            // 查了實際規格才發現，變色的是「軌道」，不是滑塊——滑塊
+            // 不分開關狀態，永遠是白色（或接近白色），靠一圈陰影製造
+            // 立體感；軌道關閉是中性灰、開啟是實心的強調色（不是淡色
+            // 調的底），這樣滑塊在任何底色下都有穩定的對比，不會像
+            // 上一輪那樣，白色邊框疊在同樣偏淡的軌道底色上糊成一片。
+            // 滑塊顏色刻意用固定的白色（不接變數），不是深淺兩種模式
+            // 各寫一份——這正是這個經典做法能同時適用深淺兩種底色的
+            // 原因：白色滑塊在深色軌道（不管軌道本身是中性灰還是強調
+            // 色）上天生就有穩定的對比，不需要跟著面板深淺模式換色。
             '.cwfm-switch-track {',
-            // [cwfm] 軌道加一圈細邊框，讓邊界更明確，不是只靠底色跟旁邊
-            // 背景的對比撐場面。
             '  position: absolute; inset: 0; background: var(--cwfm-border-light);',
-            '  border: 1px solid var(--cwfm-border); border-radius: 10px;',
-            '  transition: background 0.15s ease, border-color 0.15s ease;',
-            '  box-sizing: border-box;',
+            '  border-radius: 10px; transition: background 0.15s ease;',
             '}',
             '.cwfm-switch-track::before {',
-            // [cwfm] 滑塊加邊框+陰影——邊框顏色用跟面板背景一樣的顏色
-            // （呼應上面滑桿圓點同一套手法），開啟狀態下滑塊本身是強調色
-            // 實心圓，這圈邊框讓它跟軌道之間有一圈鏤空分隔感，不是貼在
-            // 軌道上的一片色紙；陰影讓滑塊有浮起來的立體感。深淺兩種
-            // 模式都適用同一套變數，不用另外寫兩套顏色。
-            '  content: ""; position: absolute; top: 1px; left: 1px;',
-            '  width: 14px; height: 14px; border-radius: 50%;',
-            '  background: var(--cwfm-text-secondary);',
-            '  border: 2px solid var(--cwfm-surface);',
-            '  box-shadow: 0 1px 2px var(--cwfm-shadow-soft);',
-            '  box-sizing: border-box;',
-            '  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;',
+            '  content: ""; position: absolute; top: 2px; left: 2px;',
+            '  width: 16px; height: 16px; border-radius: 50%; background: #ffffff;',
+            '  box-shadow: 0 1px 2px rgba(0,0,0,0.18), 0 0 1px rgba(0,0,0,0.08);',
+            '  transition: transform 0.15s ease;',
             '}',
-            '.cwfm-switch input:checked + .cwfm-switch-track {',
-            '  background: var(--cwfm-accent-bg); border-color: var(--cwfm-accent);',
-            '}',
+            '.cwfm-switch input:checked + .cwfm-switch-track { background: var(--cwfm-accent); }',
             '.cwfm-switch input:checked + .cwfm-switch-track::before {',
-            // [cwfm] 滑動距離重新算過：軌道 34px，滑塊改成 14px(含邊框)、
-            // 起始位置 1px，34 - 1(左邊距) - 14(滑塊寬) - 1(右邊距) = 18，
-            // 不是原本 16px 滑塊時代的 14px，尺寸改了忘記同步算，會導致
-            // 開啟狀態下左右邊距不對稱。
-            '  transform: translateX(18px); background: var(--cwfm-accent);',
+            '  transform: translateX(14px);',
             '}',
             '.cwfm-switch input:focus-visible + .cwfm-switch-track {',
             '  outline: 2px solid var(--cwfm-accent); outline-offset: 2px;',
