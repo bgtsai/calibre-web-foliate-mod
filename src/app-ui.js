@@ -336,19 +336,21 @@
         const style = document.createElement('style');
         style.textContent = [
             // ============================================================
-            // [cwfm] 深/淺兩套配色，用 CSS 變數統一管理，跟隨系統的
-            // prefers-color-scheme 自動切換（跟這份腳本裡「配色」功能
-            // 判斷 auto 模式的做法一致，不用另外做手動切換開關）。色票
-            // 查證自 Cal.com 官方設計規格（vibeui.top/design-md/cal），
-            // 深色版直接沿用官方 dark 色票；淺色版沒有公開色票的部分
-            // （邊界、陰影），改用它「用陰影模擬邊界」這個手法本身的
-            // 邏輯（淺色底用深色調的半透明陰影，跟深色版用淺色調半透明
-            // 陰影的邏輯對稱）自己推算，不是憑空編的顏色。範圍先只套用
-            // 在設定面板（.cwfm-panel）本身，工具列維持原本固定的深色，
-            // 工具列疊在書本內容上、書本內容本身已經有獨立的配色系統，
-            // 不需要跟著系統深淺色切換。
+            // [cwfm] 深/淺兩套配色，用 CSS 變數統一管理。原本想跟著系統的
+            // prefers-color-scheme 自動切換，後來確認這樣不對——面板配色
+            // 應該跟著「使用者最後套用的書籍背景色實際的深淺」走（見
+            // cwfmUpdatePanelScheme()，套用設定時計算，設在 <html> 的
+            // data-cwfm-scheme 屬性上），不是跟著作業系統。變數定義放在
+            // :root，不只給設定/目錄面板用，工具列、進度條也要一起跟著
+            // 換——原本工具列維持固定深色，跟面板配色對不起來（使用者
+            // 截圖回報過這個不一致），這次一起接上同一套變數。色票查證
+            // 自 Cal.com 官方設計規格（vibeui.top/design-md/cal），深色版
+            // 直接沿用官方 dark 色票；淺色版沒有公開色票的部分（邊界、
+            // 陰影），改用它「用陰影模擬邊界」這個手法本身的邏輯（淺色底
+            // 用深色調的半透明陰影，跟深色版用淺色調半透明陰影的邏輯
+            // 對稱）自己推算，不是憑空編的顏色。
             // ============================================================
-            '.cwfm-panel {',
+            ':root {',
             '  --cwfm-bg: #0a0a0a; --cwfm-surface: #141414;',
             '  --cwfm-surface-elevated: #1c1c1c; --cwfm-border: #2a2a2a;',
             '  --cwfm-border-light: #333333; --cwfm-text: #e8e8e8;',
@@ -356,23 +358,23 @@
             '  --cwfm-shadow-ring: rgba(255,255,255,0.06);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.3); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.16);',
+            '  --cwfm-toolbar-bg: rgba(10,10,10,0.92);',
             '}',
-            '@media (prefers-color-scheme: light) {',
-            '  .cwfm-panel {',
-            '    --cwfm-bg: #ffffff; --cwfm-surface: #ffffff;',
-            '    --cwfm-surface-elevated: #f5f5f5; --cwfm-border: rgba(0,0,0,0.12);',
-            '    --cwfm-border-light: rgba(0,0,0,0.08); --cwfm-text: #242424;',
-            '    --cwfm-text-secondary: #898989; --cwfm-text-muted: #b0b0b0;',
-            '    --cwfm-shadow-ring: rgba(0,0,0,0.08);',
-            '    --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
-            '    --cwfm-accent-bg: rgba(0,153,255,0.12);',
-            '  }',
+            'html[data-cwfm-scheme="light"] {',
+            '  --cwfm-bg: #ffffff; --cwfm-surface: #ffffff;',
+            '  --cwfm-surface-elevated: #f5f5f5; --cwfm-border: rgba(0,0,0,0.12);',
+            '  --cwfm-border-light: rgba(0,0,0,0.08); --cwfm-text: #242424;',
+            '  --cwfm-text-secondary: #898989; --cwfm-text-muted: #b0b0b0;',
+            '  --cwfm-shadow-ring: rgba(0,0,0,0.08);',
+            '  --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
+            '  --cwfm-accent-bg: rgba(0,153,255,0.12);',
+            '  --cwfm-toolbar-bg: rgba(255,255,255,0.92);',
             '}',
             '.cwfm-toolbar {',
             '  position: fixed; left: 0; right: 0; bottom: 0;',
             '  display: flex; align-items: center; gap: 10px;',
-            '  padding: 8px 14px; background: rgba(24,24,24,0.92);',
-            '  color: #eee; font-family: sans-serif; font-size: 13px;',
+            '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
+            '  color: var(--cwfm-text); font-family: sans-serif; font-size: 13px;',
             '  z-index: 999999; box-sizing: border-box;',
             '  transition: transform 0.3s ease;',
             '}',
@@ -389,11 +391,11 @@
             '.cwfm-autohide-zone.cwfm-top { top: 0; }',
             '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
             '.cwfm-toolbar button {',
-            '  background: none; border: 1px solid #666; color: #eee;',
+            '  background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text);',
             '  border-radius: 4px; padding: 5px 12px; cursor: pointer;',
             '  font-size: 13px; flex: 0 0 auto;',
             '}',
-            '.cwfm-toolbar button:hover { background: #3a3a3a; }',
+            '.cwfm-toolbar button:hover { background: var(--cwfm-surface-elevated); }',
             '.cwfm-progress-wrap { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; }',
             // [cwfm] 進度條原本完全沒有自訂樣式，瀏覽器原生 <input type="range">
             // 預設外觀（一條顯眼的白色/淺色軌道）就這樣露出來，不是刻意畫的
@@ -403,36 +405,36 @@
             '  flex: 1; -webkit-appearance: none; appearance: none; background: transparent; height: 16px;',
             '}',
             '.cwfm-progress-wrap input[type="range"]::-webkit-slider-runnable-track {',
-            '  height: 3px; background: #555; border-radius: 2px;',
+            '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
             '}',
             '.cwfm-progress-wrap input[type="range"]::-webkit-slider-thumb {',
             '  -webkit-appearance: none; margin-top: -5px;',
-            '  width: 13px; height: 13px; border-radius: 50%; background: #ccc; border: none; cursor: pointer;',
+            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-text-secondary); border: none; cursor: pointer;',
             '}',
             '.cwfm-progress-wrap input[type="range"]::-moz-range-track {',
-            '  height: 3px; background: #555; border-radius: 2px;',
+            '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
             '}',
             '.cwfm-progress-wrap input[type="range"]::-moz-range-thumb {',
-            '  width: 13px; height: 13px; border-radius: 50%; background: #ccc; border: none; cursor: pointer;',
+            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-text-secondary); border: none; cursor: pointer;',
             '}',
-            '.cwfm-progress-label { flex: 0 0 auto; min-width: 3.5em; text-align: right; color: #aaa; font-size: 12px; }',
+            '.cwfm-progress-label { flex: 0 0 auto; min-width: 3.5em; text-align: right; color: var(--cwfm-text-secondary); font-size: 12px; }',
             // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
             // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
             '.cwfm-toolbar-top {',
             '  position: fixed; left: 0; right: 0; top: 0;',
             '  display: flex; align-items: center; gap: 6px;',
-            '  padding: 8px 14px; background: rgba(24,24,24,0.92);',
-            '  color: #eee; font-family: sans-serif;',
+            '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
+            '  color: var(--cwfm-text); font-family: sans-serif;',
             '  z-index: 999999; box-sizing: border-box;',
             '  transition: transform 0.3s ease;',
             '}',
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
             '.cwfm-toolbar-top button {',
-            '  background: none; border: none; color: #eee;',
+            '  background: none; border: none; color: var(--cwfm-text);',
             '  border-radius: 4px; padding: 6px; cursor: pointer;',
             '  display: flex; align-items: center; justify-content: center;',
             '}',
-            '.cwfm-toolbar-top button:hover { background: #3a3a3a; }',
+            '.cwfm-toolbar-top button:hover { background: var(--cwfm-surface-elevated); }',
             '.cwfm-toolbar-top button svg { width: 20px; height: 20px; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
@@ -960,6 +962,49 @@
         dark: { text: '#e0e0e0', background: '#1a1a1a' },
         sepia: { text: '#4b3621', background: '#f4ecd8' },
     };
+
+    // [cwfm] 面板本身（工具列/設定/目錄）要不要用深色還是淺色配色，改成
+    // 跟著「使用者最後套用的書籍背景色實際的深淺」決定，不是跟著作業
+    // 系統的 prefers-color-scheme——不管使用者選的是內建配色（跟隨系統/
+    // 亮色/暗色/復古黃）還是自訂顏色，一律用 resolveThemeColors() 算出
+    // 來的背景色去判斷，跟書本內容顯示出來的顏色永遠對得起來。
+    function cwfmParseHexToRgb(hex) {
+        if (!hex) return null;
+        const clean = hex.replace('#', '');
+        if (clean.length === 3) {
+            const r = parseInt(clean[0] + clean[0], 16);
+            const g = parseInt(clean[1] + clean[1], 16);
+            const b = parseInt(clean[2] + clean[2], 16);
+            return { r, g, b };
+        }
+        if (clean.length === 6) {
+            return {
+                r: parseInt(clean.slice(0, 2), 16),
+                g: parseInt(clean.slice(2, 4), 16),
+                b: parseInt(clean.slice(4, 6), 16),
+            };
+        }
+        return null;
+    }
+    function cwfmIsColorDark(hex) {
+        const rgb = cwfmParseHexToRgb(hex);
+        if (!rgb) return true; // 解析不出來，維持原本預設的深色
+        // [cwfm] YIQ 感知亮度公式，常見的「這個顏色算深色還是淺色」判斷
+        // 方式，比單純平均 RGB 更貼近人眼實際感受到的亮度。
+        const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+        return brightness < 128;
+    }
+    function cwfmUpdatePanelScheme(settings) {
+        try {
+            const background = resolveThemeColors(settings).background;
+            const isDark = cwfmIsColorDark(background);
+            // [cwfm] 設在 <html> 上，不是設在面板元素本身——面板可能還沒
+            // 建立（例如開書當下第一次套用設定時），設在 <html> 不用
+            // 管面板存不存在，CSS 選擇器（html[data-cwfm-scheme] .cwfm-panel）
+            // 之後面板一建立就會自動生效，不用另外處理時序。
+            document.documentElement.dataset.cwfmScheme = isDark ? 'dark' : 'light';
+        } catch (e) { console.error('[cwfm:theme] 判斷面板深淺色失敗', e); }
+    }
 
     // [cwfm] auto 模式原本交給 CSS 的 color-scheme 屬性讓瀏覽器自己決定
     // 顏色，但實測查證過：瀏覽器實際怎麼畫這個「預設底色」，沒有辦法用
@@ -1942,6 +1987,7 @@
     }
 
     function applySettings(settings) {
+        cwfmUpdatePanelScheme(settings);
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error('[cwfm:settings] 套用字體樣式失敗', e); }
