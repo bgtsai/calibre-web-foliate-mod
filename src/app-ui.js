@@ -351,6 +351,15 @@
             // 對稱）自己推算，不是憑空編的顏色。
             // ============================================================
             ':root {',
+            // [cwfm] 明確告訴瀏覽器「現在是深色情境」——查證過，
+            // accent-color 這個屬性實際渲染時會參考 color-scheme 這個
+            // 屬性去判斷該用什麼樣的對比色呈現，我們自己的頁面原本完全
+            // 沒設這個屬性，瀏覽器很可能還是照系統設定去猜，猜錯就會
+            // 導致滑桿圓點看起來還是接近預設值、沒有明顯套用強調色的
+            // 效果——這正是使用者回報「圓點顏色沒有變」的根因，不是
+            // 顏色值本身沒套用進去。這裡明確跟 data-cwfm-scheme 同步，
+            // 不讓瀏覽器自己用系統設定去猜。
+            '  color-scheme: dark;',
             '  --cwfm-bg: #0a0a0a; --cwfm-surface: #141414;',
             '  --cwfm-surface-elevated: #1c1c1c; --cwfm-border: #2a2a2a;',
             '  --cwfm-border-light: #333333; --cwfm-text: #e8e8e8;',
@@ -361,6 +370,7 @@
             '  --cwfm-toolbar-bg: rgba(10,10,10,0.92);',
             '}',
             'html[data-cwfm-scheme="light"] {',
+            '  color-scheme: light;',
             '  --cwfm-bg: #ffffff; --cwfm-surface: #ffffff;',
             '  --cwfm-surface-elevated: #f5f5f5; --cwfm-border: rgba(0,0,0,0.12);',
             '  --cwfm-border-light: rgba(0,0,0,0.08); --cwfm-text: #242424;',
@@ -389,8 +399,15 @@
             // [cwfm] 自動隱藏：滑動到邊緣外（不是 display:none，維持
             // transform 位移，這樣才能做滑入/滑出動畫）。上/下工具列各自
             // 往自己所在的那個邊滑出去。
-            '.cwfm-toolbar.cwfm-autohidden { transform: translateY(100%); }',
-            '.cwfm-toolbar-top.cwfm-autohidden { transform: translateY(-100%); }',
+            //
+            // [cwfm] 隱藏時額外把 box-shadow 關掉——查了原因：陰影是跟著
+            // 元素本身的 transform 一起位移的，工具列往自己所在的那個邊
+            // 滑出去之後，原本往「反方向」投影的陰影，換算下來剛好會
+            // 落在工具列原本所在的那個位置，變成殘留在原地的一層灰霧，
+            // 使用者截圖看到的就是這個。隱藏之後已經沒有東西需要陰影
+            // 幫忙跟背景分開，直接關掉最乾淨。
+            '.cwfm-toolbar.cwfm-autohidden { transform: translateY(100%); box-shadow: none; }',
+            '.cwfm-toolbar-top.cwfm-autohidden { transform: translateY(-100%); box-shadow: none; }',
             // [cwfm] 邊緣感應區：固定貼在螢幕上/下緣的透明區塊，跟工具列
             // 同高，工具列隱藏時仍然貼在原位，用來接住滑鼠移入/點擊喚醒。
             '.cwfm-autohide-zone {',
@@ -705,14 +722,16 @@
             '.cwfm-panel .cwfm-checkbox-row {',
             // [cwfm] 原本 align-items:center 會把核取方塊對齊「整段文字
             // 的正中央」——文字只有一行時看不出差別，超過一行就會整個
-            // 往下沉，跟第一行對不上。改成 flex-start，讓方塊固定對齊
-            // 第一行，不管後面文字折成幾行都一樣。
-            '  display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 4px;',
+            // 往下沉，跟第一行對不上。改成 baseline（跟文字基準線對齊，
+            // 瀏覽器對齊文字用的標準做法，多行文字時瀏覽器自己會對齊
+            // 第一行的基準線），不是我自己猜一個 margin 偏移量——上一輪
+            // 用 flex-start + 自己猜的 margin-top: 2px，方向猜錯了，改用
+            // 瀏覽器原生對齊機制比較可靠。
+            '  display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px;',
             '}',
             '.cwfm-panel .cwfm-checkbox-row label { margin: 0; order: 2; }',
             '.cwfm-panel .cwfm-checkbox-row input[type="checkbox"] {',
             '  order: 1; margin: 0; flex-shrink: 0;',
-            '  margin-top: 2px;', // 微調跟第一行文字的視覺對齊，不是頂到最上緣
             '}',
             '.cwfm-panel select {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
