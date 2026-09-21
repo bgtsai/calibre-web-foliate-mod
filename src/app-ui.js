@@ -454,11 +454,18 @@
             '  transition: transform 0.2s ease;',
             '}',
             // [cwfm] 標題列獨立成 header 區塊，永遠橫跨整個面板寬度，
-            // 不會被下面欄位區塊的多欄排版影響。
+            // 不會被下面欄位區塊的多欄排版影響。另外加上 position:sticky，
+            // 讓標題列(含關閉按鈕)在面板內容往下捲動時固定在頂端不動——
+            // 目錄面板的章節清單有時候很長，原本要關閉面板得先往上捲到
+            // 最頂端才點得到關閉按鈕，現在關閉按鈕全程都在，隨時可以點。
+            // background 明確設成跟面板本體一樣的顏色，蓋住底下捲動經過
+            // 的內容，不會透出來。z-index 確保疊在清單內容之上。
             '.cwfm-panel-header {',
             '  display: flex; align-items: center; justify-content: space-between;',
             '  margin-bottom: 12px; padding-bottom: 18px;',
             '  border-bottom: 1px solid var(--cwfm-border);',
+            '  position: sticky; top: 0; z-index: 1;',
+            '  background: var(--cwfm-bg);',
             '}',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
