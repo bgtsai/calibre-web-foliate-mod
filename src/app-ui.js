@@ -377,6 +377,14 @@
             '  color: var(--cwfm-text); font-family: sans-serif; font-size: 13px;',
             '  z-index: 999999; box-sizing: border-box;',
             '  transition: transform 0.3s ease;',
+            // [cwfm] 加一點立體感，跟設定面板的分組卡片同一套「陰影模擬
+            // 邊界」邏輯——書本背景色是使用者自己選的，理論上有可能剛好
+            // 跟工具列的底色很接近，加這層陰影確保不管背景色是什麼，
+            // 工具列都能跟書本內容清楚分開，不會糊在一起。往上投影（工具
+            // 列貼在畫面下緣），加一條細細的頂邊緣線加強邊界感。深淺兩套
+            // 陰影變數本身已經對稱設計過（深色用淺色調陰影、淺色用深色
+            // 調陰影），這裡直接沿用，不用另外處理。
+            '  box-shadow: 0 -2px 10px var(--cwfm-shadow-soft), 0 -1px 0 var(--cwfm-shadow-ring);',
             '}',
             // [cwfm] 自動隱藏：滑動到邊緣外（不是 display:none，維持
             // transform 位移，這樣才能做滑入/滑出動畫）。上/下工具列各自
@@ -434,6 +442,9 @@
             '  color: var(--cwfm-text); font-family: sans-serif;',
             '  z-index: 999999; box-sizing: border-box;',
             '  transition: transform 0.3s ease;',
+            // [cwfm] 跟下方工具列同一套邏輯，方向對稱：往下投影（貼在
+            // 畫面上緣），加一條細細的底邊緣線。
+            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 1px 0 var(--cwfm-shadow-ring);',
             '}',
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
             '.cwfm-toolbar-top button {',
