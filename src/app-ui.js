@@ -335,6 +335,39 @@
     function injectStyles() {
         const style = document.createElement('style');
         style.textContent = [
+            // ============================================================
+            // [cwfm] 深/淺兩套配色，用 CSS 變數統一管理，跟隨系統的
+            // prefers-color-scheme 自動切換（跟這份腳本裡「配色」功能
+            // 判斷 auto 模式的做法一致，不用另外做手動切換開關）。色票
+            // 查證自 Cal.com 官方設計規格（vibeui.top/design-md/cal），
+            // 深色版直接沿用官方 dark 色票；淺色版沒有公開色票的部分
+            // （邊界、陰影），改用它「用陰影模擬邊界」這個手法本身的
+            // 邏輯（淺色底用深色調的半透明陰影，跟深色版用淺色調半透明
+            // 陰影的邏輯對稱）自己推算，不是憑空編的顏色。範圍先只套用
+            // 在設定面板（.cwfm-panel）本身，工具列維持原本固定的深色，
+            // 工具列疊在書本內容上、書本內容本身已經有獨立的配色系統，
+            // 不需要跟著系統深淺色切換。
+            // ============================================================
+            '.cwfm-panel {',
+            '  --cwfm-bg: #0a0a0a; --cwfm-surface: #141414;',
+            '  --cwfm-surface-elevated: #1c1c1c; --cwfm-border: #2a2a2a;',
+            '  --cwfm-border-light: #333333; --cwfm-text: #e8e8e8;',
+            '  --cwfm-text-secondary: #898989; --cwfm-text-muted: #555555;',
+            '  --cwfm-shadow-ring: rgba(255,255,255,0.06);',
+            '  --cwfm-shadow-soft: rgba(0,0,0,0.3); --cwfm-accent: #0099ff;',
+            '  --cwfm-accent-bg: rgba(0,153,255,0.16);',
+            '}',
+            '@media (prefers-color-scheme: light) {',
+            '  .cwfm-panel {',
+            '    --cwfm-bg: #ffffff; --cwfm-surface: #ffffff;',
+            '    --cwfm-surface-elevated: #f5f5f5; --cwfm-border: rgba(0,0,0,0.12);',
+            '    --cwfm-border-light: rgba(0,0,0,0.08); --cwfm-text: #242424;',
+            '    --cwfm-text-secondary: #898989; --cwfm-text-muted: #b0b0b0;',
+            '    --cwfm-shadow-ring: rgba(0,0,0,0.08);',
+            '    --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
+            '    --cwfm-accent-bg: rgba(0,153,255,0.12);',
+            '  }',
+            '}',
             '.cwfm-toolbar {',
             '  position: fixed; left: 0; right: 0; bottom: 0;',
             '  display: flex; align-items: center; gap: 10px;',
@@ -414,7 +447,7 @@
             'input[type="number"] { -moz-appearance: textfield !important; }',
             '.cwfm-panel {',
             '  position: fixed; top: 0; bottom: 0; width: 320px; max-width: 85vw;',
-            '  background: #1e1e1e; color: #eee; z-index: 1000000;',
+            '  background: var(--cwfm-bg); color: var(--cwfm-text); z-index: 1000000;',
             '  box-shadow: 0 0 24px rgba(0,0,0,0.6);',
             '  overflow-y: auto; padding: 18px; box-sizing: border-box;',
             '  font-family: sans-serif; font-size: 13px;',
@@ -424,12 +457,35 @@
             // 不會被下面欄位區塊的多欄排版影響。
             '.cwfm-panel-header {',
             '  display: flex; align-items: center; justify-content: space-between;',
-            '  margin-bottom: 12px; padding-bottom: 18px; border-bottom: 1px solid #444;',
+            '  margin-bottom: 12px; padding-bottom: 18px;',
+            '  border-bottom: 1px solid var(--cwfm-border);',
             '}',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
+            '  color: var(--cwfm-text);',
             '}',
             '.cwfm-fields-wrap { column-gap: 24px; }',
+            // [cwfm] 分組卡片：把性質相同的欄位包在一起，用「陰影模擬
+            // 邊界」取代一般的實線邊框——參考 Cal.com 設計規格
+            // （vibeui.top/design-md/cal）裡這個做法：一層極細的環狀陰影
+            // 當邊界、一層柔和擴散陰影營造立體感，比單純畫一條線更精緻，
+            // 這次深淺兩套配色都用同一套陰影邏輯，只是深淺色調對調
+            // （深色底用淺色調陰影、淺色底用深色調陰影）。break-inside:
+            // avoid 讓整組盡量不被欄與欄之間的斷點切開；組跟組之間的
+            // 間距（20px）明顯大於組內欄位間距（4px），對應 Cal.com
+            // 間距階梯裡「一般間距／大區塊間距」的跳躍邏輯，只是數值
+            // 等比例縮小到適合這種窄側邊面板的尺寸。
+            '.cwfm-group {',
+            '  break-inside: avoid; margin-bottom: 20px; padding: 14px;',
+            '  border-radius: 10px; background: var(--cwfm-surface);',
+            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft);',
+            '}',
+            '.cwfm-group:last-child { margin-bottom: 0; }',
+            '.cwfm-group-title {',
+            '  margin: 0 0 10px; font-size: 11px; font-weight: 600;',
+            '  letter-spacing: 0.04em; text-transform: uppercase;',
+            '  color: var(--cwfm-text-secondary);',
+            '}',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
@@ -442,8 +498,8 @@
             '.cwfm-keylist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }',
             '.cwfm-keychip {',
             '  display: inline-flex; align-items: center; gap: 4px;',
-            '  background: #333; border: 1px solid #555; border-radius: 4px;',
-            '  padding: 3px 4px 3px 8px; font-size: 12px; color: #eee;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); border-radius: 4px;',
+            '  padding: 3px 4px 3px 8px; font-size: 12px; color: var(--cwfm-text);',
             '}',
             // [cwfm] 上一輪誤以為是 Firefox 特有的焦點外框行為，後來查
             // 出真正原因是選擇器優先權（見 .cwfm-panel .cwfm-keychip-edit
@@ -451,23 +507,23 @@
             // 但留著當一層額外的保險，無害。
             '.cwfm-keychip:focus-within { outline: none; box-shadow: none; }',
             '.cwfm-keychip-remove {',
-            '  background: none; border: none; color: #999; cursor: pointer;',
+            '  background: none; border: none; color: var(--cwfm-text-secondary); cursor: pointer;',
             '  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 3px;',
             '}',
-            '.cwfm-keychip-remove:hover { color: #fff; background: #4a4a4a; }',
+            '.cwfm-keychip-remove:hover { color: #fff; background: var(--cwfm-border); }',
             '.cwfm-keychip-add {',
-            '  background: none; border: 1px dashed #666; border-radius: 4px;',
-            '  color: #aaa; font-size: 12px; padding: 3px 8px; cursor: pointer;',
+            '  background: none; border: 1px dashed var(--cwfm-border-light); border-radius: 4px;',
+            '  color: var(--cwfm-text-secondary); font-size: 12px; padding: 3px 8px; cursor: pointer;',
             '}',
-            '.cwfm-keychip-add:hover { color: #fff; border-color: #999; }',
-            '.cwfm-keychip-add:disabled { color: #4ea1ff; border-color: #4ea1ff; cursor: default; }',
+            '.cwfm-keychip-add:hover { color: #fff; border-color: var(--cwfm-text-secondary); }',
+            '.cwfm-keychip-add:disabled { color: var(--cwfm-accent); border-color: var(--cwfm-accent); cursor: default; }',
             '.cwfm-keylist-hint { color: #e0a030; font-size: 12px; margin-top: 4px; }',
             // [cwfm] 「藍色」現在統一只代表「目前選中」（見下面
             // .cwfm-keychip-selected），不再另外給上傳字型專屬的藍色
             // 底色——兩種意思疊在同一個顏色上會讓使用者分不清楚「這個
             // 藍色是選中了、還是這是上傳的」。是不是上傳字型，純粹靠
             // 下面的徽章圖示本身判斷。
-            '.cwfm-keychip-selected { border-color: #4ea1ff; background: #22364a; color: #fff; }',
+            '.cwfm-keychip-selected { border-color: var(--cwfm-accent); background: var(--cwfm-accent-bg); color: #fff; }',
             // [cwfm] 「配色」是固定五選一的內建選項，不是使用者自己新增/
             // 命名/刪除的清單，用比較單純的標籤樣式（沒有叉叉、沒有改名
             // 圖示），但要明確標示「目前選的是哪一個」。
@@ -478,7 +534,7 @@
             '.cwfm-keychip-icon {',
             '  display: inline-flex; align-items: center; justify-content: center;',
             '  width: 14px; height: 14px; border-radius: 50%;',
-            '  background: rgba(78,161,255,0.25); color: #4ea1ff;',
+            '  background: rgba(78,161,255,0.25); color: var(--cwfm-accent);',
             '  font-size: 9px; line-height: 1; margin-right: 2px; flex-shrink: 0;',
             '}',
             '.cwfm-keychip-text { cursor: pointer; }',
@@ -487,20 +543,20 @@
             // 位置排在文字後面、叉叉前面（業界常見清單項目「編輯」「刪除」
             // 排在一起、靠最後面的慣例，操作時滑鼠移動距離也比較短）。
             '.cwfm-keychip-rename {',
-            '  background: none; border: none; color: #999; cursor: pointer;',
+            '  background: none; border: none; color: var(--cwfm-text-secondary); cursor: pointer;',
             '  font-size: 11px; line-height: 1; padding: 2px 3px; border-radius: 3px;',
             '  opacity: 0; transition: opacity 0.15s ease;',
             '}',
             '.cwfm-keychip:hover .cwfm-keychip-rename { opacity: 1; }',
-            '.cwfm-keychip-rename:hover { color: #fff; background: #4a4a4a; }',
+            '.cwfm-keychip-rename:hover { color: #fff; background: var(--cwfm-border); }',
             '.cwfm-panel .cwfm-keychip-edit[type="text"] {',
             // [cwfm] 這次真正的原因：.cwfm-panel input[type="text"] 這條
             // 套用在整個面板所有文字輸入框的通用規則，優先權比原本這裡
             // 寫的規則高，把想清掉的邊框/背景蓋回去了——不是瀏覽器自己
             // 的行為，選擇器故意寫得更具體，確保這裡的重置贏過那條通用
             // 規則。
-            '  background: none; border: none; border-bottom: 1px solid #4ea1ff;',
-            '  border-radius: 0; color: #eee; font-size: 12px; padding: 1px 2px;',
+            '  background: none; border: none; border-bottom: 1px solid var(--cwfm-accent);',
+            '  border-radius: 0; color: var(--cwfm-text); font-size: 12px; padding: 1px 2px;',
             '  width: 90px; outline: none; box-shadow: none;',
             '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
             '}',
@@ -510,32 +566,32 @@
             '  z-index: 1000000; display: flex; align-items: center; justify-content: center;',
             '}',
             '.cwfm-confirm-box {',
-            '  background: #262626; border: 1px solid #555; border-radius: 8px;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); border-radius: 8px;',
             '  padding: 20px; max-width: 360px; box-shadow: 0 8px 28px rgba(0,0,0,0.5);',
             '  font-family: sans-serif;',
             '}',
-            '.cwfm-confirm-box h4 { margin: 0 0 10px; color: #eee; font-size: 15px; }',
+            '.cwfm-confirm-box h4 { margin: 0 0 10px; color: var(--cwfm-text); font-size: 15px; }',
             '.cwfm-prompt-input {',
-            '  width: 100%; box-sizing: border-box; background: #1a1a1a;',
-            '  border: 1px solid #666; border-radius: 4px; color: #eee;',
+            '  width: 100%; box-sizing: border-box; background: var(--cwfm-surface);',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 4px; color: var(--cwfm-text);',
             '  font-size: 13px; padding: 6px 8px; margin-bottom: 16px;',
             '}',
-            '.cwfm-prompt-input:focus { border-color: #4ea1ff; outline: none; }',
+            '.cwfm-prompt-input:focus { border-color: var(--cwfm-accent); outline: none; }',
             // [cwfm] 字型輸入框的膠囊造型：輸入區 + 細分隔線 + 一顆代表
             // Enter 的小按鈕，按下去效果等同按鍵盤 Enter，讓「打完要確認」
             // 這件事看得見，不用使用者自己猜。
             '.cwfm-pill-input {',
-            '  display: flex; align-items: stretch; background: #1a1a1a;',
-            '  border: 1px solid #555; border-radius: 4px; overflow: hidden;',
+            '  display: flex; align-items: stretch; background: var(--cwfm-surface);',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 4px; overflow: hidden;',
             '}',
-            '.cwfm-pill-input:focus-within { border-color: #4ea1ff; }',
+            '.cwfm-pill-input:focus-within { border-color: var(--cwfm-accent); }',
             '.cwfm-panel .cwfm-pill-input input[type="text"] {',
             // [cwfm] 選擇器故意寫得比 .cwfm-panel input[type="text"](下面
             // 那條套用在整個面板所有文字輸入框的通用規則)優先權更高——
             // 上面那條規則權重比這裡原本寫的規則高，會把這裡想清掉的
             // 邊框/背景蓋回去，這才是「嵌套」真正的原因，不是瀏覽器
             // 自己的行為。
-            '  flex: 1; min-width: 0; background: none; border: none; color: #eee;',
+            '  flex: 1; min-width: 0; background: none; border: none; color: var(--cwfm-text);',
             '  font-size: 13px; padding: 5px 8px; outline: none; box-shadow: none;',
             '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
             '  border-radius: 0;',
@@ -548,59 +604,59 @@
             // 但真正的根因是背景色不同：只要按鈕跟輸入區顏色不一樣，
             // 不管圓角修得多準，視覺上都會像兩塊拼起來的矩形，圓角反而
             // 是次要問題。這裡改成跟輸入區同一個背景色。
-            '  flex: 0 0 auto; background: none; border: none; border-left: 1px solid #555;',
-            '  border-radius: 0 4px 4px 0; margin: 0; color: #999; padding: 0 10px; cursor: pointer;',
+            '  flex: 0 0 auto; background: none; border: none; border-left: 1px solid var(--cwfm-border-light);',
+            '  border-radius: 0 4px 4px 0; margin: 0; color: var(--cwfm-text-secondary); padding: 0 10px; cursor: pointer;',
             '  display: flex; align-items: center; justify-content: center;',
             '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
             '  outline: none; box-shadow: none;',
             '}',
             '.cwfm-pill-enter svg { width: 14px; height: 14px; display: block; pointer-events: none; }',
-            '.cwfm-pill-enter:hover { color: #fff; background: #333; }',
-            '.cwfm-confirm-box p { margin: 0 0 16px; color: #ccc; font-size: 13px; line-height: 1.6; }',
+            '.cwfm-pill-enter:hover { color: #fff; background: var(--cwfm-surface-elevated); }',
+            '.cwfm-confirm-box p { margin: 0 0 16px; color: var(--cwfm-text-secondary); font-size: 13px; line-height: 1.6; }',
             '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
             '.cwfm-confirm-cancel, .cwfm-confirm-ok {',
             '  border-radius: 4px; padding: 6px 14px; font-size: 13px; cursor: pointer;',
             '}',
-            '.cwfm-confirm-cancel { background: none; border: 1px solid #666; color: #ccc; }',
-            '.cwfm-confirm-cancel:hover { border-color: #999; color: #fff; }',
+            '.cwfm-confirm-cancel { background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text-secondary); }',
+            '.cwfm-confirm-cancel:hover { border-color: var(--cwfm-text-secondary); color: #fff; }',
             '.cwfm-confirm-ok { background: #b03030; border: 1px solid #d04040; color: #fff; }',
             '.cwfm-confirm-ok:hover { background: #c03838; }',
             '.cwfm-panel[data-side="left"] { left: 0; transform: translateX(-105%); }',
             '.cwfm-panel[data-side="left"].cwfm-open { transform: translateX(0); }',
             '.cwfm-panel[data-side="right"] { right: 0; transform: translateX(105%); }',
             '.cwfm-panel[data-side="right"].cwfm-open { transform: translateX(0); }',
-            '.cwfm-panel label { display: block; margin: 14px 0 4px; font-size: 12px; color: #aaa; }',
+            '.cwfm-panel label { display: block; margin: 14px 0 4px; font-size: 12px; color: var(--cwfm-text-secondary); }',
             '.cwfm-panel input[type="text"], .cwfm-panel input[type="number"] {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
-            '  background: #333; border: 1px solid #555; color: #eee; border-radius: 4px;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 13px;',
             '}',
             '.cwfm-panel input[type="range"] { width: 100%; }',
-            '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 12px; }',
+            '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; }',
             '.cwfm-value-input {',
             '  width: 4em; box-sizing: border-box; padding: 2px 4px;',
-            '  background: #333; border: 1px solid #555; color: #eee; border-radius: 4px;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 12px; text-align: right;',
             '}',
             '.cwfm-panel .cwfm-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
             '.cwfm-panel select {',
             '  width: 100%; box-sizing: border-box; padding: 5px 8px;',
-            '  background: #333; border: 1px solid #555; color: #eee; border-radius: 4px;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 13px;',
             '}',
             '.cwfm-close-btn {',
             '  flex: 0 0 auto; background: none;',
-            '  border: 1px solid #666; border-radius: 50%;',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 50%;',
             '  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;',
-            '  color: #aaa; font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
+            '  color: var(--cwfm-text-secondary); font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
             '}',
-            '.cwfm-close-btn:hover { color: #fff; border-color: #999; }',
+            '.cwfm-close-btn:hover { color: #fff; border-color: var(--cwfm-text-secondary); }',
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
             '  width: 48px; height: 28px; border-radius: 4px;',
-            '  border: 1px solid #666; cursor: pointer;',
+            '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
             // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
             // 改名為 cwfm-cp。原版是亮色主題、另外用 html[dark] 屬性選擇器
@@ -613,7 +669,7 @@
             '}',
             '.cwfm-cp {',
             '  width: 233px; border-radius: 11px; overflow: hidden;',
-            '  background: #262626; border: 1px solid rgba(255,255,255,0.13);',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid rgba(255,255,255,0.13);',
             '  box-shadow: 0 8px 28px rgba(0,0,0,0.5); font-family: sans-serif;',
             '}',
             '.cwfm-cp .cp-grad-wrap { padding: 9px 9px 0; }',
@@ -647,14 +703,14 @@
             '.cwfm-cp .cp-tab {',
             '  flex:1; padding:3px 0; border-radius:5px; border:1px solid transparent;',
             '  font-size:10px; font-weight:600; cursor:pointer; background:transparent;',
-            '  color:#888; letter-spacing:0.03em;',
+            '  color:var(--cwfm-text-secondary); letter-spacing:0.03em;',
             '}',
             '.cwfm-cp .cp-tab.active { background:rgba(255,255,255,0.1); color:#eee; border-color:rgba(255,255,255,0.2); }',
             '.cwfm-cp .cp-summary-row { padding:0 13px 7px; }',
             '.cwfm-cp .cp-summary {',
             '  width:100%; box-sizing:border-box; padding:5px 8px; font-size:11px;',
             '  border:1px solid rgba(255,255,255,0.15); border-radius:6px; outline:none;',
-            '  font-family:"Courier New",monospace; background:#333; color:#eee;',
+            '  font-family:"Courier New",monospace; background:var(--cwfm-surface-elevated); color:var(--cwfm-text);',
             '  text-align:center;',
             '}',
             '.cwfm-cp .cp-summary:focus { border-color:rgba(200,60,60,0.5); background:#3a3a3a; }',
@@ -672,13 +728,13 @@
             '.cwfm-cp .cp-stepper.off { opacity:0.38; pointer-events:none; }',
             '.cwfm-cp .cp-s-btn {',
             '  width:22px; height:100%; border:none; background:transparent;',
-            '  cursor:pointer; font-size:13px; color:#aaa; flex-shrink:0;',
+            '  cursor:pointer; font-size:13px; color:var(--cwfm-text-secondary); flex-shrink:0;',
             '  display:flex; align-items:center; justify-content:center; line-height:1;',
             '}',
             '.cwfm-cp .cp-s-btn:hover { background:rgba(255,255,255,0.1); }',
             '.cwfm-cp .cp-s-val {',
             '  flex:1; border:none; outline:none; text-align:center; font-size:11px;',
-            '  background:transparent; color:#eee; width:0; min-width:0;',
+            '  background:transparent; color:var(--cwfm-text); width:0; min-width:0;',
             '  -moz-appearance:textfield;',
             '}',
             '.cwfm-cp .cp-s-val::-webkit-inner-spin-button,',
@@ -694,10 +750,10 @@
             '.cwfm-toc-view { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view ol { list-style: none; margin: 0; padding: 0; }',
             '.cwfm-toc-view [role="treeitem"] {',
-            '  display: flex; align-items: center; padding: 5px 0; color: #ccc; text-decoration: none; cursor: pointer;',
+            '  display: flex; align-items: center; padding: 5px 0; color: var(--cwfm-text-secondary); text-decoration: none; cursor: pointer;',
             '}',
             '.cwfm-toc-view [role="treeitem"]:hover { color: #fff; }',
-            '.cwfm-toc-view [role="treeitem"][aria-current="page"] { color: #4ea1ff; font-weight: bold; }',
+            '.cwfm-toc-view [role="treeitem"][aria-current="page"] { color: var(--cwfm-accent); font-weight: bold; }',
             '.cwfm-toc-view [aria-expanded="false"] ~ ol { display: none; }',
             // [cwfm] 目錄展開三角形：foliate-js ui/tree.js 產生的 <svg><polygon>
             // 沒有設定 fill，SVG 規格預設黑色，在深色背景幾乎看不見；改成跟
@@ -711,13 +767,13 @@
             // 原本朝下的樣子，不用轉。原本寫反了（在 expanded 時轉
             // +90 度，變成收合朝下、展開朝左，跟一般慣例相反），這裡修正。
             '.cwfm-toc-view [role="treeitem"] svg {',
-            '  fill: #ccc; margin-right: 6px; flex-shrink: 0;',
+            '  fill: var(--cwfm-text-secondary); margin-right: 6px; flex-shrink: 0;',
             '  transition: fill 0.15s ease, transform 0.15s ease;',
             '  transform: rotate(-90deg);',
             '}',
             '.cwfm-toc-view [role="treeitem"]:hover svg { fill: #fff; }',
             '.cwfm-toc-view [role="treeitem"][aria-expanded="true"] > svg { transform: rotate(0deg); }',
-            '.cwfm-empty-hint { color: #888; font-size: 12px; }',
+            '.cwfm-empty-hint { color: var(--cwfm-text-secondary); font-size: 12px; }',
             // [cwfm] 面板變暗遮罩：原本會把畫面調暗，但這個遮罩本身沒有接
             // 任何點擊關閉的事件（純視覺效果），使用者調整顏色設定時看不清
             // 預覽，拿掉變暗，遮罩只留著（openPanel/closeAllPanels 邏輯不動）。
@@ -2308,19 +2364,32 @@
         const fieldsWrap = document.createElement('div');
         fieldsWrap.className = 'cwfm-fields-wrap';
         panel.appendChild(fieldsWrap);
-        const panelTarget = fieldsWrap; // add*Field() 系列函式改成往這裡塞
+        // [cwfm] panelTarget 改成可以依組別切換——beginGroup() 建立一個
+        // 新的分組卡片（見上面 .cwfm-group CSS），並把 panelTarget 重新
+        // 指向這個卡片內部的容器，接下來呼叫的 addXxxField() 就會塞進
+        // 這一組，不用每個函式各自多傳一個「要塞去哪裡」的參數。
+        let panelTarget = fieldsWrap; // add*Field() 系列函式改成往這裡塞
+        function beginGroup(title) {
+            const group = document.createElement('div');
+            group.className = 'cwfm-group';
+            const heading = document.createElement('div');
+            heading.className = 'cwfm-group-title';
+            heading.textContent = title;
+            group.appendChild(heading);
+            fieldsWrap.appendChild(group);
+            panelTarget = group;
+        }
 
         // [cwfm] 主題功能，先做最陽春堪用的介面（下拉選單 + 三個按鈕），
         // 核心機制（存/套用/刪除）確認邏輯沒問題之後，再回頭處理介面
         // 分區、群組這類排版問題——跟使用者討論過，故意先分開，避免
         // 機制邏輯的問題跟排版調整的問題混在一起，難以分辨是哪邊出錯。
+        beginGroup('\u4f48\u666f\u4e3b\u984c');
         (function buildThemeUI() {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
-            const label = document.createElement('label');
-            label.textContent = '\u4f48\u666f\u4e3b\u984c';
-            field.appendChild(label);
-
+            // [cwfm] 這裡原本自己有一個 <label>「佈景主題」，現在改成
+            // beginGroup() 建立的組標題已經寫了同樣的字，拿掉避免重複。
             const wrap = document.createElement('div');
             wrap.className = 'cwfm-keylist';
             field.appendChild(wrap);
@@ -2595,12 +2664,12 @@
         // 只做「點選套用 + 標示目前選中哪一個」。colorSchemeState 提供
         // 一個 setValue()，讓下面 addColorField 的 change 事件（使用者
         // 自己調整顏色時，要自動切成「自訂」這個選項）可以呼叫。
+        beginGroup('\u914d\u8272');
         const colorSchemeState = (function buildColorSchemeUI() {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
-            const label = document.createElement('label');
-            label.textContent = '\u914D\u8272';
-            field.appendChild(label);
+            // [cwfm] 同上，這裡原本的 <label>「配色」拿掉，避免跟組標題
+            // 重複。
             const wrap = document.createElement('div');
             wrap.className = 'cwfm-keylist';
             field.appendChild(wrap);
@@ -2711,12 +2780,11 @@
         // 不再用一個常駐的文字輸入框讓使用者打字——跟其他標籤清單
         // （佈景主題、配色）用同一套介面語言：點「+」跳出對話框輸入
         // 名稱，輸入完直接變成一個新標籤並套用，不用另外留一個輸入框。
+        beginGroup('\u5b57\u9ad4');
         (function buildFontChipsUI() {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
-            const label = document.createElement('label');
-            label.textContent = '\u5B57\u9AD4';
-            field.appendChild(label);
+            // [cwfm] 同上，拿掉重複的 <label>「字體」。
             const wrap = document.createElement('div');
             wrap.className = 'cwfm-keylist';
             field.appendChild(wrap);
@@ -2852,6 +2920,7 @@
 
             render();
         })();
+        beginGroup('\u6587\u5b57\u6392\u7248');
         addRangeField('\u5B57\u7D1A', 'fontSize', 70, 200, 5, '%');
         addRangeField('\u5B57\u8DDD', 'letterSpacing', -0.05, 0.3, 0.01, 'em');
         addRangeField('\u884C\u8DDD', 'lineSpacing', 1, 2.5, 0.1, '');
@@ -2864,6 +2933,7 @@
         // 但字型的詞彙替換功能也會一併失效。預設不關閉（保留詞彙替換），
         // 讓使用者自己決定要不要犧牲間距換取替換失效。
         addCheckboxField('\u95dc\u9589\u9023\u5b57\uff08\u53ef\u80fd\u4f7f\u8a5e\u5f59\u66ff\u63db\u5b57\u578b\u5931\u6548\uff09', 'disableLigatures');
+        beginGroup('\u7248\u9762\u914d\u7f6e');
         addSelectField('\u7FFB\u9801\u6A21\u5F0F', 'flow', [
             ['paginated', '\u5206\u9801'],
             ['scrolled', '\u6372\u52D5'],
@@ -2883,6 +2953,12 @@
         addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
         addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
+
+        beginGroup('\u7ffb\u9801\u5feb\u901f\u9375');
+        addKeyListField('\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.prev, settings.pagingKeys.next);
+        addKeyListField('\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.next, settings.pagingKeys.prev);
+
+        beginGroup('\u95b1\u8b80\u884c\u70ba');
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
         // ——現在已經穩定到不會弄壞整個介面，改用一般的 addCheckboxField()，
         // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
@@ -2894,10 +2970,8 @@
         // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
         addCheckboxField('\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09', 'localAutoRemember');
         addCheckboxField('\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09', 'autoSyncEnabled');
-        addCheckboxField('\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09', 'autoHideToolbar');
-        addKeyListField('\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.prev, settings.pagingKeys.next);
-        addKeyListField('\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.next, settings.pagingKeys.prev);
         addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
+        addCheckboxField('\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09', 'autoHideToolbar');
 
         document.body.appendChild(panel);
 
