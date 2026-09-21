@@ -61,7 +61,15 @@
             // 背景帶透明度（rgba(24,24,24,0.92)，不是純黑），只要跟深色
             // 內容之間有一絲縫隙（次像素誤差），底下這層白色就會透出來，
             // 形成那條線。改成深色，縫隙透出來的也是深色，不會再看到白線。
-            '#main { background: #1a1a1a !important; }',
+            //
+            // [cwfm] #main 另外還帶了一圈原本(Calibre-Web 自己)就有的
+            // 向內凹陷陰影（box-shadow: ... inset），我們從沒動過——這是
+            // 使用者截圖回報「工具列自動隱藏後留下圓角灰色殘影」真正的
+            // 根因：平常被我們近乎不透明的工具列蓋住看不到，工具列滑走
+            // 之後第一次露出來。這裡一併明確歸零（動態版本在
+            // applySettings() 裡，跟背景色一起用行內樣式更新；這條
+            // 静態規則只當作還沒執行到動態版本之前的預設值）。
+            '#main { background: #1a1a1a !important; box-shadow: none !important; }',
         ].join('\n');
         document.head.appendChild(style);
 
@@ -710,14 +718,24 @@
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
             '}',
             '.cwfm-panel input[type="range"]::-webkit-slider-thumb {',
-            '  -webkit-appearance: none; margin-top: -5px;',
-            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-accent); border: none; cursor: pointer;',
+            // [cwfm] 加邊框+陰影，不是只有純色塊——查了業界常見做法，光
+            // 一個純色圓點太單薄。邊框顏色用跟面板本身背景一樣的顏色
+            // （不是隨便挑一個深或淺的顏色），效果是圓點跟軌道之間會有
+            // 一圈「鏤空」的分隔感，深淺兩種模式都適用，不用另外寫兩套
+            // 邊框顏色。陰影用現有的柔和陰影變數，讓圓點有一點浮起來的
+            // 立體感。
+            '  -webkit-appearance: none; margin-top: -6px;',
+            '  width: 14px; height: 14px; border-radius: 50%; background: var(--cwfm-accent);',
+            '  border: 2px solid var(--cwfm-surface); box-shadow: 0 1px 3px var(--cwfm-shadow-soft);',
+            '  cursor: pointer;',
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-track {',
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-thumb {',
-            '  width: 13px; height: 13px; border-radius: 50%; background: var(--cwfm-accent); border: none; cursor: pointer;',
+            '  width: 14px; height: 14px; border-radius: 50%; background: var(--cwfm-accent);',
+            '  border: 2px solid var(--cwfm-surface); box-shadow: 0 1px 3px var(--cwfm-shadow-soft);',
+            '  cursor: pointer;',
             '}',
             '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; }',
             '.cwfm-value-input {',
@@ -764,18 +782,36 @@
             '  position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer;',
             '}',
             '.cwfm-switch-track {',
+            // [cwfm] 軌道加一圈細邊框，讓邊界更明確，不是只靠底色跟旁邊
+            // 背景的對比撐場面。
             '  position: absolute; inset: 0; background: var(--cwfm-border-light);',
-            '  border-radius: 10px; transition: background 0.15s ease;',
+            '  border: 1px solid var(--cwfm-border); border-radius: 10px;',
+            '  transition: background 0.15s ease, border-color 0.15s ease;',
+            '  box-sizing: border-box;',
             '}',
             '.cwfm-switch-track::before {',
-            '  content: ""; position: absolute; top: 2px; left: 2px;',
-            '  width: 16px; height: 16px; border-radius: 50%;',
+            // [cwfm] 滑塊加邊框+陰影——邊框顏色用跟面板背景一樣的顏色
+            // （呼應上面滑桿圓點同一套手法），開啟狀態下滑塊本身是強調色
+            // 實心圓，這圈邊框讓它跟軌道之間有一圈鏤空分隔感，不是貼在
+            // 軌道上的一片色紙；陰影讓滑塊有浮起來的立體感。深淺兩種
+            // 模式都適用同一套變數，不用另外寫兩套顏色。
+            '  content: ""; position: absolute; top: 1px; left: 1px;',
+            '  width: 14px; height: 14px; border-radius: 50%;',
             '  background: var(--cwfm-text-secondary);',
-            '  transition: transform 0.15s ease, background 0.15s ease;',
+            '  border: 2px solid var(--cwfm-surface);',
+            '  box-shadow: 0 1px 2px var(--cwfm-shadow-soft);',
+            '  box-sizing: border-box;',
+            '  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;',
             '}',
-            '.cwfm-switch input:checked + .cwfm-switch-track { background: var(--cwfm-accent-bg); }',
+            '.cwfm-switch input:checked + .cwfm-switch-track {',
+            '  background: var(--cwfm-accent-bg); border-color: var(--cwfm-accent);',
+            '}',
             '.cwfm-switch input:checked + .cwfm-switch-track::before {',
-            '  transform: translateX(14px); background: var(--cwfm-accent);',
+            // [cwfm] 滑動距離重新算過：軌道 34px，滑塊改成 14px(含邊框)、
+            // 起始位置 1px，34 - 1(左邊距) - 14(滑塊寬) - 1(右邊距) = 18，
+            // 不是原本 16px 滑塊時代的 14px，尺寸改了忘記同步算，會導致
+            // 開啟狀態下左右邊距不對稱。
+            '  transform: translateX(18px); background: var(--cwfm-accent);',
             '}',
             '.cwfm-switch input:focus-visible + .cwfm-switch-track {',
             '  outline: 2px solid var(--cwfm-accent); outline-offset: 2px;',
@@ -2126,7 +2162,15 @@
         try {
             const theme = resolveThemeColors(settings);
             const main = document.querySelector('#main');
-            if (main && theme) main.style.setProperty('background', theme.background, 'important');
+            if (main && theme) {
+                main.style.setProperty('background', theme.background, 'important');
+                // [cwfm] #main 原本(Calibre-Web 自己的樣式)帶了一圈向內
+                // 凹陷的陰影(box-shadow: ... inset)，我們從沒動過——查了
+                // 才發現，工具列自動隱藏之後，這圈原本一直存在、但被
+                // 我們近乎不透明的工具列蓋住的陰影，第一次露出來，就是
+                // 使用者截圖回報的那個灰色殘影。這裡一併蓋掉。
+                main.style.setProperty('box-shadow', 'none', 'important');
+            }
         } catch (e) { console.error('[cwfm:settings] 套用 #main 背景色失敗', e); }
         window.__cwfm.settings = settings;
     }
