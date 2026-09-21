@@ -665,13 +665,27 @@
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 13px;',
             '}',
-            '.cwfm-panel input[type="range"] { width: 100%; }',
+            // [cwfm] 原本只有寬度設定，其餘完全是瀏覽器原生外觀——這正是
+            // 使用者回報「圓點顏色太深、不協調」的根因：原生外觀不會跟著
+            // 我們的深淺色配色變數走。改用 accent-color 這個 CSS 屬性，
+            // 專門用來幫原生表單控制項（range/checkbox/radio）重新著色，
+            // 不用整個重寫滑桿外觀——這樣原本瀏覽器原生「拖到哪、顏色就
+            // 填到哪」那個軌道填色效果會維持原樣（使用者只針對圓點顏色
+            // 提出問題，沒有抱怨填色效果，不該連沒問題的部分也動掉）。
+            '.cwfm-panel input[type="range"] { width: 100%; accent-color: var(--cwfm-accent); }',
             '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; }',
             '.cwfm-value-input {',
             '  width: 4em; box-sizing: border-box; padding: 2px 4px;',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 12px; text-align: right;',
             '}',
+            // [cwfm] 單位文字（%、px、em、或空字串）長度不一樣，導致輸入框
+            // 本身的右邊界跟著單位文字的寬度跑掉、參差不齊——輸入框自己
+            // 雖然是固定 4em，但它是跟單位文字一起被 .cwfm-row 的
+            // space-between 整包往右推，單位文字越寬，輸入框就被越往左
+            // 擠。給單位文字一個固定寬度，不管實際字數多少都佔用同樣的
+            // 水平空間，輸入框的右邊界才會在所有欄位間保持一致。
+            '.cwfm-value-input-wrap span { display: inline-block; width: 1.6em; text-align: left; }',
             '.cwfm-panel .cwfm-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
             // [cwfm] 核取方塊改用獨立的排列方式，不跟範圍/顏色欄位共用
