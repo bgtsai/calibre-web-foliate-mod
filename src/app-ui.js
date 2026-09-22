@@ -3421,6 +3421,11 @@
                 settings.fontFamily = name;
                 saveSettings(settings);
                 applySettings(settings);
+                // [cwfm] 補上重繪——原本選字型之後沒有重新畫一次標籤
+                // 清單，高亮樣式(.cwfm-keychip-selected)只在 render()
+                // 執行的當下計算，選字型當下沒有觸發，導致高亮不會即時
+                // 跟著換，要重新整理頁面才會更新。
+                render();
             }
 
             function removeHistoryName(name) {
