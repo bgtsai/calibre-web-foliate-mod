@@ -869,8 +869,17 @@
             // 打數值就能改顏色。三欄式：文字說明 → 色塊 → 第三欄再分
             // 上下兩層（上面 HEX/RGB/HSV 三選一分頁、下面對應格式的
             // 輸入框）。已經用獨立預覽頁面跟使用者確認過排版、配色。
-            '.cwfm-panel .cwfm-color-row { align-items: flex-start; }',
-            '.cwfm-color-row label { padding-top: 7px; }',
+            // [cwfm] 文字說明改成獨立一列，底下整組（色塊+分頁+輸入）
+            // 另起一列——考量到將來多語系文字可能更長（尤其英文），
+            // 跟色塊/輸入區擠在同一列容易太擠；改成上下兩層之後，色塊
+            // 跟輸入區這整塊維持不動，只是不用再跟文字擠在同一條水平
+            // 線上。兩組顏色欄位(文字顏色/背景顏色)之間也加大一點垂直
+            // 間距，不要黏在一起。
+            '.cwfm-panel .cwfm-color-row {',
+            '  flex-direction: column; align-items: flex-start; justify-content: flex-start;',
+            '  gap: 6px; margin-bottom: 20px;',
+            '}',
+            '.cwfm-color-row label { padding-top: 0; }',
             '.cwfm-color-control-wrap { display: flex; align-items: flex-start; gap: 8px; }',
             '.cwfm-color-input-group {',
             '  display: flex; flex-direction: column;',
@@ -2680,7 +2689,7 @@
                 const rgb = cwfmHexToRgb(hex);
                 if (rgb) { cpSetFromRgb(rgb); return true; }
             }
-            const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
+            const m3 = raw.match(/^([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)$/);
             if (m3) {
                 if (mode === 'RGB') {
                     cpSetFromRgb({
@@ -3152,7 +3161,7 @@
                 if (mode === 'HEX') {
                     hex = cwfmCssToHex(raw.startsWith('#') ? raw : '#' + raw);
                 } else {
-                    const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
+                    const m3 = raw.match(/^([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)$/);
                     if (m3) {
                         const n1 = parseFloat(m3[1]), n2 = parseFloat(m3[2]), n3 = parseFloat(m3[3]);
                         if (mode === 'RGB') {
