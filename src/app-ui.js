@@ -715,7 +715,9 @@
             '  background: transparent; height: 16px; margin: 8px 0;',
             '}',
             '.cwfm-panel input[type="range"]::-webkit-slider-runnable-track {',
+            // [cwfm] 跟開關軌道同一套陰影模擬邊界手法，統一視覺語言。
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
+            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
             '}',
             '.cwfm-panel input[type="range"]::-webkit-slider-thumb {',
             // [cwfm] 加邊框+陰影，不是只有純色塊——查了業界常見做法，光
@@ -731,6 +733,7 @@
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-track {',
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
+            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-thumb {',
             '  width: 14px; height: 14px; border-radius: 50%; background: var(--cwfm-accent);',
@@ -753,8 +756,11 @@
             '.cwfm-panel .cwfm-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
             // [cwfm] 核取方塊改用獨立的排列方式，不跟範圍/顏色欄位共用
-            // .cwfm-row 的 space-between——核取方塊要跟它的文字標籤靠在
-            // 一起、方塊在前面，不是分別頂在整行的兩端。
+            // .cwfm-row 的排法——查了業界規範，開關這種元件多數規範建議
+            // 「文字在左、開關在右」（螢幕報讀軟體先唸文字再唸到控制項，
+            // 桌面/寬版面的情境也多半這樣排），改成兩端對齊，不用額外
+            // 對齊每一列——每一列寬度本來就一樣，兩端對齊自然會讓所有
+            // 開關的右邊界對齊在同一條線上。
             '.cwfm-panel .cwfm-checkbox-row {',
             // [cwfm] 原本 align-items:center 會把核取方塊對齊「整段文字
             // 的正中央」——文字只有一行時看不出差別，超過一行就會整個
@@ -763,9 +769,9 @@
             // 第一行的基準線），不是我自己猜一個 margin 偏移量——上一輪
             // 用 flex-start + 自己猜的 margin-top: 2px，方向猜錯了，改用
             // 瀏覽器原生對齊機制比較可靠。
-            '  display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px;',
+            '  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 14px 0 4px;',
             '}',
-            '.cwfm-panel .cwfm-checkbox-row label { margin: 0; order: 2; }',
+            '.cwfm-panel .cwfm-checkbox-row label { margin: 0; }',
             // [cwfm] 滑動開關本身：膠囊軌道 + 圓形滑塊，關閉是中性灰色，
             // 開啟是強調色，跟現在整體配色一致。底層真正的 <input> 藏
             // 起來（opacity:0，但還是佔滿整個區域接收點擊/鍵盤操作），
@@ -792,8 +798,12 @@
             // 原因：白色滑塊在深色軌道（不管軌道本身是中性灰還是強調
             // 色）上天生就有穩定的對比，不需要跟著面板深淺模式換色。
             '.cwfm-switch-track {',
+            // [cwfm] 加陰影模擬邊界——跟設定面板分組卡片同一套 Cal.com
+            // 手法，一層極細的環狀陰影當邊界，讓軌道不是純色塊孤立
+            // 存在，跟面板其他元件用同一套視覺語言。
             '  position: absolute; inset: 0; background: var(--cwfm-border-light);',
             '  border-radius: 10px; transition: background 0.15s ease;',
+            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
             '}',
             '.cwfm-switch-track::before {',
             '  content: ""; position: absolute; top: 2px; left: 2px;',
@@ -1518,6 +1528,23 @@
             chip.appendChild(renameBtn);
         }
 
+        if (opts.onUpdate) {
+            // [cwfm] 「覆蓋更新」：用目前畫面上的設定值，直接覆蓋這個既有
+            // 標籤的內容，不用先刪除再新增一個同名的。跟改名圖示共用
+            // 同一套 hover 才淡入顯示的樣式（.cwfm-keychip-rename），
+            // 只是圖示、動作不同。
+            const updateBtn = document.createElement('button');
+            updateBtn.type = 'button';
+            updateBtn.className = 'cwfm-keychip-rename';
+            updateBtn.textContent = '\u21bb';
+            if (opts.updateLabel) updateBtn.setAttribute('aria-label', opts.updateLabel);
+            updateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                opts.onUpdate();
+            });
+            chip.appendChild(updateBtn);
+        }
+
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'cwfm-keychip-remove';
@@ -1552,6 +1579,17 @@
         settings.savedThemes.push({ id, name, values, fontWasUpload });
         saveSettings(settings);
         return id;
+    }
+    // [cwfm] 覆蓋更新既有主題：用目前畫面上的設定值，直接覆蓋這個主題
+    // 原本存的 values，名稱、id 都不變——不用像之前那樣，只能先刪除
+    // 再新增一個同名的。
+    function cwfmUpdateTheme(settings, theme) {
+        const values = {};
+        CWFM_THEME_FIELD_KEYS.forEach((key) => { values[key] = settings[key]; });
+        const fontWasUpload = !!values.fontFamily && settings.uploadedFonts.some((f) => f.name === values.fontFamily);
+        theme.values = values;
+        theme.fontWasUpload = fontWasUpload;
+        saveSettings(settings);
     }
     function cwfmDeleteTheme(settings, id) {
         const idx = settings.savedThemes.findIndex((t) => t.id === id);
@@ -2628,6 +2666,16 @@
                         onSelect: () => cwfmApplyTheme(settings, theme),
                         onRename: (newName) => { theme.name = newName; saveSettings(settings); },
                         onRenameDone: render,
+                        onUpdate: async () => {
+                            const confirmed = await cwfmConfirmDialog(
+                                '\u8986\u84cb\u66f4\u65b0\u4f48\u666f\u4e3b\u984c',
+                                '\u78ba\u5b9a\u8981\u7528\u76ee\u524d\u756b\u9762\u4e0a\u7684\u8a2d\u5b9a\uff0c\u8986\u84cb\u300c' + theme.name + '\u300d\u9019\u500b\u4f48\u666f\u4e3b\u984c\u539f\u672c\u5132\u5b58\u7684\u5167\u5bb9\u55ce\uff1f\u540d\u7a31\u4e0d\u6703\u6539\u8b8a\uff0c\u4f46\u539f\u672c\u5132\u5b58\u7684\u8a2d\u5b9a\u503c\u6703\u88ab\u53d6\u4ee3\u3001\u7121\u6cd5\u5f80\u56de\u3002'
+                            );
+                            if (!confirmed) return;
+                            cwfmUpdateTheme(settings, theme);
+                            await cwfmAlertDialog('\u5df2\u66f4\u65b0', '\u300c' + theme.name + '\u300d\u5df2\u7d93\u66f4\u65b0\u6210\u76ee\u524d\u7684\u8a2d\u5b9a\u3002');
+                        },
+                        updateLabel: '\u7528\u76ee\u524d\u8a2d\u5b9a\u8986\u84cb\u66f4\u65b0\u9019\u500b\u4f48\u666f\u4e3b\u984c',
                         onRemove: async () => {
                             const confirmed = await cwfmConfirmDialog(
                                 '\u522a\u9664\u4f48\u666f\u4e3b\u984c',
