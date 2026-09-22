@@ -865,29 +865,39 @@
             '  width: 32px; height: 32px; border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
-            // [cwfm] 色塊旁邊的數值輸入框——不用點開取色器彈窗，直接在
-            // 這裡打 HEX 就能改顏色。
-            '.cwfm-color-control-wrap { display: flex; align-items: center; gap: 6px; position: relative; }',
-            '.cwfm-color-hex-input {',
-            // [cwfm] 加寬到能放下「#hex / R,G,B / H,S,V」這個縮短版的
-            // placeholder 提示，原本 5.5em 只放得下純 HEX，清空之後看
-            // 不出還支援其他格式。
-            '  width: 11.5em; box-sizing: border-box; padding: 5px 6px;',
-            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light);',
-            '  color: var(--cwfm-text); border-radius: 4px; font-size: 12px;',
-            '  font-family: "Courier New", monospace;',
+            // [cwfm] 色塊旁邊的數值輸入——不用點開取色器彈窗，直接在這裡
+            // 打數值就能改顏色。三欄式：文字說明 → 色塊 → 第三欄再分
+            // 上下兩層（上面 HEX/RGB/HSV 三選一分頁、下面對應格式的
+            // 輸入框）。已經用獨立預覽頁面跟使用者確認過排版、配色。
+            '.cwfm-panel .cwfm-color-row { align-items: flex-start; }',
+            '.cwfm-color-row label { padding-top: 7px; }',
+            '.cwfm-color-control-wrap { display: flex; align-items: flex-start; gap: 8px; }',
+            '.cwfm-color-input-group {',
+            '  display: flex; flex-direction: column;',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 4px; overflow: hidden;',
             '}',
-            '.cwfm-color-hex-input:focus { border-color: var(--cwfm-accent); outline: none; }',
-            '.cwfm-color-hex-input-error { border-color: #e04040 !important; background: rgba(224,64,64,0.15) !important; }',
-            // [cwfm] 格式說明的小提示框——聚焦(focus)才顯示，不是 hover
-            // 才顯示，觸控裝置點一下欄位就看得到，不用依賴滑鼠移過去。
-            '.cwfm-color-hint {',
-            '  position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 10;',
-            '  width: 220px; padding: 8px 10px; font-size: 11px; line-height: 1.6;',
-            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border);',
-            '  border-radius: 6px; color: var(--cwfm-text-secondary);',
-            '  box-shadow: 0 4px 14px var(--cwfm-shadow-soft);',
+            '.cwfm-color-mode-tabs { display: flex; background: var(--cwfm-border-light); }',
+            '.cwfm-color-mode-tab {',
+            '  padding: 4px 8px; font-size: 10px; font-weight: 600; letter-spacing: 0.02em;',
+            '  color: var(--cwfm-text-secondary); background: none; border: none; cursor: pointer;',
+            '  flex: 1; border-right: 1px solid var(--cwfm-border);',
             '}',
+            '.cwfm-color-mode-tab:last-child { border-right: none; }',
+            '.cwfm-color-mode-tab:hover { color: var(--cwfm-text); }',
+            '.cwfm-color-mode-tab.active { background: var(--cwfm-accent-bg); color: var(--cwfm-text); }',
+            '.cwfm-color-value-input {',
+            '  border: none; background: var(--cwfm-surface-elevated); color: var(--cwfm-text);',
+            '  padding: 5px 8px; font-size: 12px; width: 100%; box-sizing: border-box;',
+            '  font-family: "Courier New", monospace; outline: none;',
+            '}',
+            // [cwfm] 聚焦高亮只框輸入框本身，不含上面的分頁選項列——原本
+            // 用 :focus-within 放在最外層，連分頁列都被框住，範圍抓太大。
+            // 用內縮陰影模擬邊框，這樣才能只圈住輸入框、不影響外層
+            // 已經有的邊框。跟面板裡既有的數值輸入框(.cwfm-value-input，
+            // 字級/字距那些滑桿旁邊的數字方塊)統一同一套「方框 + 聚焦
+            // 變強調色」互動模式，不是標籤改名那種底線樣式。',
+            '.cwfm-color-value-input:focus { box-shadow: inset 0 0 0 1.5px var(--cwfm-accent); }',
+            '.cwfm-color-input-error { box-shadow: inset 0 0 0 1.5px #e04040 !important; background: rgba(224,64,64,0.15) !important; }',
             // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
             // 改名為 cwfm-cp。原版是亮色主題、另外用 html[dark] 屬性選擇器
             // 疊一套暗色 override；我們的設定面板本身就是深色的，直接用
@@ -3078,14 +3088,14 @@
             const field = document.createElement('div');
             field.className = 'cwfm-field';
             const row = document.createElement('div');
-            row.className = 'cwfm-row';
+            row.className = 'cwfm-row cwfm-color-row';
             const label = document.createElement('label');
             label.textContent = labelText;
             row.appendChild(label);
 
-            // [cwfm] 色塊 + 數值輸入框放在同一個小容器裡，一起排在這一列
-            // 的右側——原本只有色塊，要輸入精確數值得先點開彈出的取色器，
-            // 使用者要的是色塊旁邊就能直接打字，不用先開啟彈窗。
+            // [cwfm] 三欄式：文字說明 → 色塊 → 第三欄再分上下兩層（上面
+            // HEX/RGB/HSV 三選一分頁、下面對應格式的輸入框）。已經用
+            // 獨立預覽頁面跟使用者確認過排版、配色才寫進來。
             const controlWrap = document.createElement('div');
             controlWrap.className = 'cwfm-color-control-wrap';
 
@@ -3096,64 +3106,74 @@
             swatchBtn.className = 'cwfm-color-swatch-btn';
             swatchBtn.style.background = settings[key];
 
-            const hexInput = document.createElement('input');
-            hexInput.type = 'text';
-            hexInput.className = 'cwfm-color-hex-input';
-            hexInput.value = settings[key];
-            // [cwfm] placeholder 改成同時列出三種格式的簡短提示——原本
-            // 只寫 #RRGGBB 一種，清空之後只看得到這一種格式的提示，容易
-            // 誤會只支援 HEX。輸入框跟著加寬，不然三種格式的提示會被
-            // 截斷看不全。
-            hexInput.placeholder = '#hex / R,G,B / H,S,V';
-            hexInput.spellcheck = false;
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'cwfm-color-input-group';
+            const modeTabs = document.createElement('div');
+            modeTabs.className = 'cwfm-color-mode-tabs';
+            const valueInput = document.createElement('input');
+            valueInput.type = 'text';
+            valueInput.spellcheck = false;
 
-            // [cwfm] 格式說明改用點擊/聚焦才出現的小提示框，不用 title
-            // 屬性——title 只有滑鼠移過去(hover)才會顯示，觸控裝置沒有
-            // hover 這個概念，等於完全看不到提示。改成 focus 才顯示、
-            // blur 就收起來，觸控點一下欄位、鍵盤 Tab 移過去都會觸發。
-            const hintBox = document.createElement('div');
-            hintBox.className = 'cwfm-color-hint';
-            hintBox.textContent = '\u652f\u63f4 HEX\u3001RGB\u3001HSV\uff1a\u4f8b\u5982 #FF8000\u3001255, 128, 0\u3001210, 80, 90';
-            hintBox.hidden = true;
-            hexInput.addEventListener('focus', () => { hintBox.hidden = false; });
-            hexInput.addEventListener('blur', () => { hintBox.hidden = true; });
-            function commitHexInput() {
-                const raw = hexInput.value.trim();
+            // [cwfm] 這個輸入框目前是哪個模式，只存在這個欄位自己的區域
+            // 變數裡，不寫進 settings——這是「使用者現在想用哪種格式打
+            // 字」這個當下的操作狀態，不是需要記住到下次開啟設定面板的
+            // 東西，預設一律從 HEX 開始。
+            let mode = 'HEX';
+
+            function formatForMode(hex) {
+                const rgb = cwfmHexToRgb(hex);
+                if (mode === 'HEX') return hex.toUpperCase();
+                if (mode === 'RGB') return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+                const hsv = cwfmRgbToHsv(rgb.r, rgb.g, rgb.b);
+                return `${Math.round(hsv.h)}, ${Math.round(hsv.s * 100)}, ${Math.round(hsv.v * 100)}`;
+            }
+            function refreshValueInput() { valueInput.value = formatForMode(settings[key]); }
+
+            ['HEX', 'RGB', 'HSV'].forEach((m) => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'cwfm-color-mode-tab' + (m === mode ? ' active' : '');
+                tab.textContent = m;
+                tab.addEventListener('click', () => {
+                    mode = m;
+                    modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((t) => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    refreshValueInput();
+                });
+                modeTabs.appendChild(tab);
+            });
+
+            function commitValueInput() {
+                const raw = valueInput.value.trim();
                 // [cwfm] 空值——不儲存、不覆蓋、不當成錯誤，維持原本的顏色，
                 // 只是把顯示還原成目前實際生效的值，不留著一片空白。
-                if (!raw) { hexInput.value = settings[key].toUpperCase(); return; }
-                let hex = cwfmCssToHex(raw);
-                if (!hex) {
-                    // [cwfm] cwfmCssToHex 借用瀏覽器自己的 CSS 顏色解析器，
-                    // 已經認得 #HEX、rgb(...)、hsl(...)、色彩名稱這些「正式」
-                    // 的 CSS 顏色語法，但單純打「255, 0, 0」這種沒有包函式
-                    // 的裸逗號三數字，瀏覽器不認得——這裡補上：辨識到裸
-                    // 逗號三數字格式，先判斷是 RGB 還是 HSV，任一數值超過
-                    // 255 就一定不是合法的 RGB(0~255)，當作 HSV 處理；否則
-                    // 預設當作 RGB(比較常見的直覺猜測)。
+                if (!raw) { refreshValueInput(); return; }
+                let hex = null;
+                if (mode === 'HEX') {
+                    hex = cwfmCssToHex(raw.startsWith('#') ? raw : '#' + raw);
+                } else {
                     const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
                     if (m3) {
                         const n1 = parseFloat(m3[1]), n2 = parseFloat(m3[2]), n3 = parseFloat(m3[3]);
-                        if (n1 > 255 || n2 > 255 || n3 > 255) {
+                        if (mode === 'RGB') {
+                            hex = cwfmCssToHex(`rgb(${n1}, ${n2}, ${n3})`);
+                        } else {
                             const rgb = cwfmHsvToRgb(((n1 % 360) + 360) % 360, Math.max(0, Math.min(100, n2)) / 100, Math.max(0, Math.min(100, n3)) / 100);
                             hex = cwfmRgbToHex(rgb.r, rgb.g, rgb.b);
-                        } else {
-                            hex = cwfmCssToHex(`rgb(${n1}, ${n2}, ${n3})`);
                         }
                     }
                 }
                 if (!hex) {
-                    // [cwfm] 打的東西辨識不出來——跟彈出取色器裡數值輸入框
-                    // 同一套做法，短暫閃紅框提示，不要沒反應也不要默默
-                    // 吃掉整個顏色。
-                    hexInput.classList.add('cwfm-color-hex-input-error');
-                    setTimeout(() => hexInput.classList.remove('cwfm-color-hex-input-error'), 600);
-                    hexInput.value = settings[key].toUpperCase();
+                    // [cwfm] 打的東西辨識不出來——短暫閃紅框提示，不要沒
+                    // 反應也不要默默吃掉整個顏色。
+                    valueInput.classList.add('cwfm-color-input-error');
+                    setTimeout(() => valueInput.classList.remove('cwfm-color-input-error'), 600);
+                    refreshValueInput();
                     return;
                 }
-                hexInput.value = hex.toUpperCase();
                 settings[key] = hex;
                 swatchBtn.style.background = hex;
+                refreshValueInput();
                 if (settings.themeName !== 'custom') {
                     settings.themeName = 'custom';
                     colorSchemeState.setValue('custom');
@@ -3161,8 +3181,10 @@
                 saveSettings(settings);
                 applySettings(settings);
             }
-            hexInput.addEventListener('change', commitHexInput);
-            hexInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitHexInput(); });
+            valueInput.className = 'cwfm-color-value-input';
+            valueInput.addEventListener('change', commitValueInput);
+            valueInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitValueInput(); });
+            refreshValueInput();
 
             swatchBtn.addEventListener('click', () => {
                 // [cwfm] onPreview：拖動當下呼叫，只更新畫面（色塊本身、
@@ -3175,7 +3197,8 @@
                 // 避免後續任何操作誤把預覽複本當成真正在用的設定去存檔。
                 function previewColor(hex) {
                     swatchBtn.style.background = hex;
-                    hexInput.value = hex.toUpperCase();
+                    settings[key] = hex;
+                    refreshValueInput();
                     const previewSettings = Object.assign({}, settings, { [key]: hex, themeName: 'custom' });
                     applySettings(previewSettings);
                     window.__cwfm.settings = settings;
@@ -3193,7 +3216,7 @@
                 openColorPicker(settings[key], (hex) => {
                     settings[key] = hex;
                     swatchBtn.style.background = hex;
-                    hexInput.value = hex.toUpperCase();
+                    refreshValueInput();
                     // 理由同前：自訂顏色欄位跟「佈景主題」下拉選單是分開的
                     // 兩個 UI 元件，只有選「自訂」時這兩個顏色才會真正套用，
                     // 選色時自動把 themeName 也一併切成 custom。
@@ -3205,9 +3228,10 @@
                     applySettings(settings);
                 }, previewColor);
             });
+            inputGroup.appendChild(modeTabs);
+            inputGroup.appendChild(valueInput);
             controlWrap.appendChild(swatchBtn);
-            controlWrap.appendChild(hexInput);
-            controlWrap.appendChild(hintBox);
+            controlWrap.appendChild(inputGroup);
             row.appendChild(controlWrap);
             field.appendChild(row);
             panelTarget.appendChild(field);
