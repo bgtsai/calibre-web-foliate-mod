@@ -872,14 +872,28 @@
             '.cwfm-cp-wrap {',
             '  position: fixed; inset: 0; z-index: 1000010;',
             '  display: flex; align-items: center; justify-content: center;',
-            '  background: rgba(0,0,0,0.55);',
+            '  background: transparent; pointer-events: none;',
+            // [cwfm] 拿掉遮罩——原本會把背景整個變暗蓋住，使用者反映
+            // 調色的時候需要對照原本畫面的顏色，變暗看不到。改成透明，
+            // 但這層包住整個畫面的容器還是要留著撐版面，pointer-events:
+            // none 讓它不擋下面的點擊，取色器本體(.cwfm-cp)自己另外設回
+            // auto。
             '}',
             '.cwfm-cp {',
-            '  width: 233px; border-radius: 11px; overflow: hidden;',
-            '  background: var(--cwfm-surface-elevated); border: 1px solid rgba(255,255,255,0.13);',
+            '  width: 233px; border-radius: 11px; overflow: hidden; pointer-events: auto;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border);',
             '  box-shadow: 0 8px 28px rgba(0,0,0,0.5); font-family: sans-serif;',
             '}',
             '.cwfm-cp .cp-grad-wrap { padding: 9px 9px 0; }',
+            // [cwfm] 拖曳把手：一條窄窄的橫條，滑鼠移過去顯示「移動」游標，
+            // 按住拖曳可以搬動整個取色器——原本沒有任何地方可以拖動，
+            // 視窗位置固定死在畫面正中央。
+            '.cwfm-cp .cp-drag-handle {',
+            '  text-align: center; font-size: 10px; line-height: 1; padding: 4px 0;',
+            '  color: var(--cwfm-text-secondary); cursor: move; letter-spacing: 2px;',
+            '  user-select: none;',
+            '}',
+            '.cwfm-cp .cp-drag-handle:hover { color: var(--cwfm-text); }',
             '.cwfm-cp .cp-grad-box { width:100%; height:140px; position:relative; cursor:crosshair; border-radius:5px; overflow:hidden; }',
             '.cwfm-cp .cp-grad-white { position:absolute;inset:0; background:linear-gradient(to right,#fff,transparent); }',
             '.cwfm-cp .cp-grad-black { position:absolute;inset:0; background:linear-gradient(to bottom,transparent,#000); }',
@@ -889,11 +903,11 @@
             '  top:28%; left:62%; transform:translate(-50%,-50%); pointer-events:none;',
             '}',
             '.cwfm-cp .cp-sliders { display:flex; align-items:center; gap:9px; padding: 9px 13px 7px; }',
-            '.cwfm-cp .cp-preview { width:32px; height:32px; border-radius:50%; flex-shrink:0; border:2px solid rgba(255,255,255,0.2); }',
+            '.cwfm-cp .cp-preview { width:32px; height:32px; border-radius:50%; flex-shrink:0; border:2px solid var(--cwfm-border-light); }',
             '.cwfm-cp .cp-tracks { flex:1; display:flex; flex-direction:column; gap:7px; padding-right:4px; }',
             '.cwfm-cp .cp-track-row { display:flex; align-items:center; gap:14px; }',
             '.cwfm-cp .cp-track-lbl { width:10px; text-align:center; font-size:10px; font-weight:600; user-select:none; flex-shrink:0; }',
-            '.cwfm-cp .cp-track-lbl.vis  { color:#999; }',
+            '.cwfm-cp .cp-track-lbl.vis  { color:var(--cwfm-text-secondary); }',
             '.cwfm-cp .cp-track-lbl.hide { color:transparent; }',
             '.cwfm-cp .cp-track { flex:1; height:12px; border-radius:6px; position:relative; cursor:pointer; }',
             '.cwfm-cp .cp-track.off { opacity:0.28; cursor:default; pointer-events:none; }',
@@ -904,23 +918,23 @@
             '  pointer-events:none;',
             '}',
             '.cwfm-cp .cp-track-hue { background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); }',
-            '.cwfm-cp .cp-track-off-bg { background:#444; }',
-            '.cwfm-cp .cp-sep { height:1px; background:rgba(255,255,255,0.1); margin:0 13px; }',
+            '.cwfm-cp .cp-track-off-bg { background:var(--cwfm-border-light); }',
+            '.cwfm-cp .cp-sep { height:1px; background:var(--cwfm-border); margin:0 13px; }',
             '.cwfm-cp .cp-mode-row { display:flex; gap:5px; padding:7px 13px 5px; }',
             '.cwfm-cp .cp-tab {',
             '  flex:1; padding:3px 0; border-radius:5px; border:1px solid transparent;',
             '  font-size:10px; font-weight:600; cursor:pointer; background:transparent;',
             '  color:var(--cwfm-text-secondary); letter-spacing:0.03em;',
             '}',
-            '.cwfm-cp .cp-tab.active { background:rgba(255,255,255,0.1); color:#eee; border-color:rgba(255,255,255,0.2); }',
+            '.cwfm-cp .cp-tab.active { background:var(--cwfm-accent-bg); color:var(--cwfm-text); border-color:var(--cwfm-accent); }',
             '.cwfm-cp .cp-summary-row { padding:0 13px 7px; }',
             '.cwfm-cp .cp-summary {',
             '  width:100%; box-sizing:border-box; padding:5px 8px; font-size:11px;',
-            '  border:1px solid rgba(255,255,255,0.15); border-radius:6px; outline:none;',
+            '  border:1px solid var(--cwfm-border-light); border-radius:6px; outline:none;',
             '  font-family:"Courier New",monospace; background:var(--cwfm-surface-elevated); color:var(--cwfm-text);',
             '  text-align:center;',
             '}',
-            '.cwfm-cp .cp-summary:focus { border-color:rgba(200,60,60,0.5); background:#3a3a3a; }',
+            '.cwfm-cp .cp-summary:focus { border-color:var(--cwfm-accent); }',
             // [cwfm] 輸入格式辨識不出來時，短暫閃一下紅框，讓使用者知道
             // 這次輸入沒有被接受——原本完全沒反應，使用者搞不清楚是打
             // 錯格式還是沒生效。
@@ -930,10 +944,10 @@
             '.cwfm-cp .cp-steppers { width:105px; flex-shrink:0; flex-grow:0; display:flex; flex-direction:column; gap:9px; }',
             '.cwfm-cp .cp-ch-row { display:flex; align-items:center; gap:5px; }',
             '.cwfm-cp .cp-ch-lbl { width:12px; text-align:center; font-size:10px; font-weight:600; user-select:none; flex-shrink:0; }',
-            '.cwfm-cp .cp-ch-lbl.vis  { color:#888; }',
+            '.cwfm-cp .cp-ch-lbl.vis  { color:var(--cwfm-text-secondary); }',
             '.cwfm-cp .cp-ch-lbl.hide { color:transparent; }',
             '.cwfm-cp .cp-stepper {',
-            '  display:flex; align-items:center; border:1px solid rgba(255,255,255,0.15);',
+            '  display:flex; align-items:center; border:1px solid var(--cwfm-border-light);',
             '  border-radius:5px; overflow:hidden; height:22px; flex:1;',
             '}',
             '.cwfm-cp .cp-stepper.off { opacity:0.38; pointer-events:none; }',
@@ -942,7 +956,7 @@
             '  cursor:pointer; font-size:13px; color:var(--cwfm-text-secondary); flex-shrink:0;',
             '  display:flex; align-items:center; justify-content:center; line-height:1;',
             '}',
-            '.cwfm-cp .cp-s-btn:hover { background:rgba(255,255,255,0.1); }',
+            '.cwfm-cp .cp-s-btn:hover { background:var(--cwfm-border-light); }',
             '.cwfm-cp .cp-s-val {',
             '  flex:1; border:none; outline:none; text-align:center; font-size:11px;',
             '  background:transparent; color:var(--cwfm-text); width:0; min-width:0;',
@@ -954,8 +968,8 @@
             '.cwfm-cp .cp-actions { flex:1; display:flex; flex-direction:column; gap:6px; justify-content:center; }',
             '.cwfm-cp .cp-btn { width:100%; padding:5px 0; border-radius:6px; border:none; font-size:11.5px; cursor:pointer; transition:opacity 0.1s; }',
             '.cwfm-cp .cp-btn:active { opacity:.82; }',
-            '.cwfm-cp .cp-btn-cancel { background:#3a3a3a; border:1px solid rgba(255,255,255,0.12); color:#ccc; font-weight:500; }',
-            '.cwfm-cp .cp-btn-cancel:hover { background:#444; }',
+            '.cwfm-cp .cp-btn-cancel { background:var(--cwfm-surface-elevated); border:1px solid var(--cwfm-border-light); color:var(--cwfm-text-secondary); font-weight:500; }',
+            '.cwfm-cp .cp-btn-cancel:hover { background:var(--cwfm-border); }',
             '.cwfm-cp .cp-btn-ok { background:#cc0000; color:#fff; font-weight:600; }',
             '.cwfm-cp .cp-btn-ok:hover { opacity:.88; }',
             '.cwfm-toc-view { list-style: none; margin: 0; padding: 0; }',
@@ -2360,7 +2374,7 @@
     }
 
     // ── 開啟取色器，選好按 OK 後呼叫 onConfirm(hex) ──
-    function openColorPicker(initialHex, onConfirm) {
+    function openColorPicker(initialHex, onConfirm, onPreview) {
         document.getElementById('cwfm-cp-wrap')?.remove();
 
         const initRgb = cwfmHexToRgb(initialHex) || { r: 204, g: 0, b: 0 };
@@ -2384,6 +2398,7 @@
         document.body.insertAdjacentHTML('beforeend', `
 <div id="cwfm-cp-wrap" class="cwfm-cp-wrap" data-cwfm-owned="true">
   <div id="cwfm-cp" class="cwfm-cp">
+    <div class="cp-drag-handle" title="\u62d6\u52d5\u79fb\u52d5\u4f4d\u7f6e">\u22ee\u22ee</div>
     <div class="cp-grad-wrap">
       <div class="cp-grad-box">
         <div class="cp-grad-white"></div>
@@ -2517,6 +2532,11 @@
                 summary.placeholder = '\u4f8b\u5982\uff1a#FF8000';
                 summary.title = '\u8f38\u5165\u683c\u5f0f\uff1a#RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 # \u3001\u6216\u76f4\u63a5\u8f38\u5165\u82f1\u6587\u8272\u5f69\u540d\u7a31\uff09';
             }
+            // [cwfm] 即時預覽——拖動色塊/滑桿的當下就直接套用到畫面上，
+            // 不用等按下 OK 才看得到效果。這裡已經透過下面 cpRenderRaf
+            // 節流成每個動畫影格最多算一次，不會拖動的時候每個像素移動
+            // 都觸發一次。
+            if (onPreview) onPreview(hex);
         }
 
         let _cpRafPending = false;
@@ -2670,7 +2690,14 @@
             });
         });
 
-        function cpClose() { cpOverlay.remove(); }
+        function cpClose() {
+            // [cwfm] 取消：因為現在拖動的當下就已經即時套用預覽（見下面
+            // cpRender() 結尾呼叫 onPreview），按取消要把畫面還原成打開
+            // 取色器之前的原始顏色，不是單純關掉視窗就好——不然使用者
+            // 拖到一半反悔，畫面卻停在拖到一半的顏色上。
+            if (onPreview) onPreview(initialHex);
+            cpOverlay.remove();
+        }
         function cpOK() {
             const rgbVal = (cpState.mode === 'RGB') ? { r: cpState.r, g: cpState.g, b: cpState.b } : cwfmHsvToRgb(cpState.h, cpState.s, cpState.v);
             const hex = cwfmRgbToHex(rgbVal.r, rgbVal.g, rgbVal.b);
@@ -2679,6 +2706,30 @@
         }
         cp.querySelector('.cp-btn-cancel').addEventListener('click', cpClose);
         cp.querySelector('.cp-btn-ok').addEventListener('click', cpOK);
+
+        // [cwfm] 拖曳把手：按住上面那條窄橫條可以搬動整個取色器視窗。
+        // 用 transform: translate() 疊加在原本置中的位置上，不用去算
+        // 絕對座標——按住的當下記錄起點，之後每次移動用位移量累加。
+        (function enableCpDrag() {
+            const handle = cp.querySelector('.cp-drag-handle');
+            let dragging = false, startX = 0, startY = 0, baseX = 0, baseY = 0;
+            handle.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                startX = e.clientX; startY = e.clientY;
+                const m = cp.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+                baseX = m ? parseFloat(m[1]) : 0;
+                baseY = m ? parseFloat(m[2]) : 0;
+                handle.setPointerCapture(e.pointerId);
+            });
+            handle.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                cp.style.transform = `translate(${baseX + dx}px, ${baseY + dy}px)`;
+            });
+            handle.addEventListener('pointerup', () => { dragging = false; });
+            handle.addEventListener('pointercancel', () => { dragging = false; });
+        })();
 
         cpRender();
     }
@@ -3009,6 +3060,20 @@
             swatchBtn.className = 'cwfm-color-swatch-btn';
             swatchBtn.style.background = settings[key];
             swatchBtn.addEventListener('click', () => {
+                // [cwfm] onPreview：拖動當下呼叫，只更新畫面（色塊本身、
+                // 書本內容即時套用），不動到真正的 settings 物件——如果
+                // 直接改真正的 settings 做預覽，使用者如果不是透過取消/
+                // OK 這兩個按鈕關閉取色器（例如取色器開著的時候又去點了
+                // 別的欄位），還沒確認的顏色可能會意外被存檔。改用複本
+                // 套用，applySettings() 呼叫結束時會把全域參照指向傳進去
+                // 的那個物件，這裡呼叫完立刻把它導正回真正的 settings，
+                // 避免後續任何操作誤把預覽複本當成真正在用的設定去存檔。
+                function previewColor(hex) {
+                    swatchBtn.style.background = hex;
+                    const previewSettings = Object.assign({}, settings, { [key]: hex, themeName: 'custom' });
+                    applySettings(previewSettings);
+                    window.__cwfm.settings = settings;
+                }
                 openColorPicker(settings[key], (hex) => {
                     settings[key] = hex;
                     swatchBtn.style.background = hex;
@@ -3021,7 +3086,7 @@
                     }
                     saveSettings(settings);
                     applySettings(settings);
-                });
+                }, previewColor);
             });
             row.appendChild(swatchBtn);
             field.appendChild(row);
