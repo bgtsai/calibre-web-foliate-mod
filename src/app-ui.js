@@ -763,8 +763,12 @@
             '.cwfm-value-input {',
             '  width: 4em; box-sizing: border-box; padding: 2px 4px;',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
-            '  font-size: 12px; text-align: right;',
+            '  font-size: 12px; text-align: right; outline: none;',
             '}',
+            // [cwfm] 焦點樣式跟色塊旁的顏色輸入框統一同一套（內縮陰影
+            // 模擬邊框），原本這裡完全沒設，就會露出瀏覽器原生的外框
+            // 樣式，跟顏色輸入框的效果對不起來。
+            '.cwfm-value-input:focus { box-shadow: inset 0 0 0 1.5px var(--cwfm-accent); }',
             // [cwfm] 單位文字（%、px、em、或空字串）長度不一樣，導致輸入框
             // 本身的右邊界跟著單位文字的寬度跑掉、參差不齊——輸入框自己
             // 雖然是固定 4em，但它是跟單位文字一起被 .cwfm-row 的
