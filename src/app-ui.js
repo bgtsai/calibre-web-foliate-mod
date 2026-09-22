@@ -3113,7 +3113,7 @@
             // blur 就收起來，觸控點一下欄位、鍵盤 Tab 移過去都會觸發。
             const hintBox = document.createElement('div');
             hintBox.className = 'cwfm-color-hint';
-            hintBox.textContent = '\u652f\u63f4\u4e09\u7a2e\u683c\u5f0f\uff0c\u81ea\u52d5\u8fa8\u8b58\uff1a\u2022 #RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 #\uff09\u2022 R, G, B\uff08\u88f8\u9017\u865f\u4e09\u6578\u5b57\uff0c\u6bcf\u500b 0~255\uff0c\u9810\u8a2d\u7576\u4f5c RGB\uff09\u2022 H, S, V\uff08H \u662f 0~360\uff0c\u6709\u4efb\u4e00\u6578\u503c\u8d85\u904e 255 \u6642\u81ea\u52d5\u7576\u4f5c HSV\uff09\u2022 rgb(...) \u6216 hsl(...)\uff08\u6a19\u6e96 CSS \u8272\u5f69\u8a9e\u6cd5\uff09\u2022 \u82f1\u6587\u8272\u5f69\u540d\u7a31\uff08\u5982 red\uff09\u3002\u7559\u7a7a\u4e0d\u586b\u5247\u4e0d\u6703\u5132\u5b58\u3001\u4e0d\u6703\u8986\u84cb\u73fe\u6709\u989c\u8272\u3002';
+            hintBox.textContent = '\u652f\u63f4 HEX\u3001RGB\u3001HSV\uff1a\u4f8b\u5982 #FF8000\u3001255, 128, 0\u3001210, 80, 90';
             hintBox.hidden = true;
             hexInput.addEventListener('focus', () => { hintBox.hidden = false; });
             hexInput.addEventListener('blur', () => { hintBox.hidden = true; });
