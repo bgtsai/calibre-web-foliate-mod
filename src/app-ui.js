@@ -437,6 +437,24 @@
             '}',
             '.cwfm-autohide-zone.cwfm-top { top: 0; }',
             '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
+            // [cwfm] 左右翻頁點擊區：畫面上下各留 44px 給工具列/邊緣感應
+            // 區(跟它們同高)，避免疊在一起互相干擾；z-index 比工具列跟
+            // 邊緣感應區都低，靠近畫面上下緣時工具列優先。顯示狀態下用
+            // 半透明疊加 + 陰影模擬邊界那套語言，貼合整體設計語言，不是
+            // 突兀的實色色塊；隱藏狀態下完全透明，但點擊依然有效
+            // （功能開關/顯示開關兩者獨立）。
+            '.cwfm-tap-zone {',
+            '  position: fixed; top: 44px; bottom: 44px; z-index: 999990; cursor: pointer;',
+            '  background: transparent; transition: background 0.15s ease;',
+            '}',
+            '.cwfm-tap-zone.cwfm-tap-left { left: 0; }',
+            '.cwfm-tap-zone.cwfm-tap-right { right: 0; }',
+            '.cwfm-tap-zone.cwfm-tap-visible {',
+            '  background: var(--cwfm-shadow-ring);',
+            '}',
+            '.cwfm-tap-zone.cwfm-tap-visible.cwfm-tap-left { box-shadow: inset -1px 0 0 var(--cwfm-shadow-ring); }',
+            '.cwfm-tap-zone.cwfm-tap-visible.cwfm-tap-right { box-shadow: inset 1px 0 0 var(--cwfm-shadow-ring); }',
+            '.cwfm-tap-zone.cwfm-tap-visible:hover { background: var(--cwfm-shadow-ring); opacity: 0.7; }',
             '.cwfm-toolbar button {',
             '  background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text);',
             '  border-radius: 4px; padding: 5px 12px; cursor: pointer;',
@@ -1189,6 +1207,13 @@
         // 之前用單一個 colorPickerMode 共用，導致動一個欄位的分頁、
         // 另一個欄位也被連動切換過去。
         colorPickerModeByKey: {},
+        // [cwfm] 左右翻頁點擊區：畫面左右兩側各一塊感應區，點擊觸發
+        // 往前/往後翻頁，比照原本 epub.js 就有的做法。功能開關(是否
+        // 響應點擊)跟顯示開關(是否畫得出來)刻意分開——可以只開功能、
+        // 不顯示視覺，區域一樣有作用，只是看不到。
+        tapZoneEnabled: true,
+        tapZoneVisible: true,
+        tapZoneWidthPercent: 20,   // 每側感應區佔畫面寬度的百分比
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
@@ -2303,6 +2328,7 @@
 
     function applySettings(settings) {
         cwfmUpdatePanelScheme(settings);
+        try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error('[cwfm:tapzone] 套用左右翻頁點擊區設定失敗', e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error('[cwfm:settings] 套用字體樣式失敗', e); }
@@ -3607,6 +3633,14 @@
         addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
         addCheckboxField('\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09', 'autoHideToolbar');
 
+        // [cwfm] 左右翻頁點擊區：功能開關(能不能點擊翻頁)跟顯示開關
+        // (看不看得到視覺提示)分開，可以只開功能不顯示視覺，區域照樣
+        // 有作用；寬度可調(5~45%，避免設太窄點不到、或設太寬蓋掉太多
+        // 閱讀內容)。
+        addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd', 'tapZoneEnabled');
+        addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09', 'tapZoneVisible');
+        addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPercent', 5, 45, 1, '%');
+
         document.body.appendChild(panel);
 
         // [cwfm] 依可用高度自動決定欄數：用 CSS column-count 讓內容自然依序
@@ -3948,6 +3982,43 @@
     try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立工具列失敗', e); }
     try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立上方工具列失敗', e); }
 
+    // [cwfm] 左右翻頁點擊區。功能開關(cwfmTapZoneEnabled，能不能點擊
+    // 翻頁)、顯示開關(cwfmTapZoneVisible，看不看得到)分開存成模組層級
+    // 變數，applySettings() 每次都會呼叫 cwfmApplyTapZoneSettings() 重新
+    // 同步這兩個開關跟寬度設定。
+    let cwfmTapZoneLeft = null;
+    let cwfmTapZoneRight = null;
+    function cwfmBuildTapZones() {
+        cwfmTapZoneLeft = document.createElement('div');
+        cwfmTapZoneLeft.className = 'cwfm-tap-zone cwfm-tap-left';
+        cwfmTapZoneLeft.dataset.cwfmOwned = 'true';
+        cwfmTapZoneLeft.addEventListener('click', () => { if (cwfmTapZoneLeft.dataset.cwfmTapEnabled === 'true') cwfmGoLeft(); });
+        cwfmTapZoneRight = document.createElement('div');
+        cwfmTapZoneRight.className = 'cwfm-tap-zone cwfm-tap-right';
+        cwfmTapZoneRight.dataset.cwfmOwned = 'true';
+        cwfmTapZoneRight.addEventListener('click', () => { if (cwfmTapZoneRight.dataset.cwfmTapEnabled === 'true') cwfmGoRight(); });
+        document.body.appendChild(cwfmTapZoneLeft);
+        document.body.appendChild(cwfmTapZoneRight);
+    }
+    function cwfmApplyTapZoneSettings(settings) {
+        if (!cwfmTapZoneLeft || !cwfmTapZoneRight) return;
+        const enabled = !!settings.tapZoneEnabled;
+        const visible = !!settings.tapZoneVisible;
+        const widthPercent = Math.max(5, Math.min(45, settings.tapZoneWidthPercent || 20));
+        [cwfmTapZoneLeft, cwfmTapZoneRight].forEach((zone) => {
+            // [cwfm] 用 dataset 存功能開關的狀態，不是直接加/拿掉 click
+            // 監聽器——監聽器本身固定掛著，觸發時才檢查這個旗標，這樣
+            // 開關切換不用重新綁定事件，邏輯比較單純。
+            zone.dataset.cwfmTapEnabled = String(enabled);
+            zone.style.width = widthPercent + '%';
+            zone.classList.toggle('cwfm-tap-visible', visible);
+            // [cwfm] 功能關掉的時候，游標也改回正常箭頭，不要讓使用者
+            // 以為這裡還能點——純視覺提示，跟上面 dataset 那個真正決定
+            // 點擊有沒有效果的旗標分開處理。
+            zone.style.cursor = enabled ? 'pointer' : 'default';
+        });
+    }
+
     try {
         const topZone = document.createElement('div');
         topZone.className = 'cwfm-autohide-zone cwfm-top';
@@ -3974,6 +4045,15 @@
         // 加上全螢幕切換（見上面 fullscreenchange 監聽器）這兩種明確的
         // 方式喚醒，翻頁不會再誤觸。
     } catch (e) { console.error('[cwfm:autohide] 初始化自動隱藏失敗', e); }
+
+    try {
+        cwfmBuildTapZones();
+        // [cwfm] 這裡才第一次真的套用寬度/顯示狀態——applySettings() 裡
+        // 也會呼叫同一個函式，但那次呼叫可能發生在這兩個元素還沒建立
+        // 之前(cwfmApplyTapZoneSettings 內部有防呆直接跳過)，這裡補一次
+        // 確保建立完成當下就套用目前的設定值，不用等下一次設定變動。
+        if (window.__cwfm?.settings) cwfmApplyTapZoneSettings(window.__cwfm.settings);
+    } catch (e) { console.error('[cwfm:tapzone] 建立左右翻頁點擊區失敗', e); }
 
     // [cwfm] 定位點對齊：開書流程走到這裡，位置已經還原完成（本機記憶／
     // 伺服器書籤／或從頭開始），明確地把當下位置存一次當作起始的鎖定
