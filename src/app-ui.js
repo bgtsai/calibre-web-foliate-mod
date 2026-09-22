@@ -865,6 +865,17 @@
             '  width: 32px; height: 32px; border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
+            // [cwfm] 色塊旁邊的數值輸入框——不用點開取色器彈窗，直接在
+            // 這裡打 HEX 就能改顏色。
+            '.cwfm-color-control-wrap { display: flex; align-items: center; gap: 6px; }',
+            '.cwfm-color-hex-input {',
+            '  width: 5.5em; box-sizing: border-box; padding: 5px 6px;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light);',
+            '  color: var(--cwfm-text); border-radius: 4px; font-size: 12px;',
+            '  font-family: "Courier New", monospace; text-transform: uppercase;',
+            '}',
+            '.cwfm-color-hex-input:focus { border-color: var(--cwfm-accent); outline: none; }',
+            '.cwfm-color-hex-input-error { border-color: #e04040 !important; background: rgba(224,64,64,0.15) !important; }',
             // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
             // 改名為 cwfm-cp。原版是亮色主題、另外用 html[dark] 屬性選擇器
             // 疊一套暗色 override；我們的設定面板本身就是深色的，直接用
@@ -889,11 +900,16 @@
             // 按住拖曳可以搬動整個取色器——原本沒有任何地方可以拖動，
             // 視窗位置固定死在畫面正中央。
             '.cwfm-cp .cp-drag-handle {',
-            '  text-align: center; font-size: 10px; line-height: 1; padding: 4px 0;',
+            // [cwfm] 查了業界慣例（jQuery UI、Angular Material 等）：
+            // 標準做法是整條橫跨頂端的標題列都可以拖曳，不是只有中間
+            // 一小塊圖示——這裡的拖曳範圍本來就是整條，加一層淡淡的
+            // 底色，讓它視覺上更明確看起來就是一整條可拖曳的標題列，
+            // 不會讓人誤以為只有中間那兩個點才能拖。
+            '  text-align: center; font-size: 10px; line-height: 1; padding: 5px 0;',
             '  color: var(--cwfm-text-secondary); cursor: move; letter-spacing: 2px;',
-            '  user-select: none;',
+            '  user-select: none; background: var(--cwfm-border-light);',
             '}',
-            '.cwfm-cp .cp-drag-handle:hover { color: var(--cwfm-text); }',
+            '.cwfm-cp .cp-drag-handle:hover { color: var(--cwfm-text); background: var(--cwfm-border); }',
             '.cwfm-cp .cp-grad-box { width:100%; height:140px; position:relative; cursor:crosshair; border-radius:5px; overflow:hidden; }',
             '.cwfm-cp .cp-grad-white { position:absolute;inset:0; background:linear-gradient(to right,#fff,transparent); }',
             '.cwfm-cp .cp-grad-black { position:absolute;inset:0; background:linear-gradient(to bottom,transparent,#000); }',
@@ -3053,12 +3069,49 @@
             label.textContent = labelText;
             row.appendChild(label);
 
+            // [cwfm] 色塊 + 數值輸入框放在同一個小容器裡，一起排在這一列
+            // 的右側——原本只有色塊，要輸入精確數值得先點開彈出的取色器，
+            // 使用者要的是色塊旁邊就能直接打字，不用先開啟彈窗。
+            const controlWrap = document.createElement('div');
+            controlWrap.className = 'cwfm-color-control-wrap';
+
             // [cwfm] 不用原生 <input type="color">，改成一個色塊按鈕，點下去
             // 開啟自訂取色器（openColorPicker，移植自 YouTube Channel Memory）。
             const swatchBtn = document.createElement('button');
             swatchBtn.type = 'button';
             swatchBtn.className = 'cwfm-color-swatch-btn';
             swatchBtn.style.background = settings[key];
+
+            const hexInput = document.createElement('input');
+            hexInput.type = 'text';
+            hexInput.className = 'cwfm-color-hex-input';
+            hexInput.value = settings[key];
+            hexInput.placeholder = '#RRGGBB';
+            hexInput.spellcheck = false;
+            function commitHexInput() {
+                const hex = cwfmCssToHex(hexInput.value.trim());
+                if (!hex) {
+                    // [cwfm] 打的東西辨識不出來——跟彈出取色器裡數值輸入框
+                    // 同一套做法，短暫閃紅框提示，不要沒反應也不要默默
+                    // 吃掉整個顏色。
+                    hexInput.classList.add('cwfm-color-hex-input-error');
+                    setTimeout(() => hexInput.classList.remove('cwfm-color-hex-input-error'), 600);
+                    hexInput.value = settings[key];
+                    return;
+                }
+                hexInput.value = hex.toUpperCase();
+                settings[key] = hex;
+                swatchBtn.style.background = hex;
+                if (settings.themeName !== 'custom') {
+                    settings.themeName = 'custom';
+                    colorSchemeState.setValue('custom');
+                }
+                saveSettings(settings);
+                applySettings(settings);
+            }
+            hexInput.addEventListener('change', commitHexInput);
+            hexInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitHexInput(); });
+
             swatchBtn.addEventListener('click', () => {
                 // [cwfm] onPreview：拖動當下呼叫，只更新畫面（色塊本身、
                 // 書本內容即時套用），不動到真正的 settings 物件——如果
@@ -3070,13 +3123,25 @@
                 // 避免後續任何操作誤把預覽複本當成真正在用的設定去存檔。
                 function previewColor(hex) {
                     swatchBtn.style.background = hex;
+                    hexInput.value = hex.toUpperCase();
                     const previewSettings = Object.assign({}, settings, { [key]: hex, themeName: 'custom' });
                     applySettings(previewSettings);
                     window.__cwfm.settings = settings;
+                    // [cwfm] applySettings() 內部一開始就會呼叫
+                    // cwfmUpdatePanelScheme() 判斷面板本身該用深色還是
+                    // 淺色——但剛才那次呼叫傳的是「暫時把 themeName 強制
+                    // 改成 custom」的預覽複本，會被誤判成「使用者已經在用
+                    // 自訂配色」，只要 customBackgroundColor 剛好存了深色
+                    // 值（不管使用者實際選的主題是什麼），面板就會被誤切
+                    // 成深色。這裡立刻用真正的 settings 重新算一次，把
+                    // 剛才的誤判覆蓋回正確答案——只有使用者按下 OK 真的
+                    // 確認要用這組顏色，面板深淺色才應該跟著改變。
+                    cwfmUpdatePanelScheme(settings);
                 }
                 openColorPicker(settings[key], (hex) => {
                     settings[key] = hex;
                     swatchBtn.style.background = hex;
+                    hexInput.value = hex.toUpperCase();
                     // 理由同前：自訂顏色欄位跟「佈景主題」下拉選單是分開的
                     // 兩個 UI 元件，只有選「自訂」時這兩個顏色才會真正套用，
                     // 選色時自動把 themeName 也一併切成 custom。
@@ -3088,7 +3153,9 @@
                     applySettings(settings);
                 }, previewColor);
             });
-            row.appendChild(swatchBtn);
+            controlWrap.appendChild(swatchBtn);
+            controlWrap.appendChild(hexInput);
+            row.appendChild(controlWrap);
             field.appendChild(row);
             panelTarget.appendChild(field);
             return swatchBtn;
