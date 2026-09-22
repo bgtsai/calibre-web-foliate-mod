@@ -608,6 +608,10 @@
             // 使用者截圖回報的問題。深色模式下 var(--cwfm-text) 本身就是
             // 接近白色的淺灰，效果跟原本寫死的白色差不了多少。
             '.cwfm-keychip-selected { border-color: var(--cwfm-accent); background: var(--cwfm-accent-bg); color: var(--cwfm-text); }',
+            // [cwfm] 拖曳排序：可拖曳的標籤滑鼠移過去變成「移動」游標；
+            // 正在被拖的那個標籤半透明，提示使用者這個是正在搬移的對象。
+            '.cwfm-keychip-draggable { cursor: grab; }',
+            '.cwfm-keychip-draggable.cwfm-dragging { opacity: 0.4; cursor: grabbing; }',
             // [cwfm] 「配色」是固定五選一的內建選項，不是使用者自己新增/
             // 命名/刪除的清單，用比較單純的標籤樣式（沒有叉叉、沒有改名
             // 圖示），但要明確標示「目前選的是哪一個」。
@@ -1581,6 +1585,37 @@
         if (opts.removeLabel) removeBtn.setAttribute('aria-label', opts.removeLabel);
         removeBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRemove(); });
         chip.appendChild(removeBtn);
+
+        if (opts.dragReorder) {
+            // [cwfm] 拖曳排序：用原生 HTML5 drag-and-drop API，不用額外
+            // 的函式庫。opts.dragReorder 要傳 { array, index, onReorder }
+            // ——array 是這個標籤背後對應的那份設定陣列（就地 splice
+            // 搬移，不是重新建立一份新陣列），index 是這個標籤目前在
+            // 陣列裡的位置，onReorder 是搬移完成後要呼叫的重繪+存檔
+            // callback。只在同一份陣列內搬移，不支援跨清單（例如字型
+            // 記憶名稱跟上傳字型是兩份不同陣列，不能互相拖過去）。
+            const dr = opts.dragReorder;
+            chip.draggable = true;
+            chip.classList.add('cwfm-keychip-draggable');
+            chip.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(dr.index));
+                chip.classList.add('cwfm-dragging');
+            });
+            chip.addEventListener('dragend', () => chip.classList.remove('cwfm-dragging'));
+            chip.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            chip.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                if (Number.isNaN(fromIndex) || fromIndex === dr.index) return;
+                const [moved] = dr.array.splice(fromIndex, 1);
+                dr.array.splice(dr.index, 0, moved);
+                dr.onReorder();
+            });
+        }
 
         return chip;
     }
@@ -2690,11 +2725,15 @@
 
             function render() {
                 wrap.innerHTML = '';
-                settings.savedThemes.forEach((theme) => {
+                settings.savedThemes.forEach((theme, index) => {
                     const chip = cwfmBuildChip(theme.name, {
                         onSelect: () => cwfmApplyTheme(settings, theme),
                         onRename: (newName) => { theme.name = newName; saveSettings(settings); },
                         onRenameDone: render,
+                        dragReorder: {
+                            array: settings.savedThemes, index,
+                            onReorder: () => { saveSettings(settings); render(); },
+                        },
                         onUpdate: async () => {
                             const confirmed = await cwfmConfirmDialog(
                                 '\u8986\u84cb\u66f4\u65b0\u4f48\u666f\u4e3b\u984c',
@@ -3034,7 +3073,7 @@
                     chip.addEventListener('click', () => applyBuiltin(value));
                     wrap.appendChild(chip);
                 });
-                (settings.savedColorSchemes || []).forEach((scheme) => {
+                (settings.savedColorSchemes || []).forEach((scheme, index) => {
                     const isActive = settings.themeName === 'custom'
                         && settings.customTextColor === scheme.textColor
                         && settings.customBackgroundColor === scheme.backgroundColor;
@@ -3043,6 +3082,10 @@
                         onSelect: () => applyCustomScheme(scheme),
                         onRename: (newName) => { scheme.name = newName; saveSettings(settings); },
                         onRenameDone: render,
+                        dragReorder: {
+                            array: settings.savedColorSchemes, index,
+                            onReorder: () => { saveSettings(settings); render(); },
+                        },
                         onRemove: async () => {
                             const confirmed = await cwfmConfirmDialog(
                                 '\u522a\u9664\u81ea\u8a02\u914d\u8272',
@@ -3143,7 +3186,7 @@
 
             function render() {
                 wrap.innerHTML = '';
-                (settings.fontNameHistory || []).forEach((name) => {
+                (settings.fontNameHistory || []).forEach((name, index) => {
                     const chip = cwfmBuildChip(name, {
                         extraClass: settings.fontFamily === name ? 'cwfm-keychip-selected' : '',
                         onSelect: () => selectFont(name),
@@ -3156,10 +3199,14 @@
                         onRemove: () => removeHistoryName(name),
                         removeLabel: '\u522a\u9664\u9019\u7b46\u8a18\u61b6',
                         onRenameDone: render,
+                        dragReorder: {
+                            array: settings.fontNameHistory, index,
+                            onReorder: () => { saveSettings(settings); render(); },
+                        },
                     });
                     wrap.appendChild(chip);
                 });
-                (settings.uploadedFonts || []).forEach((entry) => {
+                (settings.uploadedFonts || []).forEach((entry, index) => {
                     const chip = cwfmBuildChip(entry.name, {
                         icon: '\u2191',
                         // [cwfm] 「藍色」在其他標籤清單(佈景主題、配色)裡
@@ -3178,6 +3225,10 @@
                         onRemove: () => removeUploadedFont(entry),
                         removeLabel: '\u522a\u9664\u9019\u500b\u4e0a\u50b3\u5b57\u578b',
                         onRenameDone: render,
+                        dragReorder: {
+                            array: settings.uploadedFonts, index,
+                            onReorder: () => { saveSettings(settings); render(); },
+                        },
                     });
                     wrap.appendChild(chip);
                 });
