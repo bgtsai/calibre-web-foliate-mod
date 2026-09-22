@@ -382,6 +382,12 @@
             '  --cwfm-shadow-soft: rgba(0,0,0,0.3); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.16);',
             '  --cwfm-toolbar-bg: rgba(10,10,10,0.92);',
+            // [cwfm] 開關關閉狀態專用的軌道填色——跟 --cwfm-border-light
+            // 分開一個變數，因為 border-light 在淺色模式下是接近透明的
+            // rgba(0,0,0,0.08)，套在開關軌道上，跟白色滑塊之間的對比度
+            // 完全不夠。這裡用明確、不透明的中灰色，兩種模式都直接給
+            // 看得出來的顏色，不靠透明度疊加去猜效果。
+            '  --cwfm-switch-off-track: #5a5a5a;',
             '}',
             'html[data-cwfm-scheme="light"] {',
             '  color-scheme: light;',
@@ -394,6 +400,7 @@
             '  --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.12);',
             '  --cwfm-toolbar-bg: rgba(255,255,255,0.92);',
+            '  --cwfm-switch-off-track: #c7c7c7;',
             '}',
             '.cwfm-toolbar {',
             '  position: fixed; left: 0; right: 0; bottom: 0;',
@@ -728,15 +735,14 @@
             '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
             '}',
             '.cwfm-panel input[type="range"]::-webkit-slider-thumb {',
-            // [cwfm] 邊框顏色用跟面板背景一樣的顏色，在深色面板上效果
-            // 不錯（深色邊框襯在深色底上，剛好跟藍色圓點形成鏤空分隔
-            // 感），但在淺色面板上，白色邊框襯在同樣偏白的頁面背景上
-            // 幾乎看不出來——這個手法本身在淺色情境下不成立。改成直接
-            // 加強陰影本身的強度（立體浮起的陰影，不管底色深淺都看得
-            // 出來），不再依賴邊框跟背景色的巧合對比。
-            '  -webkit-appearance: none; margin-top: -6px;',
-            '  width: 14px; height: 14px; border-radius: 50%; background: var(--cwfm-accent);',
-            '  border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08);',
+            // [cwfm] 已確認的最終版本——跟開關滑塊統一同一套手法：藍色
+            // 漸層 + 一圈深色陰影圈，不用邊框（邊框顏色比照面板背景這個
+            // 手法在淺色模式下會隱形，已經證實失敗），陰影圈深淺模式
+            // 共用同一段 CSS。
+            '  -webkit-appearance: none; margin-top: -6.5px;',
+            '  width: 15px; height: 15px; border-radius: 50%;',
+            '  background: linear-gradient(to bottom, #33abff 0%, var(--cwfm-accent) 100%);',
+            '  border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.25);',
             '  cursor: pointer;',
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-track {',
@@ -744,8 +750,9 @@
             '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-thumb {',
-            '  width: 14px; height: 14px; border-radius: 50%; background: var(--cwfm-accent);',
-            '  border: 2px solid var(--cwfm-surface); box-shadow: 0 1px 3px var(--cwfm-shadow-soft);',
+            '  width: 15px; height: 15px; border-radius: 50%;',
+            '  background: linear-gradient(to bottom, #33abff 0%, var(--cwfm-accent) 100%);',
+            '  border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.25);',
             '  cursor: pointer;',
             '}',
             '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; }',
@@ -806,26 +813,27 @@
             // 原因：白色滑塊在深色軌道（不管軌道本身是中性灰還是強調
             // 色）上天生就有穩定的對比，不需要跟著面板深淺模式換色。
             '.cwfm-switch-track {',
-            // [cwfm] 改用 Material Design 3 官方規格的做法——查了官方
-            // GitHub 文件確認：關閉狀態的軌道本身應該要有一圈明確的外框
-            // （colorOutline），不是只靠淡淡的灰底撐場面，這正是淺色
-            // 模式下對比度不夠、看不清楚是關閉狀態的根因。開啟狀態則是
-            // 實心強調色本身對比就夠，不需要額外外框（見下面 :checked
-            // 那條，開啟時外框拿掉，避免跟旁邊的白色滑塊擠出一圈看起來
-            // 沒對齊的雙重邊界）。',
-            '  position: absolute; inset: 0; background: var(--cwfm-border-light);',
-            '  border-radius: 10px; transition: background 0.15s ease, border-color 0.15s ease;',
-            '  border: 1.5px solid var(--cwfm-text-secondary);',
-            '  box-sizing: border-box;',
-            '}',
-            '.cwfm-switch input:checked + .cwfm-switch-track { border-color: transparent; }',
-            '.cwfm-switch-track::before {',
-            '  content: ""; position: absolute; top: 2px; left: 2px;',
-            '  width: 16px; height: 16px; border-radius: 50%; background: #ffffff;',
-            '  box-shadow: 0 1px 2px rgba(0,0,0,0.18), 0 0 1px rgba(0,0,0,0.08);',
-            '  transition: transform 0.15s ease;',
+            // [cwfm] 已確認的最終版本——參考一個廣為引用的純 CSS 開關
+            // 實作（codepen.io/morgoe/pen/VvzWQg）：滑塊用淡淡的漸層
+            // (白到極淺灰)營造圓潤立體感，外面再加一圈細細的深色陰影圈
+            // 當邊界（不是邊框，邊框會佔用版面空間、導致跟軌道尺寸對不
+            // 齊；陰影圈不影響版面尺寸）。這圈陰影深淺兩種模式完全共用
+            // 同一段 CSS，不用分別寫——陰影本身的特性就是「不管襯在什麼
+            // 顏色底下都看得出來邊界」，不像之前失敗的做法（邊框顏色
+            // 比照面板背景色）依賴猜中背景色，背景一換就失效。軌道關閉
+            // 狀態改用清楚可辨的中灰色（--cwfm-switch-off-track，兩種
+            // 模式各自明確的不透明色，不是容易變透明的 border-light）。
+            '  position: absolute; inset: 0; background: var(--cwfm-switch-off-track);',
+            '  border-radius: 10px; transition: background 0.15s ease;',
             '}',
             '.cwfm-switch input:checked + .cwfm-switch-track { background: var(--cwfm-accent); }',
+            '.cwfm-switch-track::before {',
+            '  content: ""; position: absolute; top: 2px; left: 2px;',
+            '  width: 16px; height: 16px; border-radius: 50%;',
+            '  background: linear-gradient(to bottom, #ffffff 0%, #eeeeee 100%);',
+            '  box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.2);',
+            '  transition: transform 0.15s ease;',
+            '}',
             '.cwfm-switch input:checked + .cwfm-switch-track::before {',
             '  transform: translateX(14px);',
             '}',
