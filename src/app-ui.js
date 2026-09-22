@@ -904,9 +904,11 @@
             // 標準做法是整條橫跨頂端的標題列都可以拖曳，不是只有中間
             // 一小塊圖示——這裡的拖曳範圍本來就是整條，加一層淡淡的
             // 底色，讓它視覺上更明確看起來就是一整條可拖曳的標題列，
-            // 不會讓人誤以為只有中間那兩個點才能拖。
-            '  text-align: center; font-size: 10px; line-height: 1; padding: 5px 0;',
-            '  color: var(--cwfm-text-secondary); cursor: move; letter-spacing: 2px;',
+            // 不會讓人誤以為只有中間那兩個點才能拖。圖示改用 Google
+            // Material Design 官方「Drag Handle」圖示（兩條橫線），
+            // 不是自己編的符號。
+            '  display: flex; align-items: center; justify-content: center; padding: 5px 0;',
+            '  color: var(--cwfm-text-secondary); cursor: move;',
             '  user-select: none; background: var(--cwfm-border-light);',
             '}',
             '.cwfm-cp .cp-drag-handle:hover { color: var(--cwfm-text); background: var(--cwfm-border); }',
@@ -2414,7 +2416,7 @@
         document.body.insertAdjacentHTML('beforeend', `
 <div id="cwfm-cp-wrap" class="cwfm-cp-wrap" data-cwfm-owned="true">
   <div id="cwfm-cp" class="cwfm-cp">
-    <div class="cp-drag-handle" title="\u62d6\u52d5\u79fb\u52d5\u4f4d\u7f6e">\u22ee\u22ee</div>
+    <div class="cp-drag-handle" title="\u62d6\u52d5\u79fb\u52d5\u4f4d\u7f6e"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></svg></div>
     <div class="cp-grad-wrap">
       <div class="cp-grad-box">
         <div class="cp-grad-white"></div>
@@ -3087,16 +3089,30 @@
             hexInput.className = 'cwfm-color-hex-input';
             hexInput.value = settings[key];
             hexInput.placeholder = '#RRGGBB';
+            hexInput.title = '\u652f\u63f4\u591a\u7a2e\u683c\u5f0f\uff0c\u81ea\u52d5\u8fa8\u8b58\uff1a\n\u2022 #RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 #\uff09\n\u2022 R, G, B\uff08\u88f8\u9017\u865f\u4e09\u6578\u5b57\uff0c\u9810\u8a2d\u7576\u4f5c RGB\uff0c\u6bcf\u500b\u6578\u503c 0~255\uff09\n\u2022 rgb(R, G, B) \u6216 hsl(H, S%, L%)\uff08\u6a19\u6e96 CSS \u8272\u5f69\u8a9e\u6cd5\uff09\n\u2022 \u82f1\u6587\u8272\u5f69\u540d\u7a31\uff08\u5982 red\u3001cornflowerblue\uff09\n\u7559\u7a7a\u4e0d\u586b\u5247\u4e0d\u6703\u5132\u5b58\u3001\u4e0d\u6703\u8986\u84cb\u73fe\u6709\u989c\u8272\u3002';
             hexInput.spellcheck = false;
             function commitHexInput() {
-                const hex = cwfmCssToHex(hexInput.value.trim());
+                const raw = hexInput.value.trim();
+                // [cwfm] 空值——不儲存、不覆蓋、不當成錯誤，維持原本的顏色，
+                // 只是把顯示還原成目前實際生效的值，不留著一片空白。
+                if (!raw) { hexInput.value = settings[key].toUpperCase(); return; }
+                let hex = cwfmCssToHex(raw);
+                if (!hex) {
+                    // [cwfm] cwfmCssToHex 借用瀏覽器自己的 CSS 顏色解析器，
+                    // 已經認得 #HEX、rgb(...)、hsl(...)、色彩名稱這些「正式」
+                    // 的 CSS 顏色語法，但單純打「255, 0, 0」這種沒有包函式
+                    // 的裸逗號三數字，瀏覽器不認得——這裡補上：辨識到裸
+                    // 逗號三數字格式，自動包成 rgb(...) 再丟給同一套解析。
+                    const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
+                    if (m3) hex = cwfmCssToHex(`rgb(${m3[1]}, ${m3[2]}, ${m3[3]})`);
+                }
                 if (!hex) {
                     // [cwfm] 打的東西辨識不出來——跟彈出取色器裡數值輸入框
                     // 同一套做法，短暫閃紅框提示，不要沒反應也不要默默
                     // 吃掉整個顏色。
                     hexInput.classList.add('cwfm-color-hex-input-error');
                     setTimeout(() => hexInput.classList.remove('cwfm-color-hex-input-error'), 600);
-                    hexInput.value = settings[key];
+                    hexInput.value = settings[key].toUpperCase();
                     return;
                 }
                 hexInput.value = hex.toUpperCase();
