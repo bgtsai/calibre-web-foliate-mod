@@ -1179,7 +1179,12 @@
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
         preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
-        colorPickerMode: 'RGB',    // 取色器、面板色塊旁的數值輸入框，兩處共用同一個「上次使用的分頁」（HEX／RGB／HSV），下次打開沿用
+        // [cwfm] 每個顏色欄位各自獨立記住自己上次用的分頁（HEX／RGB／
+        // HSV），不共用同一個值——文字顏色跟背景顏色是兩個獨立的欄位，
+        // 用 key（customTextColor／customBackgroundColor）當索引分開存，
+        // 之前用單一個 colorPickerMode 共用，導致動一個欄位的分頁、
+        // 另一個欄位也被連動切換過去。
+        colorPickerModeByKey: {},
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
@@ -2423,7 +2428,7 @@
     }
 
     // ── 開啟取色器，選好按 OK 後呼叫 onConfirm(hex) ──
-    function openColorPicker(initialHex, onConfirm, onPreview) {
+    function openColorPicker(initialHex, onConfirm, onPreview, modeStorageKey) {
         document.getElementById('cwfm-cp-wrap')?.remove();
 
         const initRgb = cwfmHexToRgb(initialHex) || { r: 204, g: 0, b: 0 };
@@ -2432,7 +2437,7 @@
             h: initHsv.h, s: initHsv.s, v: initHsv.v,
             r: initRgb.r, g: initRgb.g, b: initRgb.b,
             // [cwfm] 沿用使用者上次選過的分頁，不寫死 'RGB'
-            mode: window.__cwfm.settings?.colorPickerMode || 'RGB',
+            mode: (window.__cwfm.settings?.colorPickerModeByKey || {})[modeStorageKey] || 'RGB',
         };
         function cpSyncFromHsv() {
             const rgb = cwfmHsvToRgb(cpState.h, cpState.s, cpState.v);
@@ -2730,9 +2735,12 @@
                 const newMode = tab.dataset.mode;
                 if (cpState.mode === 'RGB') cpSyncFromRgb(); else cpSyncFromHsv();
                 cpState.mode = newMode;
-                // [cwfm] 記住這次選的分頁，下次打開取色器沿用
-                if (window.__cwfm.settings) {
-                    window.__cwfm.settings.colorPickerMode = newMode;
+                // [cwfm] 記住這次選的分頁，下次打開取色器沿用——用
+                // modeStorageKey（呼叫端傳進來的欄位識別碼）分開存，
+                // 不同顏色欄位各自獨立記憶，不共用同一個值。
+                if (window.__cwfm.settings && modeStorageKey) {
+                    if (!window.__cwfm.settings.colorPickerModeByKey) window.__cwfm.settings.colorPickerModeByKey = {};
+                    window.__cwfm.settings.colorPickerModeByKey[modeStorageKey] = newMode;
                     saveSettings(window.__cwfm.settings);
                 }
                 cpRender();
@@ -3123,11 +3131,10 @@
             valueInput.type = 'text';
             valueInput.spellcheck = false;
 
-            // [cwfm] 這個輸入框目前是哪個模式——改成跟彈出取色器共用
-            // 同一個既有設定值 settings.colorPickerMode（原本彈出取色器
-            // 早就有這個機制，只是這次新做的欄位沒接上），不是每次重開
-            // 都預設回 HEX。
-            let mode = settings.colorPickerMode || 'RGB';
+            // [cwfm] 這個輸入框目前是哪個模式——用 key 當索引，跟彈出
+            // 取色器共用同一份 colorPickerModeByKey，但不同顏色欄位各自
+            // 獨立記憶，不會互相連動。
+            let mode = (settings.colorPickerModeByKey || {})[key] || 'RGB';
 
             function formatForMode(hex) {
                 const rgb = cwfmHexToRgb(hex);
@@ -3155,9 +3162,13 @@
                     modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((t) => t.classList.remove('active'));
                     tab.classList.add('active');
                     refreshValueInput();
-                    // [cwfm] 存進跟彈出取色器共用的同一個設定值，兩邊記憶
-                    // 同一個「使用者最後用哪個模式」的狀態，不會各自為政。
-                    settings.colorPickerMode = m;
+                    // [cwfm] 用 key（customTextColor／customBackgroundColor）
+                    // 當索引分開存，不同顏色欄位各自獨立記憶自己的分頁，
+                    // 跟彈出取色器共用同一份 colorPickerModeByKey，但每個
+                    // 欄位互不影響——之前用單一個 colorPickerMode 共用，
+                    // 導致動一個欄位、另一個也被連動切換過去，這裡修正。
+                    if (!settings.colorPickerModeByKey) settings.colorPickerModeByKey = {};
+                    settings.colorPickerModeByKey[key] = m;
                     saveSettings(settings);
                 });
                 modeTabs.appendChild(tab);
@@ -3246,7 +3257,7 @@
                     }
                     saveSettings(settings);
                     applySettings(settings);
-                }, previewColor);
+                }, previewColor, key);
             });
             inputGroup.appendChild(modeTabs);
             inputGroup.appendChild(valueInput);
