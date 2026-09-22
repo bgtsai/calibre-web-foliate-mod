@@ -444,8 +444,14 @@
             // 突兀的實色色塊；隱藏狀態下完全透明，但點擊依然有效
             // （功能開關/顯示開關兩者獨立）。
             '.cwfm-tap-zone {',
-            '  position: fixed; top: 44px; bottom: 44px; z-index: 999990; cursor: pointer;',
+            // [cwfm] 改成 top:0/bottom:0，撐滿整個畫面高度——原本上下各
+            // 留 44px 給工具列，工具列自動隱藏之後那 44px 反而變成一塊
+            // 沒有點擊區覆蓋的缺口。z-index 比工具列低，工具列還在畫面
+            // 上的時候(一般模式或自動隱藏喚醒的當下)，工具列本身疊在
+            // 上面，點擊工具列按鈕還是工具列優先，不會被點擊區搶走。
+            '  position: fixed; top: 0; bottom: 0; z-index: 999990; cursor: pointer;',
             '  background: transparent; transition: background 0.15s ease;',
+            '  display: flex; align-items: center; justify-content: center;',
             '}',
             '.cwfm-tap-zone.cwfm-tap-left { left: 0; }',
             '.cwfm-tap-zone.cwfm-tap-right { right: 0; }',
@@ -455,6 +461,13 @@
             '.cwfm-tap-zone.cwfm-tap-visible.cwfm-tap-left { box-shadow: inset -1px 0 0 var(--cwfm-shadow-ring); }',
             '.cwfm-tap-zone.cwfm-tap-visible.cwfm-tap-right { box-shadow: inset 1px 0 0 var(--cwfm-shadow-ring); }',
             '.cwfm-tap-zone.cwfm-tap-visible:hover { background: var(--cwfm-shadow-ring); opacity: 0.7; }',
+            // [cwfm] 中央的小箭頭圖示——只有「顯示視覺提示」開啟時才看得
+            // 到（呼應「功能開關/顯示開關分開」這個設計，關閉顯示的時候
+            // 連圖示都不該露出來），淡淡的顏色，不搶眼，滑鼠移過去才
+            // 稍微加深，給一點互動回饋。
+            '.cwfm-tap-chevron { width: 22px; height: 22px; color: var(--cwfm-text-secondary); opacity: 0; transition: opacity 0.15s ease; }',
+            '.cwfm-tap-zone.cwfm-tap-visible .cwfm-tap-chevron { opacity: 0.35; }',
+            '.cwfm-tap-zone.cwfm-tap-visible:hover .cwfm-tap-chevron { opacity: 0.8; color: var(--cwfm-text); }',
             '.cwfm-toolbar button {',
             '  background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text);',
             '  border-radius: 4px; padding: 5px 12px; cursor: pointer;',
@@ -3581,9 +3594,9 @@
             render();
         })();
         beginGroup('\u6587\u5b57\u6392\u7248');
-        addRangeField('\u5B57\u7D1A', 'fontSize', 70, 200, 5, '%');
-        addRangeField('\u5B57\u8DDD', 'letterSpacing', -0.05, 0.3, 0.01, 'em');
-        addRangeField('\u884C\u8DDD', 'lineSpacing', 1, 2.5, 0.1, '');
+        addRangeField('\u5B57\u7D1A', 'fontSize', 70, 300, 5, '%');
+        addRangeField('\u5B57\u8DDD', 'letterSpacing', -0.05, 0.5, 0.01, 'em');
+        addRangeField('\u884C\u8DDD', 'lineSpacing', 1, 5, 0.1, '');
         addCheckboxField('\u5169\u7AEF\u5C0D\u9F4A', 'justify');
         addCheckboxField('\u81EA\u52D5\u65B7\u5B57', 'hyphenate');
         // [cwfm] 查證後確認：詞彙替換字型（用 ccmp 這個 OpenType 機制把
@@ -3639,7 +3652,7 @@
         // 閱讀內容)。
         addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd', 'tapZoneEnabled');
         addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09', 'tapZoneVisible');
-        addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPercent', 5, 45, 1, '%');
+        addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPercent', 0, 45, 1, '%');
 
         document.body.appendChild(panel);
 
@@ -3992,10 +4005,15 @@
         cwfmTapZoneLeft = document.createElement('div');
         cwfmTapZoneLeft.className = 'cwfm-tap-zone cwfm-tap-left';
         cwfmTapZoneLeft.dataset.cwfmOwned = 'true';
+        // [cwfm] 中央的小箭頭圖示——參考 Material Design 圖示庫的
+        // chevron（角括號箭頭）樣式，不是自己編的符號，淡淡的、不搶眼，
+        // 只是給一個「這裡可以點」的視覺提示。
+        cwfmTapZoneLeft.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
         cwfmTapZoneLeft.addEventListener('click', () => { if (cwfmTapZoneLeft.dataset.cwfmTapEnabled === 'true') cwfmGoLeft(); });
         cwfmTapZoneRight = document.createElement('div');
         cwfmTapZoneRight.className = 'cwfm-tap-zone cwfm-tap-right';
         cwfmTapZoneRight.dataset.cwfmOwned = 'true';
+        cwfmTapZoneRight.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>';
         cwfmTapZoneRight.addEventListener('click', () => { if (cwfmTapZoneRight.dataset.cwfmTapEnabled === 'true') cwfmGoRight(); });
         document.body.appendChild(cwfmTapZoneLeft);
         document.body.appendChild(cwfmTapZoneRight);
@@ -4004,7 +4022,12 @@
         if (!cwfmTapZoneLeft || !cwfmTapZoneRight) return;
         const enabled = !!settings.tapZoneEnabled;
         const visible = !!settings.tapZoneVisible;
-        const widthPercent = Math.max(5, Math.min(45, settings.tapZoneWidthPercent || 20));
+        // [cwfm] 下限改成 0（原本強制卡在 5，使用者要求最小值也該能調到
+        // 0）；用 typeof 判斷有沒有值，不是用 || ——settings.tapZoneWidthPercent
+        // 合法值可以是 0，但 0 || 20 這種寫法會把 0 誤判成「沒有值」，
+        // 結果變成 20，不是真的 0。
+        const rawWidth = typeof settings.tapZoneWidthPercent === 'number' ? settings.tapZoneWidthPercent : 20;
+        const widthPercent = Math.max(0, Math.min(45, rawWidth));
         [cwfmTapZoneLeft, cwfmTapZoneRight].forEach((zone) => {
             // [cwfm] 用 dataset 存功能開關的狀態，不是直接加/拿掉 click
             // 監聽器——監聽器本身固定掛著，觸發時才檢查這個旗標，這樣
