@@ -1226,7 +1226,7 @@
         // 不顯示視覺，區域一樣有作用，只是看不到。
         tapZoneEnabled: true,
         tapZoneVisible: true,
-        tapZoneWidthPercent: 20,   // 每側感應區佔畫面寬度的百分比
+        tapZoneWidthPx: 80,   // 每側感應區固定寬度(px)
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
@@ -3652,7 +3652,7 @@
         // 閱讀內容)。
         addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd', 'tapZoneEnabled');
         addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09', 'tapZoneVisible');
-        addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPercent', 0, 45, 1, '%');
+        addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPx', 0, 300, 5, 'px');
 
         document.body.appendChild(panel);
 
@@ -4022,18 +4022,19 @@
         if (!cwfmTapZoneLeft || !cwfmTapZoneRight) return;
         const enabled = !!settings.tapZoneEnabled;
         const visible = !!settings.tapZoneVisible;
-        // [cwfm] 下限改成 0（原本強制卡在 5，使用者要求最小值也該能調到
-        // 0）；用 typeof 判斷有沒有值，不是用 || ——settings.tapZoneWidthPercent
-        // 合法值可以是 0，但 0 || 20 這種寫法會把 0 誤判成「沒有值」，
-        // 結果變成 20，不是真的 0。
-        const rawWidth = typeof settings.tapZoneWidthPercent === 'number' ? settings.tapZoneWidthPercent : 20;
-        const widthPercent = Math.max(0, Math.min(45, rawWidth));
+        // [cwfm] 改用固定像素值，不用百分比——使用者要求改成固定寬度，
+        // 不隨畫面大小縮放。下限 0（使用者要求最小值也該能調到 0）；
+        // 用 typeof 判斷有沒有值，不是用 || ——settings.tapZoneWidthPx
+        // 合法值可以是 0，但 0 || 80 這種寫法會把 0 誤判成「沒有值」，
+        // 結果變成 80，不是真的 0。
+        const rawWidth = typeof settings.tapZoneWidthPx === 'number' ? settings.tapZoneWidthPx : 80;
+        const widthPx = Math.max(0, Math.min(300, rawWidth));
         [cwfmTapZoneLeft, cwfmTapZoneRight].forEach((zone) => {
             // [cwfm] 用 dataset 存功能開關的狀態，不是直接加/拿掉 click
             // 監聽器——監聽器本身固定掛著，觸發時才檢查這個旗標，這樣
             // 開關切換不用重新綁定事件，邏輯比較單純。
             zone.dataset.cwfmTapEnabled = String(enabled);
-            zone.style.width = widthPercent + '%';
+            zone.style.width = widthPx + 'px';
             zone.classList.toggle('cwfm-tap-visible', visible);
             // [cwfm] 功能關掉的時候，游標也改回正常箭頭，不要讓使用者
             // 以為這裡還能點——純視覺提示，跟上面 dataset 那個真正決定
