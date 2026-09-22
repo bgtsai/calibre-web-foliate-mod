@@ -1,2 +1,29 @@
 # calibre-web-foliate-mod
-Tampermonkey userscript: replace Calibre-Web's built-in epub.js reader with a customized foliate-js based reader.
+
+一支 Tampermonkey 使用者腳本，把 Calibre-Web 內建、基於 epub.js 的閱讀器，換成自己包裝的 [foliate-js](https://github.com/johnfactotum/foliate-js) 閱讀器。
+
+## 這是為了什麼寫的
+
+Calibre-Web 內建的 epub.js 閱讀器，排版控制項有限（字級、字距、行距、留白這些細部排版選項都沒有或不夠精準），介面樣式也沒辦法自訂。這支腳本在不改動 Calibre-Web 伺服器端程式碼的前提下，用 Tampermonkey 在瀏覽器端把閱讀器整個換掉，改用排版控制更細緻、可以深度自訂外觀的 foliate-js，同時盡量保留 Calibre-Web 原本的書籤同步、閱讀進度這些既有機制，讓使用者原本習慣的操作方式（書籤、進度）維持不變，只是排版引擎跟介面換了。
+
+## 有什麼特別的功能
+
+- **細部排版控制**：字級（最大到 300%）、字距（最大到 0.5em）、行距（最大到 5）、左右對齊、斷字、上下/左右留白、欄數，都可以獨立調整並即時套用。
+- **佈景主題**：內建跟隨系統、亮色、暗色、復古黃四種固定主題，也可以把目前的排版設定另存成自訂主題，多組主題可以拖曳排序、可以用目前設定覆蓋更新既有主題。
+- **自訂配色**：文字顏色跟背景顏色可以分別用 HEX / RGB / HSV 三種格式輸入（也有一個自製的取色器可以用滑鼠選色），配色組合可以另存多組、拖曳排序。
+- **字型管理**：可以手動輸入系統已安裝的字型名稱，也可以直接上傳字型檔案（.ttf / .otf / .woff）嵌入使用，字型名稱清單一樣支援拖曳排序。
+- **左右翻頁點擊區**：畫面左右兩側可以設定點擊感應區，點擊觸發往前/往後翻頁；感應區的啟用（能不能點）跟顯示（看不看得到）是分開的兩個開關，感應區寬度可以自訂像素值。
+- **自動隱藏工具列**：閱讀時工具列跟進度條可以在幾秒無動作後自動滑出畫面，滑鼠移到邊緣或點擊即可喚醒。
+- **翻頁快速鍵**：往前/往後翻頁的鍵盤快速鍵可以自訂，每個方向可以錄製不只一組按鍵組合。
+- **書籤與進度**：沿用 Calibre-Web 原本的伺服器端書籤機制；另外本機也會自動記住閱讀進度（每次翻頁即時記），可以設定閱讀停留超過一段時間後自動同步回伺服器書籤。
+- **翻頁精準定位**（實驗性功能，預設關閉）：調整排版設定或縮放視窗時，盡量把目前閱讀到的那一行文字精準對齊到新版面的頁首，減少畫面跳動或閱讀位置跑掉的情況。
+
+## 安裝需求
+
+需要安裝 [Tampermonkey](https://www.tampermonkey.net/) 瀏覽器擴充功能（Chrome、Firefox、Edge 等主流瀏覽器皆可，一般穩定版即可，不需要 Beta 版）。
+
+## 使用方式
+
+1. 安裝 Tampermonkey。
+2. 安裝這支腳本：[calibre-web-foliate-mod.user.js](https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/calibre-web-foliate-mod.user.js)
+3. 在 Calibre-Web 開啟任一本 EPUB，閱讀器會自動替換成 foliate-js 版本，右上角齒輪圖示可以開啟排版設定面板。
