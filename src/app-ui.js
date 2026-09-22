@@ -867,15 +867,27 @@
             '}',
             // [cwfm] 色塊旁邊的數值輸入框——不用點開取色器彈窗，直接在
             // 這裡打 HEX 就能改顏色。
-            '.cwfm-color-control-wrap { display: flex; align-items: center; gap: 6px; }',
+            '.cwfm-color-control-wrap { display: flex; align-items: center; gap: 6px; position: relative; }',
             '.cwfm-color-hex-input {',
-            '  width: 5.5em; box-sizing: border-box; padding: 5px 6px;',
+            // [cwfm] 加寬到能放下「#hex / R,G,B / H,S,V」這個縮短版的
+            // placeholder 提示，原本 5.5em 只放得下純 HEX，清空之後看
+            // 不出還支援其他格式。
+            '  width: 11.5em; box-sizing: border-box; padding: 5px 6px;',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light);',
             '  color: var(--cwfm-text); border-radius: 4px; font-size: 12px;',
-            '  font-family: "Courier New", monospace; text-transform: uppercase;',
+            '  font-family: "Courier New", monospace;',
             '}',
             '.cwfm-color-hex-input:focus { border-color: var(--cwfm-accent); outline: none; }',
             '.cwfm-color-hex-input-error { border-color: #e04040 !important; background: rgba(224,64,64,0.15) !important; }',
+            // [cwfm] 格式說明的小提示框——聚焦(focus)才顯示，不是 hover
+            // 才顯示，觸控裝置點一下欄位就看得到，不用依賴滑鼠移過去。
+            '.cwfm-color-hint {',
+            '  position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 10;',
+            '  width: 220px; padding: 8px 10px; font-size: 11px; line-height: 1.6;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border);',
+            '  border-radius: 6px; color: var(--cwfm-text-secondary);',
+            '  box-shadow: 0 4px 14px var(--cwfm-shadow-soft);',
+            '}',
             // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
             // 改名為 cwfm-cp。原版是亮色主題、另外用 html[dark] 屬性選擇器
             // 疊一套暗色 override；我們的設定面板本身就是深色的，直接用
@@ -3088,9 +3100,23 @@
             hexInput.type = 'text';
             hexInput.className = 'cwfm-color-hex-input';
             hexInput.value = settings[key];
-            hexInput.placeholder = '#RRGGBB';
-            hexInput.title = '\u652f\u63f4\u591a\u7a2e\u683c\u5f0f\uff0c\u81ea\u52d5\u8fa8\u8b58\uff1a\n\u2022 #RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 #\uff09\n\u2022 R, G, B\uff08\u88f8\u9017\u865f\u4e09\u6578\u5b57\uff0c\u9810\u8a2d\u7576\u4f5c RGB\uff0c\u6bcf\u500b\u6578\u503c 0~255\uff09\n\u2022 rgb(R, G, B) \u6216 hsl(H, S%, L%)\uff08\u6a19\u6e96 CSS \u8272\u5f69\u8a9e\u6cd5\uff09\n\u2022 \u82f1\u6587\u8272\u5f69\u540d\u7a31\uff08\u5982 red\u3001cornflowerblue\uff09\n\u7559\u7a7a\u4e0d\u586b\u5247\u4e0d\u6703\u5132\u5b58\u3001\u4e0d\u6703\u8986\u84cb\u73fe\u6709\u989c\u8272\u3002';
+            // [cwfm] placeholder 改成同時列出三種格式的簡短提示——原本
+            // 只寫 #RRGGBB 一種，清空之後只看得到這一種格式的提示，容易
+            // 誤會只支援 HEX。輸入框跟著加寬，不然三種格式的提示會被
+            // 截斷看不全。
+            hexInput.placeholder = '#hex / R,G,B / H,S,V';
             hexInput.spellcheck = false;
+
+            // [cwfm] 格式說明改用點擊/聚焦才出現的小提示框，不用 title
+            // 屬性——title 只有滑鼠移過去(hover)才會顯示，觸控裝置沒有
+            // hover 這個概念，等於完全看不到提示。改成 focus 才顯示、
+            // blur 就收起來，觸控點一下欄位、鍵盤 Tab 移過去都會觸發。
+            const hintBox = document.createElement('div');
+            hintBox.className = 'cwfm-color-hint';
+            hintBox.textContent = '\u652f\u63f4\u4e09\u7a2e\u683c\u5f0f\uff0c\u81ea\u52d5\u8fa8\u8b58\uff1a\u2022 #RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 #\uff09\u2022 R, G, B\uff08\u88f8\u9017\u865f\u4e09\u6578\u5b57\uff0c\u6bcf\u500b 0~255\uff0c\u9810\u8a2d\u7576\u4f5c RGB\uff09\u2022 H, S, V\uff08H \u662f 0~360\uff0c\u6709\u4efb\u4e00\u6578\u503c\u8d85\u904e 255 \u6642\u81ea\u52d5\u7576\u4f5c HSV\uff09\u2022 rgb(...) \u6216 hsl(...)\uff08\u6a19\u6e96 CSS \u8272\u5f69\u8a9e\u6cd5\uff09\u2022 \u82f1\u6587\u8272\u5f69\u540d\u7a31\uff08\u5982 red\uff09\u3002\u7559\u7a7a\u4e0d\u586b\u5247\u4e0d\u6703\u5132\u5b58\u3001\u4e0d\u6703\u8986\u84cb\u73fe\u6709\u989c\u8272\u3002';
+            hintBox.hidden = true;
+            hexInput.addEventListener('focus', () => { hintBox.hidden = false; });
+            hexInput.addEventListener('blur', () => { hintBox.hidden = true; });
             function commitHexInput() {
                 const raw = hexInput.value.trim();
                 // [cwfm] 空值——不儲存、不覆蓋、不當成錯誤，維持原本的顏色，
@@ -3102,9 +3128,19 @@
                     // 已經認得 #HEX、rgb(...)、hsl(...)、色彩名稱這些「正式」
                     // 的 CSS 顏色語法，但單純打「255, 0, 0」這種沒有包函式
                     // 的裸逗號三數字，瀏覽器不認得——這裡補上：辨識到裸
-                    // 逗號三數字格式，自動包成 rgb(...) 再丟給同一套解析。
+                    // 逗號三數字格式，先判斷是 RGB 還是 HSV，任一數值超過
+                    // 255 就一定不是合法的 RGB(0~255)，當作 HSV 處理；否則
+                    // 預設當作 RGB(比較常見的直覺猜測)。
                     const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
-                    if (m3) hex = cwfmCssToHex(`rgb(${m3[1]}, ${m3[2]}, ${m3[3]})`);
+                    if (m3) {
+                        const n1 = parseFloat(m3[1]), n2 = parseFloat(m3[2]), n3 = parseFloat(m3[3]);
+                        if (n1 > 255 || n2 > 255 || n3 > 255) {
+                            const rgb = cwfmHsvToRgb(((n1 % 360) + 360) % 360, Math.max(0, Math.min(100, n2)) / 100, Math.max(0, Math.min(100, n3)) / 100);
+                            hex = cwfmRgbToHex(rgb.r, rgb.g, rgb.b);
+                        } else {
+                            hex = cwfmCssToHex(`rgb(${n1}, ${n2}, ${n3})`);
+                        }
+                    }
                 }
                 if (!hex) {
                     // [cwfm] 打的東西辨識不出來——跟彈出取色器裡數值輸入框
@@ -3171,6 +3207,7 @@
             });
             controlWrap.appendChild(swatchBtn);
             controlWrap.appendChild(hexInput);
+            controlWrap.appendChild(hintBox);
             row.appendChild(controlWrap);
             field.appendChild(row);
             panelTarget.appendChild(field);
