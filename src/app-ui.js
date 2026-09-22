@@ -1179,7 +1179,7 @@
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
         preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
-        colorPickerMode: 'RGB',    // 取色器上次使用的分頁（HEX／RGB／HSV），下次打開沿用
+        colorPickerMode: 'RGB',    // 取色器、面板色塊旁的數值輸入框，兩處共用同一個「上次使用的分頁」（HEX／RGB／HSV），下次打開沿用
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
@@ -3123,11 +3123,11 @@
             valueInput.type = 'text';
             valueInput.spellcheck = false;
 
-            // [cwfm] 這個輸入框目前是哪個模式，只存在這個欄位自己的區域
-            // 變數裡，不寫進 settings——這是「使用者現在想用哪種格式打
-            // 字」這個當下的操作狀態，不是需要記住到下次開啟設定面板的
-            // 東西，預設一律從 HEX 開始。
-            let mode = 'HEX';
+            // [cwfm] 這個輸入框目前是哪個模式——改成跟彈出取色器共用
+            // 同一個既有設定值 settings.colorPickerMode（原本彈出取色器
+            // 早就有這個機制，只是這次新做的欄位沒接上），不是每次重開
+            // 都預設回 HEX。
+            let mode = settings.colorPickerMode || 'RGB';
 
             function formatForMode(hex) {
                 const rgb = cwfmHexToRgb(hex);
@@ -3136,7 +3136,14 @@
                 const hsv = cwfmRgbToHsv(rgb.r, rgb.g, rgb.b);
                 return `${Math.round(hsv.h)}, ${Math.round(hsv.s * 100)}, ${Math.round(hsv.v * 100)}`;
             }
-            function refreshValueInput() { valueInput.value = formatForMode(settings[key]); }
+            // [cwfm] 清空時的提示文字，格式比照彈出取色器裡數值輸入框
+            // 已經有的做法（「例如：xxx」），不是另外設計一套。
+            function refreshPlaceholder() {
+                if (mode === 'HEX') valueInput.placeholder = '\u4f8b\u5982\uff1a#FF8000';
+                else if (mode === 'RGB') valueInput.placeholder = '\u4f8b\u5982\uff1a255, 128, 0';
+                else valueInput.placeholder = '\u4f8b\u5982\uff1a210, 80, 90';
+            }
+            function refreshValueInput() { valueInput.value = formatForMode(settings[key]); refreshPlaceholder(); }
 
             ['HEX', 'RGB', 'HSV'].forEach((m) => {
                 const tab = document.createElement('button');
@@ -3148,6 +3155,10 @@
                     modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((t) => t.classList.remove('active'));
                     tab.classList.add('active');
                     refreshValueInput();
+                    // [cwfm] 存進跟彈出取色器共用的同一個設定值，兩邊記憶
+                    // 同一個「使用者最後用哪個模式」的狀態，不會各自為政。
+                    settings.colorPickerMode = m;
+                    saveSettings(settings);
                 });
                 modeTabs.appendChild(tab);
             });
