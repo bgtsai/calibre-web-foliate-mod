@@ -373,6 +373,12 @@
             '  --cwfm-border-light: #333333; --cwfm-text: #e8e8e8;',
             '  --cwfm-text-secondary: #898989; --cwfm-text-muted: #555555;',
             '  --cwfm-shadow-ring: rgba(255,255,255,0.06);',
+            // [cwfm] 加強版陰影，專門給滑桿/開關這種小型元件用——原本
+            // 那組數值是抓 Cal.com 給大尺寸卡片元件用的透明度，直接套用
+            // 到只有 34×20px 的開關、細長的滑桿軌道上，比例不夠，肉眼
+            // 幾乎看不出來。不動原本那組（分組卡片用，已確認效果沒問題），
+            // 另外開一個更明顯的版本給小元件用。
+            '  --cwfm-shadow-ring-strong: rgba(255,255,255,0.18);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.3); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.16);',
             '  --cwfm-toolbar-bg: rgba(10,10,10,0.92);',
@@ -384,6 +390,7 @@
             '  --cwfm-border-light: rgba(0,0,0,0.08); --cwfm-text: #242424;',
             '  --cwfm-text-secondary: #898989; --cwfm-text-muted: #b0b0b0;',
             '  --cwfm-shadow-ring: rgba(0,0,0,0.08);',
+            '  --cwfm-shadow-ring-strong: rgba(0,0,0,0.22);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.12);',
             '  --cwfm-toolbar-bg: rgba(255,255,255,0.92);',
@@ -717,7 +724,7 @@
             '.cwfm-panel input[type="range"]::-webkit-slider-runnable-track {',
             // [cwfm] 跟開關軌道同一套陰影模擬邊界手法，統一視覺語言。
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
-            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
+            '  box-shadow: 0 0 0 1.5px var(--cwfm-shadow-ring-strong);',
             '}',
             '.cwfm-panel input[type="range"]::-webkit-slider-thumb {',
             // [cwfm] 加邊框+陰影，不是只有純色塊——查了業界常見做法，光
@@ -733,7 +740,7 @@
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-track {',
             '  height: 3px; background: var(--cwfm-border-light); border-radius: 2px;',
-            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
+            '  box-shadow: 0 0 0 1.5px var(--cwfm-shadow-ring-strong);',
             '}',
             '.cwfm-panel input[type="range"]::-moz-range-thumb {',
             '  width: 14px; height: 14px; border-radius: 50%; background: var(--cwfm-accent);',
@@ -803,7 +810,7 @@
             // 存在，跟面板其他元件用同一套視覺語言。
             '  position: absolute; inset: 0; background: var(--cwfm-border-light);',
             '  border-radius: 10px; transition: background 0.15s ease;',
-            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring);',
+            '  box-shadow: 0 0 0 1.5px var(--cwfm-shadow-ring-strong);',
             '}',
             '.cwfm-switch-track::before {',
             '  content: ""; position: absolute; top: 2px; left: 2px;',
@@ -1334,7 +1341,7 @@
     // 取消或點背景為 false。目前只有刪除上傳字型會用到（規則規定一律
     // 要跳確認，不看背後掛了幾個名稱），寫成共用函式方便之後其他地方
     // 需要「刪除前先確認」的時候重複使用。
-    function cwfmConfirmDialog(title, message) {
+    function cwfmConfirmDialog(title, message, confirmLabel) {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'cwfm-confirm-overlay';
@@ -1352,7 +1359,12 @@
             cancelBtn.className = 'cwfm-confirm-cancel';
             const okBtn = document.createElement('button');
             okBtn.type = 'button';
-            okBtn.textContent = '\u78ba\u5b9a\u522a\u9664';
+            // [cwfm] 按鈕文字改成可以自訂——這個對話框原本是專門給「刪除」
+            // 這種動作用的，固定寫死「確定刪除」；後來拿去給「覆蓋更新」
+            // 這種不是刪除的動作重複使用，硬套同一句文字，使用者會看到
+            // 「確定刪除」但實際上是要覆蓋，語意不對。沒有傳這個參數時
+            // 維持原本的預設文字，不影響其他真的是刪除的呼叫點。
+            okBtn.textContent = confirmLabel || '\u78ba\u5b9a\u522a\u9664';
             okBtn.className = 'cwfm-confirm-ok';
             function close(result) {
                 overlay.remove();
@@ -1536,7 +1548,9 @@
             const updateBtn = document.createElement('button');
             updateBtn.type = 'button';
             updateBtn.className = 'cwfm-keychip-rename';
-            updateBtn.textContent = '\u21bb';
+            // [cwfm] 用 SVG 畫磁碟片(儲存)圖示，比原本的重新整理箭頭更
+            //直觀——這個動作的意義是「存檔覆蓋」，不是「重新整理」。
+            updateBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/></svg>';
             if (opts.updateLabel) updateBtn.setAttribute('aria-label', opts.updateLabel);
             updateBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -2669,7 +2683,8 @@
                         onUpdate: async () => {
                             const confirmed = await cwfmConfirmDialog(
                                 '\u8986\u84cb\u66f4\u65b0\u4f48\u666f\u4e3b\u984c',
-                                '\u78ba\u5b9a\u8981\u7528\u76ee\u524d\u756b\u9762\u4e0a\u7684\u8a2d\u5b9a\uff0c\u8986\u84cb\u300c' + theme.name + '\u300d\u9019\u500b\u4f48\u666f\u4e3b\u984c\u539f\u672c\u5132\u5b58\u7684\u5167\u5bb9\u55ce\uff1f\u540d\u7a31\u4e0d\u6703\u6539\u8b8a\uff0c\u4f46\u539f\u672c\u5132\u5b58\u7684\u8a2d\u5b9a\u503c\u6703\u88ab\u53d6\u4ee3\u3001\u7121\u6cd5\u5f80\u56de\u3002'
+                                '\u78ba\u5b9a\u8981\u7528\u76ee\u524d\u756b\u9762\u4e0a\u7684\u8a2d\u5b9a\uff0c\u8986\u84cb\u300c' + theme.name + '\u300d\u9019\u500b\u4f48\u666f\u4e3b\u984c\u539f\u672c\u5132\u5b58\u7684\u5167\u5bb9\u55ce\uff1f\u540d\u7a31\u4e0d\u6703\u6539\u8b8a\uff0c\u4f46\u539f\u672c\u5132\u5b58\u7684\u8a2d\u5b9a\u503c\u6703\u88ab\u53d6\u4ee3\u3001\u7121\u6cd5\u5f80\u56de\u3002',
+                                '\u78ba\u5b9a\u8986\u84cb'
                             );
                             if (!confirmed) return;
                             cwfmUpdateTheme(settings, theme);
