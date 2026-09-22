@@ -921,6 +921,10 @@
             '  text-align:center;',
             '}',
             '.cwfm-cp .cp-summary:focus { border-color:rgba(200,60,60,0.5); background:#3a3a3a; }',
+            // [cwfm] 輸入格式辨識不出來時，短暫閃一下紅框，讓使用者知道
+            // 這次輸入沒有被接受——原本完全沒反應，使用者搞不清楚是打
+            // 錯格式還是沒生效。
+            '.cwfm-cp .cp-summary-error { border-color:#e04040 !important; background:rgba(224,64,64,0.15) !important; }',
             '.cwfm-cp .cp-summary.off { opacity:0.32; pointer-events:none; }',
             '.cwfm-cp .cp-bottom { display:flex; gap:8px; padding:5px 13px 11px; align-items:flex-start; }',
             '.cwfm-cp .cp-steppers { width:105px; flex-shrink:0; flex-grow:0; display:flex; flex-direction:column; gap:9px; }',
@@ -2476,6 +2480,8 @@
                 step1.classList.remove('off'); step2.classList.remove('off'); step3.classList.remove('off');
                 val1.value = r; val2.value = g; val3.value = b;
                 summary.value = `${r}, ${g}, ${b}`;
+                summary.placeholder = '\u4f8b\u5982\uff1a255, 128, 0';
+                summary.title = '\u8f38\u5165\u683c\u5f0f\uff1aR, G, B\uff08\u6bcf\u500b\u6578\u503c 0~255\uff09';
             } else if (mode === 'HSV') {
                 track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
                 track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
@@ -2495,6 +2501,8 @@
                 step1.classList.remove('off'); step2.classList.remove('off'); step3.classList.remove('off');
                 val1.value = Math.round(h); val2.value = Math.round(s * 100); val3.value = Math.round(v * 100);
                 summary.value = `${Math.round(h)}, ${Math.round(s*100)}, ${Math.round(v*100)}`;
+                summary.placeholder = '\u4f8b\u5982\uff1a210, 80, 90';
+                summary.title = '\u8f38\u5165\u683c\u5f0f\uff1aH, S, V\uff08H \u662f 0~360\uff0cS/V \u662f 0~100\uff09';
             } else { // HEX
                 track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
                 track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
@@ -2506,6 +2514,8 @@
                 step1.classList.add('off'); step2.classList.add('off'); step3.classList.add('off');
                 val1.value = ''; val2.value = ''; val3.value = '';
                 summary.value = hex.toUpperCase();
+                summary.placeholder = '\u4f8b\u5982\uff1a#FF8000';
+                summary.title = '\u8f38\u5165\u683c\u5f0f\uff1a#RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 # \u3001\u6216\u76f4\u63a5\u8f38\u5165\u82f1\u6587\u8272\u5f69\u540d\u7a31\uff09';
             }
         }
 
@@ -2608,8 +2618,7 @@
             if (/^#?[0-9a-f]{6}$/i.test(raw.replace(/\s/g,''))) {
                 const hex = raw.startsWith('#') ? raw : '#'+raw;
                 const rgb = cwfmHexToRgb(hex);
-                if (rgb) cpSetFromRgb(rgb);
-                return;
+                if (rgb) { cpSetFromRgb(rgb); return true; }
             }
             const m3 = raw.match(/^([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)$/);
             if (m3) {
@@ -2619,16 +2628,25 @@
                         g: Math.max(0,Math.min(255,parseInt(m3[2])||0)),
                         b: Math.max(0,Math.min(255,parseInt(m3[3])||0)),
                     });
+                    return true;
                 } else if (mode === 'HSV') {
                     cpState.h = ((parseFloat(m3[1])%360)+360)%360;
                     cpState.s = Math.max(0,Math.min(100,parseFloat(m3[2])||0))/100;
                     cpState.v = Math.max(0,Math.min(100,parseFloat(m3[3])||0))/100;
                     cpSyncFromHsv(); cpRender();
+                    return true;
                 }
-                return;
             }
             const hex = cwfmCssToHex(raw);
-            if (hex) { const rgb = cwfmHexToRgb(hex); if (rgb) cpSetFromRgb(rgb); }
+            if (hex) { const rgb = cwfmHexToRgb(hex); if (rgb) { cpSetFromRgb(rgb); return true; } }
+            // [cwfm] 格式辨識不出來——原本這裡完全沒反應，使用者不知道
+            // 是打錯格式還是沒生效。改成短暫閃一下紅框，再把輸入框的值
+            // 還原成目前實際生效的顏色（cpRender() 會重新把 summary.value
+            // 設回正確格式），讓使用者清楚知道「這次輸入沒有被接受」。
+            summary.classList.add('cp-summary-error');
+            setTimeout(() => summary.classList.remove('cp-summary-error'), 600);
+            cpRender();
+            return false;
         }
         summary.addEventListener('change', cpSummaryCommit);
         summary.addEventListener('keydown', e => { if (e.key==='Enter') cpSummaryCommit(); });
