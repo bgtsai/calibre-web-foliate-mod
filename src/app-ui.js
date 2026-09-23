@@ -54,7 +54,16 @@
             // 不管怎麼調我們自己的設定都調不到它。這裡兩個維度一次覆蓋。
             // 現在有上下兩條固定工具列（新增了上方工具列），各佔約 44px，
             // 要一併從可用高度扣掉，不能只扣原本那一條。
-            '#viewer { width: 100% !important; height: 100% !important; margin: 0 !important; overflow-y: auto !important; }',
+            // [cwfm] 改用 position:fixed 直接釘死在整個瀏覽器可視範圍
+            // （top/left/right/bottom 都是 0），不再用 height:100% 這種
+            // 相對父層計算的百分比——使用者回報捲軸起始點卡在工具列
+            // 下面、頂端還是有一塊沒撐到，代表父層本身的高度/位置可能
+            // 沒有算對，100% 這種相對計算會連帶跟著錯。position:fixed
+            // 直接對齊瀏覽器視窗本身，不受任何父層影響。
+            '#viewer {',
+            '  position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;',
+            '  width: auto !important; height: auto !important; margin: 0 !important; overflow-y: auto !important;',
+            '}',
             // [cwfm] #main 原本(Calibre-Web 自己的 main.css)背景是純白色
             // （background:#fff），我們自己的程式碼從沒蓋過這個背景——查證
             // 用戶回報的「工具列上緣有一條白線」問題時發現：我們的工具列
