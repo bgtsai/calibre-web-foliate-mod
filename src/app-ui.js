@@ -1160,11 +1160,12 @@
         }
     }
 
-    // 讓工具列/面板不要蓋住書本內容：#viewer 底部留一點空間
-    try {
-        viewerContainer.style.paddingTop = '44px';
-        viewerContainer.style.paddingBottom = '44px';
-    } catch (e) { console.error('[cwfm:layout]', e); }
+    // [cwfm] 這裡原本用行內樣式加了 44px 的上下留白，避免工具列蓋住書本
+    // 內容——但這段完全獨立在 CSS 那次的 position:fixed 修正之外（行內
+    // 樣式，不受那次改動影響），使用者一直看到的「捲軸沒有撐到頂端」
+    // 就是這裡造成的，不是先前那次 CSS 修正沒生效。這次拿掉，改成工具列
+    // 直接浮在內容上層（本來就是 position:fixed），符合使用者要求的
+    // 「捲軸/內容區要撐滿全螢幕高度」。
 
     // 共用的遮罩，點擊可以關掉任何一個開著的面板
     let dimming;
