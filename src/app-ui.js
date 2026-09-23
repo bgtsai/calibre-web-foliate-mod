@@ -800,6 +800,11 @@
             // 模擬邊框），原本這裡完全沒設，就會露出瀏覽器原生的外框
             // 樣式，跟顏色輸入框的效果對不起來。
             '.cwfm-value-input:focus { box-shadow: inset 0 0 0 1.5px var(--cwfm-accent); }',
+            // [cwfm] 停用狀態——捲動模式下鎖住最大欄數欄位時用，明確
+            // 降低透明度、游標改成不可用樣式，確保看得出來這個欄位現在
+            // 不能調整，不是單純沒反應。
+            '.cwfm-value-input:disabled { opacity: 0.4; cursor: not-allowed; }',
+            '.cwfm-panel input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }',
             // [cwfm] 單位文字（%、px、em、或空字串）長度不一樣，導致輸入框
             // 本身的右邊界跟著單位文字的寬度跑掉、參差不齊——輸入框自己
             // 雖然是固定 4em，但它是跟單位文字一起被 .cwfm-row 的
@@ -2353,9 +2358,17 @@
         cwfmRefreshActiveFontFace(settings).catch((e) => console.error('[cwfm:font] 檢查上傳字型失敗', e));
         try {
             view.renderer.setAttribute('flow', settings.flow);
-            view.renderer.setAttribute('max-column-count', settings.maxColumnCount);
+            // [cwfm] 捲動模式下強制鎖回 1 欄——原本不管 flow 是分頁還是
+            // 捲動，都直接把使用者存的 maxColumnCount 套上去，捲動模式
+            // 搭配大於 1 的欄數，排版會整個跑掉（畫面截圖確認：文字變成
+            // 直式單字一行的破版狀態）。這裡只影響「實際套用到 renderer
+            // 的有效欄數」，不動 settings.maxColumnCount 本身——切回分頁
+            // 模式時，使用者原本設定的欄數要能正確恢復，不能被這次的
+            // 強制鎖定覆蓋掉。
+            const effectiveColumnCount = settings.flow === 'scrolled' ? 1 : settings.maxColumnCount;
+            view.renderer.setAttribute('max-column-count', effectiveColumnCount);
             applyVerticalPadding(settings.topBottomPadding);
-            applyHorizontalPadding(settings.leftRightPadding, settings.maxColumnCount);
+            applyHorizontalPadding(settings.leftRightPadding, effectiveColumnCount);
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         try {
@@ -3607,7 +3620,7 @@
         // 讓使用者自己決定要不要犧牲間距換取替換失效。
         addCheckboxField('\u95dc\u9589\u9023\u5b57\uff08\u53ef\u80fd\u4f7f\u8a5e\u5f59\u66ff\u63db\u5b57\u578b\u5931\u6548\uff09', 'disableLigatures');
         beginGroup('\u7248\u9762\u914d\u7f6e');
-        addSelectField('\u7FFB\u9801\u6A21\u5F0F', 'flow', [
+        const flowSelect = addSelectField('\u7ffb\u9801\u6a21\u5f0f\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\uff0c\u9583\u9801\u5feb\u901f\u9375\u4e0d\u6703\u89f8\u767c\u7ffb\u9801\uff0c\u9581\u5b9a\u53ea\u6709 1 \u6b04\uff09', 'flow', [
             ['paginated', '\u5206\u9801'],
             ['scrolled', '\u6372\u52D5'],
         ]);
@@ -3625,7 +3638,19 @@
         const maxLeftRightPadding = Math.max(20, Math.floor(rendererRect.width / 2));
         addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
-        addRangeField('\u6700\u5927\u6B04\u6578', 'maxColumnCount', 1, 4, 1, '');
+        const columnSlider = addRangeField('\u6700\u5927\u6b04\u6578\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\u5f37\u5236\u9396\u5b9a\u70ba 1 \u6b04\uff0c\u9019\u88e1\u7684\u8a2d\u5b9a\u6703\u7121\u6cd5\u8abf\u6574\uff09', 'maxColumnCount', 1, 4, 1, '');
+        // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
+        // 數字輸入框都停用），不是只有文字說明——使用者要求「捲動模式
+        // 只接受 1 欄，這個欄位就不該讓人調」，切換翻頁模式的當下同步
+        // 更新鎖定狀態，一開啟面板也要照目前的 flow 狀態先正確初始化。
+        const columnValueInput = columnSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
+        function updateColumnFieldLock() {
+            const locked = flowSelect.value === 'scrolled';
+            columnSlider.disabled = locked;
+            columnValueInput.disabled = locked;
+        }
+        flowSelect.addEventListener('change', updateColumnFieldLock);
+        updateColumnFieldLock();
 
         beginGroup('\u7ffb\u9801\u5feb\u901f\u9375');
         addKeyListField('\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.prev, settings.pagingKeys.next);
