@@ -54,7 +54,7 @@
             // 不管怎麼調我們自己的設定都調不到它。這裡兩個維度一次覆蓋。
             // 現在有上下兩條固定工具列（新增了上方工具列），各佔約 44px，
             // 要一併從可用高度扣掉，不能只扣原本那一條。
-            '#viewer { width: 100% !important; height: calc(100% - 88px) !important; margin: 0 !important; }',
+            '#viewer { width: 100% !important; height: calc(100% - 88px) !important; margin: 0 !important; overflow-y: auto !important; }',
             // [cwfm] #main 原本(Calibre-Web 自己的 main.css)背景是純白色
             // （background:#fff），我們自己的程式碼從沒蓋過這個背景——查證
             // 用戶回報的「工具列上緣有一條白線」問題時發現：我們的工具列
@@ -2185,6 +2185,16 @@
 
     function cwfmAlignAnchorToPageStart() {
         if (!window.__cwfm.settings?.preciseAnchorAlign) return;
+        // [cwfm] 這個功能從一開始就只針對分頁模式設計、測試——捲動模式下
+        // 「這一頁」這個概念本身就不成立，resolveCFI／extractContents
+        // 這整套邏輯假設的前提（有明確的頁面邊界）在捲動模式下不適用，
+        // 貿然執行可能產生未知的副作用。老實講：這次查到的捲動模式
+        // 沒辦法捲動，實際根因是 #viewer 的 overflow-y 一直沒有被我們
+        // 覆蓋掉 Calibre-Web 原本的 hidden 值（已經另外修正），跟這個
+        // 精準定位功能本身沒有確認的因果關係——這裡加的是預防性防線，
+        // 不是說已經證實兩者有關。捲動模式下直接跳過，不用靠使用者
+        // 自己記得手動關閉這個開關。
+        if (window.__cwfm.settings?.flow === 'scrolled') return;
         if (cwfmAligningAnchor) return;
         const t0 = performance.now();
         console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
@@ -4060,7 +4070,10 @@
             // 開關切換不用重新綁定事件，邏輯比較單純。
             zone.dataset.cwfmTapEnabled = String(enabled);
             zone.style.width = widthPx + 'px';
-            zone.classList.toggle('cwfm-tap-visible', visible);
+            // [cwfm] 功能關掉時，顯示一定要跟著關掉，不能維持「看得到但
+            // 沒作用」的狀態——顯示開關只有在功能開著的前提下才有意義，
+            // 不是兩個完全獨立、隨意組合都合理的開關。
+            zone.classList.toggle('cwfm-tap-visible', visible && enabled);
             // [cwfm] 功能關掉的時候，游標也改回正常箭頭，不要讓使用者
             // 以為這裡還能點——純視覺提示，跟上面 dataset 那個真正決定
             // 點擊有沒有效果的旗標分開處理。
