@@ -804,6 +804,11 @@
             // 降低透明度、游標改成不可用樣式，確保看得出來這個欄位現在
             // 不能調整，不是單純沒反應。
             '.cwfm-value-input:disabled { opacity: 0.4; cursor: not-allowed; }',
+            // [cwfm] 「軟性停用」——設定本身依然可以改，只是外觀變淡，
+            // 提示使用者目前調了也不會有實際效果。跟上面 :disabled 那條
+            // 的差別：那條是真的關閉互動能力，這條只是視覺提示，input
+            // 仍然是可以點擊、可以改的。
+            '.cwfm-field-softdisabled { opacity: 0.4; }',
             '.cwfm-panel input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }',
             // [cwfm] 單位文字（%、px、em、或空字串）長度不一樣，導致輸入框
             // 本身的右邊界跟著單位文字的寬度跑掉、參差不齊——輸入框自己
@@ -3720,8 +3725,23 @@
         // (看不看得到視覺提示)分開，可以只開功能不顯示視覺，區域照樣
         // 有作用；寬度可調(5~45%，避免設太窄點不到、或設太寬蓋掉太多
         // 閱讀內容)。
-        addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd', 'tapZoneEnabled');
-        addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09', 'tapZoneVisible');
+        const tapZoneEnabledCheckbox = addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd', 'tapZoneEnabled');
+        const tapZoneVisibleCheckbox = addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09', 'tapZoneVisible');
+        // [cwfm] 兩個開關的「視覺上看起來已停用」狀態——設定本身依然可以
+        // 改（不用 input.disabled，那樣會連點擊都擋掉），只是外觀變淡，
+        // 讓使用者一眼看出目前調了也不會有效果，不是介面壞掉沒反應。
+        // 「顯示」這個開關：只要「功能」關掉，或目前是捲動模式，就該
+        // 變淡（不管是哪一種，這個開關現在都不會有實際效果）。「功能」
+        // 這個開關：只有捲動模式本身會讓它變淡（跟使用者自己開關無關，
+        // 捲動模式下這個功能整個被系統強制關閉）。
+        function updateTapZoneCheckboxVisuals() {
+            const scrolledMode = flowSelect.value === 'scrolled';
+            tapZoneEnabledCheckbox.closest('.cwfm-field').classList.toggle('cwfm-field-softdisabled', scrolledMode);
+            tapZoneVisibleCheckbox.closest('.cwfm-field').classList.toggle('cwfm-field-softdisabled', scrolledMode || !tapZoneEnabledCheckbox.checked);
+        }
+        flowSelect.addEventListener('change', updateTapZoneCheckboxVisuals);
+        tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneCheckboxVisuals);
+        updateTapZoneCheckboxVisuals();
         addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPx', 0, 300, 5, 'px');
 
         document.body.appendChild(panel);
@@ -4116,6 +4136,13 @@
             // [cwfm] 功能關掉的時候，游標也改回正常箭頭，不要讓使用者
             // 以為這裡還能點——純視覺提示，跟上面 dataset 那個真正決定
             // 點擊有沒有效果的旗標分開處理。
+            // [cwfm] 功能關閉時，不只是點擊沒反應，連滑鼠事件的攔截本身
+            // 都要放棄——原本這塊透明 div 不管功能開不開，一直整塊蓋在
+            // 畫面上攔截滑鼠事件，導致原生捲軸拖曳、右鍵拖曳捲動這類
+            // 外掛擴充功能的滑鼠操作，事件根本傳不到底下的內容，在碰到
+            // 這塊點擊區的當下就先被吃掉了。pointer-events:none 讓滑鼠
+            // 事件直接穿透到底下，這塊區域形同不存在。
+            zone.style.pointerEvents = enabled ? 'auto' : 'none';
             zone.style.cursor = enabled ? 'pointer' : 'default';
         });
     }
