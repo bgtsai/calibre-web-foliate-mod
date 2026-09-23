@@ -412,7 +412,12 @@
             '  --cwfm-switch-off-track: #c7c7c7;',
             '}',
             '.cwfm-toolbar {',
-            '  position: fixed; left: 0; right: 0; bottom: 0;',
+            // [cwfm] 右側留一段給捲軸的寬度，不要整條貼到最右邊——之前
+            // 工具列整條貼齊右緣，會蓋住撐滿全高之後的捲軸，導致捲軸
+            // 在工具列這段區域內完全看不到、也點不到。不同瀏覽器/系統
+            // 的原生捲軸寬度不完全一樣，抓一個常見的數值（Windows 版
+            // Chrome/Firefox 常見約 16px）。
+            '  position: fixed; left: 0; right: 16px; bottom: 0;',
             '  display: flex; align-items: center; gap: 10px;',
             '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
             '  color: var(--cwfm-text); font-family: sans-serif; font-size: 13px;',
@@ -442,7 +447,10 @@
             // [cwfm] 邊緣感應區：固定貼在螢幕上/下緣的透明區塊，跟工具列
             // 同高，工具列隱藏時仍然貼在原位，用來接住滑鼠移入/點擊喚醒。
             '.cwfm-autohide-zone {',
-            '  position: fixed; left: 0; right: 0; height: 44px; z-index: 999998;',
+            // [cwfm] 同樣右側留出捲軸寬度——這塊透明區塊雖然看不到，但
+            // 沒有排除 pointer-events，一樣會攔截滑鼠事件，如果整條貼到
+            // 最右邊，捲軸落在這 44px 範圍內的部分會連拖曳都點不到。
+            '  position: fixed; left: 0; right: 16px; height: 44px; z-index: 999998;',
             '}',
             '.cwfm-autohide-zone.cwfm-top { top: 0; }',
             '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
@@ -515,7 +523,8 @@
             // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
             // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
             '.cwfm-toolbar-top {',
-            '  position: fixed; left: 0; right: 0; top: 0;',
+            // [cwfm] 理由同下方工具列：右側留出捲軸寬度，不要蓋住捲軸。
+            '  position: fixed; left: 0; right: 16px; top: 0;',
             '  display: flex; align-items: center; gap: 6px;',
             '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
             '  color: var(--cwfm-text); font-family: sans-serif;',
