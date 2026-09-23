@@ -63,6 +63,12 @@
             '#viewer {',
             '  position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;',
             '  width: auto !important; height: auto !important; margin: 0 !important; overflow-y: auto !important;',
+            // [cwfm] z-index 比工具列(999999)高，讓捲軸能疊在工具列上面，
+            // 不用讓工具列本身留白讓位——使用者要求的做法。已知風險：
+            // z-index 是整個元素一起比較，不是只有捲軸那一小條，理論上
+            // 書本文字內容在跟工具列重疊的範圍(貼齊上下緣的地方)也可能
+            // 疊到工具列按鈕上面，這點需要實際測試確認有沒有發生。
+            '  z-index: 1000000 !important;',
             '}',
             // [cwfm] #main 原本(Calibre-Web 自己的 main.css)背景是純白色
             // （background:#fff），我們自己的程式碼從沒蓋過這個背景——查證
@@ -412,12 +418,9 @@
             '  --cwfm-switch-off-track: #c7c7c7;',
             '}',
             '.cwfm-toolbar {',
-            // [cwfm] 右側留一段給捲軸的寬度，不要整條貼到最右邊——之前
-            // 工具列整條貼齊右緣，會蓋住撐滿全高之後的捲軸，導致捲軸
-            // 在工具列這段區域內完全看不到、也點不到。不同瀏覽器/系統
-            // 的原生捲軸寬度不完全一樣，抓一個常見的數值（Windows 版
-            // Chrome/Firefox 常見約 16px）。
-            '  position: fixed; left: 0; right: 16px; bottom: 0;',
+            // [cwfm] 改回貼齊右緣——使用者要求改成用 #viewer 的 z-index
+            // 蓋過工具列，不用工具列自己留白讓位。
+            '  position: fixed; left: 0; right: 0; bottom: 0;',
             '  display: flex; align-items: center; gap: 10px;',
             '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
             '  color: var(--cwfm-text); font-family: sans-serif; font-size: 13px;',
@@ -447,10 +450,7 @@
             // [cwfm] 邊緣感應區：固定貼在螢幕上/下緣的透明區塊，跟工具列
             // 同高，工具列隱藏時仍然貼在原位，用來接住滑鼠移入/點擊喚醒。
             '.cwfm-autohide-zone {',
-            // [cwfm] 同樣右側留出捲軸寬度——這塊透明區塊雖然看不到，但
-            // 沒有排除 pointer-events，一樣會攔截滑鼠事件，如果整條貼到
-            // 最右邊，捲軸落在這 44px 範圍內的部分會連拖曳都點不到。
-            '  position: fixed; left: 0; right: 16px; height: 44px; z-index: 999998;',
+            '  position: fixed; left: 0; right: 0; height: 44px; z-index: 999998;',
             '}',
             '.cwfm-autohide-zone.cwfm-top { top: 0; }',
             '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
@@ -523,8 +523,7 @@
             // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
             // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
             '.cwfm-toolbar-top {',
-            // [cwfm] 理由同下方工具列：右側留出捲軸寬度，不要蓋住捲軸。
-            '  position: fixed; left: 0; right: 16px; top: 0;',
+            '  position: fixed; left: 0; right: 0; top: 0;',
             '  display: flex; align-items: center; gap: 6px;',
             '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
             '  color: var(--cwfm-text); font-family: sans-serif;',
