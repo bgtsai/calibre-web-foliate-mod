@@ -1897,6 +1897,8 @@
         return [
             '@namespace epub "http://www.idpf.org/2007/ops";',
             'html { color-scheme: light dark; }',
+            // [cwfm] 強制重設書寫方向為橫式——原本完全沒有重設過這個屬性，如果書籍本身的樣式表指定了直式書寫，捲動模式下會直接透出來變成破版畫面。
+            'html, body { writing-mode: horizontal-tb !important; }',
             themeRule,
             universalColorRule,
             cwfmActiveFontFaceCSS,
@@ -4055,7 +4057,11 @@
     }
     function cwfmApplyTapZoneSettings(settings) {
         if (!cwfmTapZoneLeft || !cwfmTapZoneRight) return;
-        const enabled = !!settings.tapZoneEnabled;
+        // [cwfm] 捲動模式下強制停用——「翻頁」這個概念在連續捲動的
+        // 情境下不成立，左右點擊區是為分頁模式設計的。只影響「實際生效
+        // 的狀態」，不動 settings.tapZoneEnabled 本身，切回分頁模式時
+        // 使用者原本的開關設定要能正確恢復。
+        const enabled = !!settings.tapZoneEnabled && settings.flow !== 'scrolled';
         const visible = !!settings.tapZoneVisible;
         // [cwfm] 改用固定像素值，不用百分比——使用者要求改成固定寬度，
         // 不隨畫面大小縮放。下限 0（使用者要求最小值也該能調到 0）；
