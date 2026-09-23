@@ -1965,12 +1965,38 @@
         const rect = view.renderer.getBoundingClientRect();
         const totalWidth = rect.width || 1;
 
-        const gapPercent = (desiredPx * 2 / totalWidth) * 100;
-        view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
+        // [cwfm] 查證 paginator.js 原始碼確認：gap 屬性在捲動模式下，會
+        // 經過一段專門給「欄與欄之間距離」設計的反向補償公式（gap = -g/(g-1)*size），
+        // 這段公式在 g 偏大時會把數值放大好幾倍，捲動模式的 scrolled()
+        // 函式又把算出來的結果直接當成文件左右兩側的內距用——兩者疊在
+        // 一起，會算出遠超過可視寬度的內距，把可用文字空間擠壓到接近 0，
+        // 導致文字被迫一行一個字，就是這次排版嚴重損壞的根因。
+        //
+        // 而且這個內距本身是多餘的：下面 max-inline-size 這個數字是用單純
+        // 減法算的（totalWidth - desiredPx*2），沒有經過那段補償公式，
+        // 搭配 scrolled() 內部本來就有的 body { max-width; margin:auto }
+        // 置中機制，捲動模式下使用者設定的左右留白早就靠 max-inline-size
+        // 正確生效了，gap 算出來的內距是重複、而且有問題的第二層。
+        //
+        // 修法：捲動模式下 gap 固定設成 0%，不能只是不呼叫 setAttribute
+        // 跳過——切換模式前殘留的舊 gap 值還在，不明確蓋成安全值，沿用
+        // 舊數字一樣會出問題。分頁模式維持原本的算法不變（這段公式對
+        // 分頁模式的欄距是正確、已驗證過的用法，问题只在捲動模式）。
+        //
+        // 已知缺口：直式書寫（vertical=true）的書籍，scrolled() 對應的是
+        // padding 上下（不是左右），理論上同一個公式缺陷也會發生，只是
+        // 方向不同——這次沒有一併處理，日後遇到直式書籍可能會重現同類
+        // 問題。
+        if (view.renderer.getAttribute('flow') === 'scrolled') {
+            view.renderer.setAttribute('gap', '0%');
+        } else {
+            const gapPercent = (desiredPx * 2 / totalWidth) * 100;
+            view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
+        }
 
         const contentWidth = Math.max(100, totalWidth - desiredPx * 2);
         const maxInlineSizePx = Math.round(contentWidth / (columnCount || 1));
-        console.log('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' gapPercent=' + gapPercent.toFixed(3) + ' maxInlineSize=' + maxInlineSizePx);
+        console.log('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx);
         view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
         console.log('[cwfm:align:t] applyHorizontalPadding() 結束 t=' + performance.now().toFixed(1));
     }
@@ -2432,7 +2458,14 @@
             if (window.__cwfm.settings) {
                 try {
                     applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
-                    applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, window.__cwfm.settings.maxColumnCount);
+                    // [cwfm] 比照 applySettings() 裡的做法：捲動模式下欄數
+                    // 要強制當成 1，不能直接傳原始 maxColumnCount——這裡
+                    // 原本漏掉這層轉換，縮放視窗時，捲動模式底下的最大
+                    // 內容寬度會被誤除以使用者存的欄數(可能是 2/3/4)，
+                    // 算出比實際應有寬度更窄的數字。
+                    const resizeEffectiveColumnCount = window.__cwfm.settings.flow === 'scrolled'
+                        ? 1 : window.__cwfm.settings.maxColumnCount;
+                    applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, resizeEffectiveColumnCount);
                     updateDivider(window.__cwfm.settings);
                 } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
                 // [cwfm] 定位點對齊要排在留白套用之後——對齊過程要用到的
