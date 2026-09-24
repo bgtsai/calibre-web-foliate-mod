@@ -156,6 +156,71 @@
             hint_hsv_format: '輸入格式：H, S, V（H 是 0~360，S/V 是 0~100）',
             hint_hex_example: '例如：#FF8000',
             hint_hex_format: '輸入格式：#RRGGBB（也接受不帶 # 、或直接輸入英文色彩名稱）',
+            dlg_ok: '確定',
+            dlg_got_it: '知道了',
+            btn_rename: '重新命名',
+            alert_uploaded_font_deleted: '上傳字型已刪除',
+            txt_theme_font_deleted_pre: '這個主題原本使用的上傳字型「',
+            txt_theme_font_deleted_post: '」已經被刪除，這次套用改用預設字型。',
+            dlg_overwrite_theme_title: '覆蓋更新佈景主題',
+            dlg_overwrite_theme_pre: '確定要用目前畫面上的設定，覆蓋「',
+            dlg_overwrite_theme_post: '」這個佈景主題原本儲存的內容嗎？名稱不會改變，但原本儲存的設定值會被取代、無法往回。',
+            dlg_overwrite_confirm: '確定覆蓋',
+            alert_updated: '已更新',
+            txt_theme_updated_post: '」已經更新成目前的設定。',
+            aria_overwrite_theme: '用目前設定覆蓋更新這個佈景主題',
+            dlg_delete_theme_title: '刪除佈景主題',
+            dlg_delete_pre: '確定要刪除「',
+            dlg_delete_theme_post: '」這個佈景主題嗎？這只會刪除主題記錄本身，不會影響目前畫面上已經套用的設定。',
+            aria_delete_theme: '刪除這個佈景主題',
+            prompt_theme_name_title: '這個佈景主題要叫什麼名字？',
+            prompt_theme_name_example: '例如：讀小說用',
+            aria_delete_key_combo: '刪除這組快速鍵',
+            dlg_delete_scheme_title: '刪除自訂配色',
+            dlg_delete_scheme_post: '」這組自訂配色嗎？',
+            aria_delete_scheme: '刪除這組自訂配色',
+            prompt_scheme_name_title: '這組自訂配色要叫什麼名字？',
+            prompt_scheme_name_example: '例如：夜閒閱讀',
+            dlg_delete_font_title: '刪除上傳字型',
+            dlg_delete_font_post: '」嗎？刪除後，這個字型會從清單中移除，目前若正在使用這個字型，會改回使用預設字型。',
+            err_delete_font_data: '[cwfm:font] 刪除字型資料失敗',
+            aria_delete_memory: '刪除這筆記憶',
+            aria_delete_uploaded_font: '刪除這個上傳字型',
+            prompt_font_name: '輸入字型名稱',
+            prompt_font_name_example: '本機已安裝的字型名稱，例如：TC_JBMM_1011',
+            dlg_file_too_large_title: '檔案過大',
+            dlg_file_too_large_msg: '這個字型檔案超過 200MB 的上限，沒有上傳。',
+            dlg_unsupported_format_title: '不支援的格式',
+            dlg_unsupported_format_msg: '只支援 .ttf / .otf / .woff 檔案。',
+            err_upload_font: '[cwfm:font] 上傳字型失敗',
+            dlg_upload_failed_title: '上傳失敗',
+            dlg_upload_failed_msg: '上傳失敗，請查看主控台錯誤訊息。',
+            flow_paginated: '分頁',
+            flow_scrolled: '捲動',
+            err_auto_layout: '[cwfm:settings] 自動排版失敗',
+            aria_toc2: '目錄',
+            txt_no_toc: '這本書沒有目錄資料',
+            err_toc_jump: '[cwfm:toc] 跳轉失敗',
+            err_go_left: '[cwfm:toolbar] goLeft 失敗',
+            err_go_fraction: '[cwfm:toolbar] goToFraction 失敗',
+            err_go_right: '[cwfm:toolbar] goRight 失敗',
+            aria_bookmark: '書籤',
+            err_no_pos_to_sync: '[cwfm:toolbar] 還沒有可同步的位置',
+            err_remove_bookmark: '[cwfm:toolbar] 移除書籤失敗',
+            err_sync_bookmark: '[cwfm:toolbar] 書籤同步失敗',
+            aria_settings: '設定',
+            aria_fullscreen: '全螢幕',
+            err_fullscreen_toggle: '[cwfm:toolbar] 全螢幕切換失敗',
+            log_fullscreen_event: '[cwfm:align:t] fullscreenchange 事件 t=',
+            err_build_toc: '[cwfm:toc] 建立目錄面板失敗',
+            err_build_settings: '[cwfm:settings] 建立設定面板失敗',
+            err_build_toolbar: '[cwfm:toolbar] 建立工具列失敗',
+            err_build_top_toolbar: '[cwfm:toolbar] 建立上方工具列失敗',
+            err_init_autohide: '[cwfm:autohide] 初始化自動隱藏失敗',
+            err_build_tapzone: '[cwfm:tapzone] 建立左右翻頁點擊區失敗',
+            log_init_anchor: '[cwfm:align:t] 開書完成，初始鎖定定位點=',
+            err_init_anchor: '[cwfm:align] 初始鎖定定位點失敗',
+            log_takeover: '[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：',
         },
         en: {
             group_theme: 'Theme',
@@ -305,6 +370,71 @@
             hint_hsv_format: 'Format: H, S, V (H is 0-360, S/V are 0-100)',
             hint_hex_example: 'e.g. #FF8000',
             hint_hex_format: 'Format: #RRGGBB (also accepts no #, or a CSS color name)',
+            dlg_ok: 'OK',
+            dlg_got_it: 'Got it',
+            btn_rename: 'Rename',
+            alert_uploaded_font_deleted: 'Uploaded Font Deleted',
+            txt_theme_font_deleted_pre: 'The uploaded font “',
+            txt_theme_font_deleted_post: '” originally used by this theme has been deleted; falling back to the default font this time.',
+            dlg_overwrite_theme_title: 'Overwrite Theme',
+            dlg_overwrite_theme_pre: 'Overwrite “',
+            dlg_overwrite_theme_post: '” with the current on-screen settings? The name will stay the same, but the previously saved values will be replaced and cannot be undone.',
+            dlg_overwrite_confirm: 'Confirm Overwrite',
+            alert_updated: 'Updated',
+            txt_theme_updated_post: '” has been updated to the current settings.',
+            aria_overwrite_theme: 'Overwrite this theme with the current settings',
+            dlg_delete_theme_title: 'Delete Theme',
+            dlg_delete_pre: 'Delete “',
+            dlg_delete_theme_post: '”? This only removes the theme record; it won’t affect the settings currently applied on screen.',
+            aria_delete_theme: 'Delete this theme',
+            prompt_theme_name_title: 'What should this theme be named?',
+            prompt_theme_name_example: 'e.g. For reading novels',
+            aria_delete_key_combo: 'Delete this shortcut',
+            dlg_delete_scheme_title: 'Delete Color Scheme',
+            dlg_delete_scheme_post: '”?',
+            aria_delete_scheme: 'Delete this color scheme',
+            prompt_scheme_name_title: 'What should this color scheme be named?',
+            prompt_scheme_name_example: 'e.g. Night Reading',
+            dlg_delete_font_title: 'Delete Uploaded Font',
+            dlg_delete_font_post: '”? Once deleted, this font will be removed from the list; if it’s currently in use, it will fall back to the default font.',
+            err_delete_font_data: '[cwfm:font] Failed to delete font data',
+            aria_delete_memory: 'Delete this remembered name',
+            aria_delete_uploaded_font: 'Delete this uploaded font',
+            prompt_font_name: 'Enter Font Name',
+            prompt_font_name_example: 'The name of a locally installed font, e.g. TC_JBMM_1011',
+            dlg_file_too_large_title: 'File Too Large',
+            dlg_file_too_large_msg: 'This font file exceeds the 200MB limit and was not uploaded.',
+            dlg_unsupported_format_title: 'Unsupported Format',
+            dlg_unsupported_format_msg: 'Only .ttf / .otf / .woff files are supported.',
+            err_upload_font: '[cwfm:font] Failed to upload font',
+            dlg_upload_failed_title: 'Upload Failed',
+            dlg_upload_failed_msg: 'Upload failed. See the console for details.',
+            flow_paginated: 'Paginated',
+            flow_scrolled: 'Scrolled',
+            err_auto_layout: '[cwfm:settings] Auto-layout failed',
+            aria_toc2: 'Table of Contents',
+            txt_no_toc: 'This book has no table-of-contents data',
+            err_toc_jump: '[cwfm:toc] Navigation failed',
+            err_go_left: '[cwfm:toolbar] goLeft failed',
+            err_go_fraction: '[cwfm:toolbar] goToFraction failed',
+            err_go_right: '[cwfm:toolbar] goRight failed',
+            aria_bookmark: 'Bookmark',
+            err_no_pos_to_sync: '[cwfm:toolbar] No position to sync yet',
+            err_remove_bookmark: '[cwfm:toolbar] Failed to remove bookmark',
+            err_sync_bookmark: '[cwfm:toolbar] Bookmark sync failed',
+            aria_settings: 'Settings',
+            aria_fullscreen: 'Fullscreen',
+            err_fullscreen_toggle: '[cwfm:toolbar] Failed to toggle fullscreen',
+            log_fullscreen_event: '[cwfm:align:t] fullscreenchange event t=',
+            err_build_toc: '[cwfm:toc] Failed to build TOC panel',
+            err_build_settings: '[cwfm:settings] Failed to build settings panel',
+            err_build_toolbar: '[cwfm:toolbar] Failed to build toolbar',
+            err_build_top_toolbar: '[cwfm:toolbar] Failed to build top toolbar',
+            err_init_autohide: '[cwfm:autohide] Failed to initialize auto-hide',
+            err_build_tapzone: '[cwfm:tapzone] Failed to build tap zones',
+            log_init_anchor: '[cwfm:align:t] Book opened, initial locked anchor=',
+            err_init_anchor: '[cwfm:align] Failed to lock initial anchor',
+            log_takeover: '[cwfm] Calibre-Web Foliate Reader Mod has taken over the reader, book ID: ',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
@@ -1949,7 +2079,7 @@
             cancelBtn.className = 'cwfm-confirm-cancel';
             const okBtn = document.createElement('button');
             okBtn.type = 'button';
-            okBtn.textContent = '\u78ba\u5b9a';
+            okBtn.textContent = t('dlg_ok');
             okBtn.className = 'cwfm-confirm-ok';
             let done = false;
             function close(result) {
@@ -1994,7 +2124,7 @@
             btnRow.className = 'cwfm-confirm-buttons';
             const okBtn = document.createElement('button');
             okBtn.type = 'button';
-            okBtn.textContent = '\u77e5\u9053\u4e86';
+            okBtn.textContent = t('dlg_got_it');
             okBtn.className = 'cwfm-confirm-ok';
             function close() { overlay.remove(); resolve(); }
             okBtn.addEventListener('click', close);
@@ -2070,7 +2200,7 @@
             renameBtn.type = 'button';
             renameBtn.className = 'cwfm-keychip-rename';
             renameBtn.textContent = '\u270e';
-            renameBtn.setAttribute('aria-label', '\u91cd\u65b0\u547d\u540d');
+            renameBtn.setAttribute('aria-label', t('btn_rename'));
             renameBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 cwfmStartChipRename(textEl, text, opts.onRename, opts.onRenameDone || (() => {}));
@@ -2189,7 +2319,7 @@
         CWFM_THEME_FIELD_KEYS.forEach((key) => { settings[key] = theme.values[key]; });
         if (theme.fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
             settings.fontFamily = '';
-            cwfmAlertDialog('\u4e0a\u50b3\u5b57\u578b\u5df2\u522a\u9664', '\u9019\u500b\u4e3b\u984c\u539f\u672c\u4f7f\u7528\u7684\u4e0a\u50b3\u5b57\u578b\u300c' + fontName + '\u300d\u5df2\u7d93\u88ab\u522a\u9664\uff0c\u9019\u6b21\u5957\u7528\u6539\u7528\u9810\u8a2d\u5b57\u578b\u3002');
+            cwfmAlertDialog(t('alert_uploaded_font_deleted'), t('txt_theme_font_deleted_pre') + fontName + t('txt_theme_font_deleted_post'));
         }
         saveSettings(settings);
         applySettings(settings);
@@ -3432,25 +3562,25 @@
                         },
                         onUpdate: async () => {
                             const confirmed = await cwfmConfirmDialog(
-                                '\u8986\u84cb\u66f4\u65b0\u4f48\u666f\u4e3b\u984c',
-                                '\u78ba\u5b9a\u8981\u7528\u76ee\u524d\u756b\u9762\u4e0a\u7684\u8a2d\u5b9a\uff0c\u8986\u84cb\u300c' + theme.name + '\u300d\u9019\u500b\u4f48\u666f\u4e3b\u984c\u539f\u672c\u5132\u5b58\u7684\u5167\u5bb9\u55ce\uff1f\u540d\u7a31\u4e0d\u6703\u6539\u8b8a\uff0c\u4f46\u539f\u672c\u5132\u5b58\u7684\u8a2d\u5b9a\u503c\u6703\u88ab\u53d6\u4ee3\u3001\u7121\u6cd5\u5f80\u56de\u3002',
-                                '\u78ba\u5b9a\u8986\u84cb'
+                                t('dlg_overwrite_theme_title'),
+                                t('dlg_overwrite_theme_pre') + theme.name + t('dlg_overwrite_theme_post'),
+                                t('dlg_overwrite_confirm')
                             );
                             if (!confirmed) return;
                             cwfmUpdateTheme(settings, theme);
-                            await cwfmAlertDialog('\u5df2\u66f4\u65b0', '\u300c' + theme.name + '\u300d\u5df2\u7d93\u66f4\u65b0\u6210\u76ee\u524d\u7684\u8a2d\u5b9a\u3002');
+                            await cwfmAlertDialog(t('alert_updated'), '\u300c' + theme.name + t('txt_theme_updated_post'));
                         },
-                        updateLabel: '\u7528\u76ee\u524d\u8a2d\u5b9a\u8986\u84cb\u66f4\u65b0\u9019\u500b\u4f48\u666f\u4e3b\u984c',
+                        updateLabel: t('aria_overwrite_theme'),
                         onRemove: async () => {
                             const confirmed = await cwfmConfirmDialog(
-                                '\u522a\u9664\u4f48\u666f\u4e3b\u984c',
-                                '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + theme.name + '\u300d\u9019\u500b\u4f48\u666f\u4e3b\u984c\u55ce\uff1f\u9019\u53ea\u6703\u522a\u9664\u4e3b\u984c\u8a18\u9304\u672c\u8eab\uff0c\u4e0d\u6703\u5f71\u97ff\u76ee\u524d\u756b\u9762\u4e0a\u5df2\u7d93\u5957\u7528\u7684\u8a2d\u5b9a\u3002'
+                                t('dlg_delete_theme_title'),
+                                t('dlg_delete_pre') + theme.name + t('dlg_delete_theme_post')
                             );
                             if (!confirmed) return;
                             cwfmDeleteTheme(settings, theme.id);
                             render();
                         },
-                        removeLabel: '\u522a\u9664\u9019\u500b\u4f48\u666f\u4e3b\u984c',
+                        removeLabel: t('aria_delete_theme'),
                     });
                     wrap.appendChild(chip);
                 });
@@ -3459,7 +3589,7 @@
                 addBtn.className = 'cwfm-keychip-add';
                 addBtn.textContent = t('btn_add_theme');
                 addBtn.addEventListener('click', async () => {
-                    const name = await cwfmPromptDialog('\u9019\u500b\u4f48\u666f\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u8b80\u5c0f\u8aaa\u7528');
+                    const name = await cwfmPromptDialog(t('prompt_theme_name_title'), t('prompt_theme_name_example'));
                     if (!name) return;
                     cwfmSaveCurrentAsTheme(settings, name);
                     render();
@@ -3591,7 +3721,7 @@
                     removeBtn.type = 'button';
                     removeBtn.className = 'cwfm-keychip-remove';
                     removeBtn.textContent = '\u00d7';
-                    removeBtn.setAttribute('aria-label', '\u522a\u9664\u9019\u7d44\u5feb\u901f\u9375');
+                    removeBtn.setAttribute('aria-label', t('aria_delete_key_combo'));
                     removeBtn.addEventListener('click', () => {
                         list.splice(idx, 1);
                         saveSettings(settings);
@@ -3716,9 +3846,9 @@
             // [cwfm] 清空時的提示文字，格式比照彈出取色器裡數值輸入框
             // 已經有的做法（「例如：xxx」），不是另外設計一套。
             function refreshPlaceholder() {
-                if (mode === 'HEX') valueInput.placeholder = '\u4f8b\u5982\uff1a#FF8000';
-                else if (mode === 'RGB') valueInput.placeholder = '\u4f8b\u5982\uff1a255, 128, 0';
-                else valueInput.placeholder = '\u4f8b\u5982\uff1a210, 80, 90';
+                if (mode === 'HEX') valueInput.placeholder = t('hint_hex_example');
+                else if (mode === 'RGB') valueInput.placeholder = t('hint_rgb_example');
+                else valueInput.placeholder = t('hint_hsv_example');
             }
             function refreshValueInput() { valueInput.value = formatForMode(settings[key]); refreshPlaceholder(); }
 
@@ -3916,8 +4046,8 @@
                         },
                         onRemove: async () => {
                             const confirmed = await cwfmConfirmDialog(
-                                '\u522a\u9664\u81ea\u8a02\u914d\u8272',
-                                '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + scheme.name + '\u300d\u9019\u7d44\u81ea\u8a02\u914d\u8272\u55ce\uff1f'
+                                t('dlg_delete_scheme_title'),
+                                t('dlg_delete_pre') + scheme.name + t('dlg_delete_scheme_post')
                             );
                             if (!confirmed) return;
                             const idx = settings.savedColorSchemes.findIndex((s) => s.id === scheme.id);
@@ -3925,7 +4055,7 @@
                             saveSettings(settings);
                             render();
                         },
-                        removeLabel: '\u522a\u9664\u9019\u7d44\u81ea\u8a02\u914d\u8272',
+                        removeLabel: t('aria_delete_scheme'),
                     });
                     wrap.appendChild(chip);
                 });
@@ -3934,7 +4064,7 @@
                 addBtn.className = 'cwfm-keychip-add';
                 addBtn.textContent = t('btn_add_scheme');
                 addBtn.addEventListener('click', async () => {
-                    const name = await cwfmPromptDialog('\u9019\u7d44\u81ea\u8a02\u914d\u8272\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u591c\u9592\u95b1\u8b80');
+                    const name = await cwfmPromptDialog(t('prompt_scheme_name_title'), t('prompt_scheme_name_example'));
                     if (!name) return;
                     const id = 'cwfm-scheme-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
                     settings.savedColorSchemes.push({
@@ -4004,11 +4134,11 @@
                 // 檔案背後掛著幾個名稱（現在固定是 1 個，但這個規則本身
                 // 跟數量無關，是「上傳字型」這個類型整體的規則）。
                 const confirmed = await cwfmConfirmDialog(
-                    '\u522a\u9664\u4e0a\u50b3\u5b57\u578b',
-                    '\u78ba\u5b9a\u8981\u522a\u9664\u300c' + entry.name + '\u300d\u55ce\uff1f\u522a\u9664\u5f8c\uff0c\u9019\u500b\u5b57\u578b\u6703\u5f9e\u6e05\u55ae\u4e2d\u79fb\u9664\uff0c\u76ee\u524d\u82e5\u6b63\u5728\u4f7f\u7528\u9019\u500b\u5b57\u578b\uff0c\u6703\u6539\u56de\u4f7f\u7528\u9810\u8a2d\u5b57\u578b\u3002'
+                    t('dlg_delete_font_title'),
+                    t('dlg_delete_pre') + entry.name + t('dlg_delete_font_post')
                 );
                 if (!confirmed) return;
-                try { await cwfmDeleteFontBlob(entry.id); } catch (e) { console.error('[cwfm:font] 刪除字型資料失敗', e); }
+                try { await cwfmDeleteFontBlob(entry.id); } catch (e) { console.error(t('err_delete_font_data'), e); }
                 const idx = settings.uploadedFonts.findIndex((f) => f.id === entry.id);
                 if (idx >= 0) settings.uploadedFonts.splice(idx, 1);
                 if (settings.fontFamily === entry.name) settings.fontFamily = '';
@@ -4030,7 +4160,7 @@
                             else saveSettings(settings);
                         },
                         onRemove: () => removeHistoryName(name),
-                        removeLabel: '\u522a\u9664\u9019\u7b46\u8a18\u61b6',
+                        removeLabel: t('aria_delete_memory'),
                         onRenameDone: render,
                         dragReorder: {
                             array: settings.fontNameHistory, index,
@@ -4056,7 +4186,7 @@
                             else saveSettings(settings);
                         },
                         onRemove: () => removeUploadedFont(entry),
-                        removeLabel: '\u522a\u9664\u9019\u500b\u4e0a\u50b3\u5b57\u578b',
+                        removeLabel: t('aria_delete_uploaded_font'),
                         onRenameDone: render,
                         dragReorder: {
                             array: settings.uploadedFonts, index,
@@ -4071,8 +4201,8 @@
                 addNameBtn.textContent = t('btn_add_font_name');
                 addNameBtn.addEventListener('click', async () => {
                     const name = await cwfmPromptDialog(
-                        '\u8f38\u5165\u5b57\u578b\u540d\u7a31',
-                        '\u672c\u6a5f\u5df2\u5b89\u88dd\u7684\u5b57\u578b\u540d\u7a31\uff0c\u4f8b\u5982\uff1aTC_JBMM_1011'
+                        t('prompt_font_name'),
+                        t('prompt_font_name_example')
                     );
                     if (!name) return;
                     if (!settings.fontNameHistory.includes(name) && !settings.uploadedFonts.some((f) => f.name === name)) {
@@ -4096,12 +4226,12 @@
                 if (!file) return;
                 const CWFM_MAX_FONT_SIZE = 200 * 1024 * 1024;
                 if (file.size > CWFM_MAX_FONT_SIZE) {
-                    await cwfmAlertDialog('\u6a94\u6848\u904e\u5927', '\u9019\u500b\u5b57\u578b\u6a94\u6848\u8d85\u904e 200MB \u7684\u4e0a\u9650\uff0c\u6c92\u6709\u4e0a\u50b3\u3002');
+                    await cwfmAlertDialog(t('dlg_file_too_large_title'), t('dlg_file_too_large_msg'));
                     return;
                 }
                 const ext = (file.name.split('.').pop() || '').toLowerCase();
                 if (!['ttf', 'otf', 'woff'].includes(ext)) {
-                    await cwfmAlertDialog('\u4e0d\u652f\u63f4\u7684\u683c\u5f0f', '\u53ea\u652f\u63f4 .ttf / .otf / .woff \u6a94\u6848\u3002');
+                    await cwfmAlertDialog(t('dlg_unsupported_format_title'), t('dlg_unsupported_format_msg'));
                     return;
                 }
                 try {
@@ -4113,8 +4243,8 @@
                     saveSettings(settings);
                     render();
                 } catch (e) {
-                    console.error('[cwfm:font] 上傳字型失敗', e);
-                    await cwfmAlertDialog('\u4e0a\u50b3\u5931\u6557', '\u4e0a\u50b3\u5931\u6557\uff0c\u8acb\u67e5\u770b\u4e3b\u63a7\u53f0\u932f\u8aa4\u8a0a\u606f\u3002');
+                    console.error(t('err_upload_font'), e);
+                    await cwfmAlertDialog(t('dlg_upload_failed_title'), t('dlg_upload_failed_msg'));
                 }
             });
 
@@ -4135,8 +4265,8 @@
         addCheckboxField(t('field_disable_ligatures'), 'disableLigatures');
         beginGroup(t('group_layout'));
         const flowSelect = addSelectField(t('field_flow'), 'flow', [
-            ['paginated', '\u5206\u9801'],
-            ['scrolled', '\u6372\u52D5'],
+            ['paginated', t('flow_paginated')],
+            ['scrolled', t('flow_scrolled')],
         ]);
         // [cwfm] 上下留白最小值放回 0：先前一度鎖在 4，理由是「margin=0
         // 會導致上下貼邊、不對稱」，但後來查出 margin 因為缺少 px 單位
@@ -4241,7 +4371,7 @@
             }
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
         } catch (e) {
-            console.error('[cwfm:settings] 自動排版失敗', e);
+            console.error(t('err_auto_layout'), e);
         }
 
         applySettings(settings);
@@ -4261,7 +4391,7 @@
         header.className = 'cwfm-panel-header';
 
         const title = document.createElement('h3');
-        title.textContent = '\u76EE\u9304'; // 目錄
+        title.textContent = t('aria_toc2'); // 目錄
         header.appendChild(title);
 
         const closeBtn = createCloseBtn(closeAllPanels);
@@ -4273,7 +4403,7 @@
         if (!toc || !toc.length) {
             const hint = document.createElement('div');
             hint.className = 'cwfm-empty-hint';
-            hint.textContent = '\u9019\u672C\u66F8\u6C92\u6709\u76EE\u9304\u8CC7\u6599';
+            hint.textContent = t('txt_no_toc');
             panel.appendChild(hint);
         } else {
             const onclick = (href) => {
@@ -4292,7 +4422,7 @@
                     cwfmReinsertStash();
                     view.goTo(href);
                 } catch (e) {
-                    console.error('[cwfm:toc] 跳轉失敗', e);
+                    console.error(t('err_toc_jump'), e);
                 }
                 closeAllPanels();
             };
@@ -4332,7 +4462,7 @@
         prevBtn.textContent = '\u2039';
         prevBtn.setAttribute('aria-label', 'Previous page');
         prevBtn.addEventListener('click', () => {
-            try { cwfmGoLeft(); } catch (e) { console.error('[cwfm:toolbar] goLeft 失敗', e); }
+            try { cwfmGoLeft(); } catch (e) { console.error(t('err_go_left'), e); }
         });
         bar.appendChild(prevBtn);
 
@@ -4354,7 +4484,7 @@
         });
         slider.addEventListener('change', () => {
             try { view.goToFraction(parseFloat(slider.value)); }
-            catch (e) { console.error('[cwfm:toolbar] goToFraction 失敗', e); }
+            catch (e) { console.error(t('err_go_fraction'), e); }
             sliderDragging = false;
         });
         progressWrap.appendChild(slider);
@@ -4364,7 +4494,7 @@
         nextBtn.textContent = '\u203A';
         nextBtn.setAttribute('aria-label', 'Next page');
         nextBtn.addEventListener('click', () => {
-            try { cwfmGoRight(); } catch (e) { console.error('[cwfm:toolbar] goRight 失敗', e); }
+            try { cwfmGoRight(); } catch (e) { console.error(t('err_go_right'), e); }
         });
         bar.appendChild(nextBtn);
         // [cwfm] 百分比文字搬到最右邊，跟往右翻頁按鈕對調位置——這樣
@@ -4453,11 +4583,11 @@
             currentServerBookmarkCfi = wrapCfi(cfi);
             renderBookmarkIcon();
         };
-        bookmarkBtn.setAttribute('aria-label', '\u66f8\u7c64');
+        bookmarkBtn.setAttribute('aria-label', t('aria_bookmark'));
         bookmarkBtn.addEventListener('click', () => {
             const cfi = view.lastLocation?.cfi;
             if (!cfi) {
-                console.warn('[cwfm:toolbar] 還沒有可同步的位置');
+                console.warn(t('err_no_pos_to_sync'));
                 return;
             }
             if (isCurrentLocationBookmarked()) {
@@ -4467,7 +4597,7 @@
                         currentServerBookmarkCfi = null;
                         renderBookmarkIcon();
                     })
-                    .catch((e) => console.error('[cwfm:toolbar] 移除書籤失敗', e));
+                    .catch((e) => console.error(t('err_remove_bookmark'), e));
             } else {
                 // (b) 目前這頁沒有書籤，按下去立刻存成新書籤（同時只能有
                 // 一個，這裡存了之後，原本別頁的書籤自然就不再相符、
@@ -4477,7 +4607,7 @@
                         currentServerBookmarkCfi = wrapCfi(cfi);
                         renderBookmarkIcon();
                     })
-                    .catch((e) => console.error('[cwfm:toolbar] 書籤同步失敗', e));
+                    .catch((e) => console.error(t('err_sync_bookmark'), e));
             }
         });
         // (a) 翻頁時即時重新比對，離開已存書籤的那一頁就變回空心
@@ -4486,7 +4616,7 @@
 
         const settingsBtn = document.createElement('button');
         settingsBtn.innerHTML = ICONS.settings;
-        settingsBtn.setAttribute('aria-label', '\u8A2D\u5B9A');
+        settingsBtn.setAttribute('aria-label', t('aria_settings'));
         settingsBtn.addEventListener('click', () => openPanel(settingsPanel));
         bar.appendChild(settingsBtn);
 
@@ -4495,7 +4625,7 @@
             fullscreenBtn.innerHTML = document.fullscreenElement ? ICONS.minimize : ICONS.maximize;
         }
         renderFullscreenIcon();
-        fullscreenBtn.setAttribute('aria-label', '\u5168\u87A2\u5E55');
+        fullscreenBtn.setAttribute('aria-label', t('aria_fullscreen'));
         fullscreenBtn.addEventListener('click', () => {
             try {
                 if (document.fullscreenElement) {
@@ -4504,7 +4634,7 @@
                     document.documentElement.requestFullscreen();
                 }
             } catch (e) {
-                console.error('[cwfm:toolbar] 全螢幕切換失敗', e);
+                console.error(t('err_fullscreen_toggle'), e);
             }
         });
         // [cwfm] 全螢幕切換時要順便喚醒自動隱藏的工具列（原本是靠
@@ -4512,7 +4642,7 @@
         // 監聽器移除處的說明——這裡改成明確掛在 fullscreenchange 上，
         // 不用再靠巧合。
         document.addEventListener('fullscreenchange', () => {
-            dlog('[cwfm:align:t] fullscreenchange 事件 t=' + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
+            dlog(t('log_fullscreen_event') + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
             renderFullscreenIcon();
             cwfmWakeBars();
         });
@@ -4576,10 +4706,10 @@
         else cwfmShowBars();
     }
 
-    try { tocPanel = buildTOCPanel(); } catch (e) { console.error('[cwfm:toc] 建立目錄面板失敗', e); }
-    try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error('[cwfm:settings] 建立設定面板失敗', e); }
-    try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立工具列失敗', e); }
-    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error('[cwfm:toolbar] 建立上方工具列失敗', e); }
+    try { tocPanel = buildTOCPanel(); } catch (e) { console.error(t('err_build_toc'), e); }
+    try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
+    try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_toolbar'), e); }
+    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_top_toolbar'), e); }
 
     // [cwfm] 左右翻頁點擊區。功能開關(cwfmTapZoneEnabled，能不能點擊
     // 翻頁)、顯示開關(cwfmTapZoneVisible，看不看得到)分開存成模組層級
@@ -4668,7 +4798,7 @@
         // 移到邊緣感應區/點擊感應區（上面 topZone/bottomZone 那兩行），
         // 加上全螢幕切換（見上面 fullscreenchange 監聽器）這兩種明確的
         // 方式喚醒，翻頁不會再誤觸。
-    } catch (e) { console.error('[cwfm:autohide] 初始化自動隱藏失敗', e); }
+    } catch (e) { console.error(t('err_init_autohide'), e); }
 
     try {
         cwfmBuildTapZones();
@@ -4677,7 +4807,7 @@
         // 之前(cwfmApplyTapZoneSettings 內部有防呆直接跳過)，這裡補一次
         // 確保建立完成當下就套用目前的設定值，不用等下一次設定變動。
         if (window.__cwfm?.settings) cwfmApplyTapZoneSettings(window.__cwfm.settings);
-    } catch (e) { console.error('[cwfm:tapzone] 建立左右翻頁點擊區失敗', e); }
+    } catch (e) { console.error(t('err_build_tapzone'), e); }
 
     // [cwfm] 定位點對齊：開書流程走到這裡，位置已經還原完成（本機記憶／
     // 伺服器書籤／或從頭開始），明確地把當下位置存一次當作起始的鎖定
@@ -4688,9 +4818,9 @@
         const initialCfi = view.lastLocation?.cfi;
         if (initialCfi) {
             cwfmLockedAnchorCfi = initialCfi;
-            dlog('[cwfm:align:t] 開書完成，初始鎖定定位點=' + initialCfi);
+            dlog(t('log_init_anchor') + initialCfi);
         }
-    } catch (e) { console.error('[cwfm:align] 初始鎖定定位點失敗', e); }
+    } catch (e) { console.error(t('err_init_anchor'), e); }
 
-    dlog('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
+    dlog(t('log_takeover'), BOOK_ID);
 })();
