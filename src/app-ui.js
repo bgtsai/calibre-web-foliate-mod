@@ -3973,7 +3973,6 @@
             sliderDragging = false;
         });
         progressWrap.appendChild(slider);
-        progressWrap.appendChild(progressLabel);
         bar.appendChild(progressWrap);
 
         const nextBtn = document.createElement('button');
@@ -3983,6 +3982,10 @@
             try { cwfmGoRight(); } catch (e) { console.error('[cwfm:toolbar] goRight 失敗', e); }
         });
         bar.appendChild(nextBtn);
+        // [cwfm] 百分比文字搬到最右邊，跟往右翻頁按鈕對調位置——這樣
+        // 「往左翻頁、進度條、往右翻頁」這三個核心物件會左右對稱，
+        // 百分比這種輔助資訊擺在最外側，不打斷中間三者的對稱感。
+        bar.appendChild(progressLabel);
 
         // [cwfm] 拆成兩層：bar 本身只負責按鈕排版，永遠固定寬度、固定
         // 位置（右側永遠留捲軸空間，不管哪個模式），確保切換模式時按鈕
