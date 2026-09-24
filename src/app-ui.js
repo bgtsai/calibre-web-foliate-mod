@@ -2772,7 +2772,7 @@
             const start = container.nodeType === 3 ? offset : 0;
             return JSON.stringify(text.slice(start, start + (maxLen || 12)));
         } catch (e) {
-            return '(\u7121\u6cd5\u9810\u89bd)';
+            return t('txt_no_preview');
         }
     }
 
@@ -3249,8 +3249,8 @@
                 step1.classList.remove('off'); step2.classList.remove('off'); step3.classList.remove('off');
                 val1.value = r; val2.value = g; val3.value = b;
                 summary.value = `${r}, ${g}, ${b}`;
-                summary.placeholder = '\u4f8b\u5982\uff1a255, 128, 0';
-                summary.title = '\u8f38\u5165\u683c\u5f0f\uff1aR, G, B\uff08\u6bcf\u500b\u6578\u503c 0~255\uff09';
+                summary.placeholder = t('hint_rgb_example');
+                summary.title = t('hint_rgb_format');
             } else if (mode === 'HSV') {
                 track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
                 track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
@@ -3270,8 +3270,8 @@
                 step1.classList.remove('off'); step2.classList.remove('off'); step3.classList.remove('off');
                 val1.value = Math.round(h); val2.value = Math.round(s * 100); val3.value = Math.round(v * 100);
                 summary.value = `${Math.round(h)}, ${Math.round(s*100)}, ${Math.round(v*100)}`;
-                summary.placeholder = '\u4f8b\u5982\uff1a210, 80, 90';
-                summary.title = '\u8f38\u5165\u683c\u5f0f\uff1aH, S, V\uff08H \u662f 0~360\uff0cS/V \u662f 0~100\uff09';
+                summary.placeholder = t('hint_hsv_example');
+                summary.title = t('hint_hsv_format');
             } else { // HEX
                 track1.style.background = ''; track1.classList.remove('off','cp-track-off-bg'); track1.classList.add('cp-track-hue');
                 track1.querySelector('.cp-thumb').style.left = (h / 360 * 100) + '%';
@@ -3283,8 +3283,8 @@
                 step1.classList.add('off'); step2.classList.add('off'); step3.classList.add('off');
                 val1.value = ''; val2.value = ''; val3.value = '';
                 summary.value = hex.toUpperCase();
-                summary.placeholder = '\u4f8b\u5982\uff1a#FF8000';
-                summary.title = '\u8f38\u5165\u683c\u5f0f\uff1a#RRGGBB\uff08\u4e5f\u63a5\u53d7\u4e0d\u5e36 # \u3001\u6216\u76f4\u63a5\u8f38\u5165\u82f1\u6587\u8272\u5f69\u540d\u7a31\uff09';
+                summary.placeholder = t('hint_hex_example');
+                summary.title = t('hint_hex_format');
             }
             // [cwfm] 即時預覽——拖動色塊/滑桿的當下就直接套用到畫面上，
             // 不用等按下 OK 才看得到效果。這裡已經透過下面 cpRenderRaf
