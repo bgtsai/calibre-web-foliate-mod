@@ -2014,11 +2014,33 @@
     // 所以這裡兩個屬性一起算：gap 負責「保底最小值」，max-inline-size
     // 負責「螢幕夠寬時不要讓內容把多餘空間占滿」，兩者算式殊途同歸，
     // 都是把使用者想要的像素值換算成對應的百分比/像素。
-    // [cwfm] 用一個看不見的探測元素，量出瀏覽器原生捲軸「不管現在有沒有
-    // 真的顯示」的固定寬度——跟量測 #viewer 那個「即時、隨內容有沒有
-    // 溢出而變動」的數字不一樣。按鈕排版層要用這個固定值，不管翻頁還是
-    // 捲動模式都固定留這個寬度，確保按鈕位置兩種模式完全一致；背景層
-    // 才用「依模式決定留不留」的邏輯。
+    // [cwfm] 用 Console 診斷確認：#container(真正顯示捲軸的內部容器)
+    // 被關在 foliate-view 內部一個 closed 的 Shadow DOM 裡（而且裡面
+    // 還有一層 foliate-paginator/foliate-fxl 子元件，各自有自己的
+    // Shadow DOM，是兩層）。查到 attachShadow 早就被劫持過（見
+    // window.__cwfm.shadowMap 的建立處），不管請求的 mode 是什麼，
+    // 都會把真正的 shadow root 存進這個 WeakMap——這條路可以摸到真正
+    // 顯示出來的那個容器。
+    //
+    // 這個做法還有一個好處：使用者裝了隱藏捲軸的瀏覽器擴充功能時，
+    // 這類擴充功能通常是對整個網頁下一條全域 CSS 規則，我們原本用來
+    // 探測的那個 <div> 站在一般網頁 DOM 範圍內，會被這條規則一併影響、
+    // 量出 0；但 #container 關在 closed Shadow DOM 裡，擴充功能的全域
+    // 樣式穿不進去，量出來的才是真正沒被外部影響過的寬度。
+    function getInnerScrollContainer() {
+        try {
+            const map = window.__cwfm?.shadowMap;
+            const host = document.querySelector('foliate-view');
+            const outerRoot = map?.get(host);
+            const paginator = outerRoot?.querySelector('foliate-paginator, foliate-fxl');
+            const innerRoot = map?.get(paginator);
+            return innerRoot?.getElementById('container') || null;
+        } catch (e) { return null; }
+    }
+
+    // [cwfm] 探測元素當備援——只有在 getInnerScrollContainer() 拿不到
+    // 內部容器的極早期時機點才會用到（例如 foliate-paginator 子元件
+    // 還沒建立完成），正常情況下優先用內部容器量測。
     function measureFixedScrollbarWidth() {
         const probe = document.createElement('div');
         probe.style.cssText = 'position:absolute; top:-9999px; width:100px; height:100px; overflow:scroll;';
@@ -2029,25 +2051,24 @@
     }
     document.documentElement.style.setProperty('--cwfm-scrollbar-w-fixed', measureFixedScrollbarWidth() + 'px');
 
-    // [cwfm] 用 Console 診斷確認：#viewer 這個外層容器自己的
-    // offsetWidth/clientWidth 完全相等，代表它自己從頭到尾沒有溢出——
-    // 真正顯示出來的捲軸，是 foliate-view 內部一個 closed 的 Shadow DOM
-    // 裡的 #container，外部完全碰不到、量不到，量 #viewer 這條路本身
-    // 就走不通，不是時機點的問題。改成不依賴內容溢出偵測，直接照目前
-    // 是不是捲動模式決定要不要留白（用探測元素量出的固定捲軸寬度）。
-    function updateScrollbarWidthVar(explicitFlow) {
-        // [cwfm] 優先用明確傳進來的 flow 值，不要只靠讀 window.__cwfm.settings
-        // 這個全域參照——applySettings() 內部呼叫時，這個全域參照要到
-        // 整個函式跑完才會同步成這次真正要套用的新設定，這裡如果只讀
-        // 全域，讀到的永遠是上一輪的舊值，永遠慢半拍。relocate、視窗
-        // 縮放這些從 applySettings() 外部呼叫的情況，這時候全域參照已經
-        // 是正確的最新值，才退回讀取。
-        const flow = explicitFlow !== undefined ? explicitFlow : window.__cwfm?.settings?.flow;
-        const scrolled = flow === 'scrolled';
-        const fixedW = getComputedStyle(document.documentElement).getPropertyValue('--cwfm-scrollbar-w-fixed').trim() || '0px';
-        document.documentElement.style.setProperty('--cwfm-scrollbar-w', scrolled ? fixedW : '0px');
+    // [cwfm] 每次都重新量測，不快取結果——內部容器的 overflow 只有
+    // 捲動模式才是 auto，分頁模式下量出來天生就是 0，不用再額外判斷
+    // flow 是哪個模式；捲動模式下如果剛好拿不到內部容器（極早期時機
+    // 點），退回 --cwfm-scrollbar-w-fixed 那個探測值，不讓數字直接
+    // 掉回 0。
+    function updateScrollbarWidthVar() {
+        const container = getInnerScrollContainer();
+        let w;
+        if (container) {
+            w = Math.max(0, container.offsetWidth - container.clientWidth);
+        } else {
+            const flow = window.__cwfm?.settings?.flow;
+            const fixedW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cwfm-scrollbar-w-fixed')) || 0;
+            w = flow === 'scrolled' ? fixedW : 0;
+        }
+        document.documentElement.style.setProperty('--cwfm-scrollbar-w', w + 'px');
     }
-    view.addEventListener('relocate', () => updateScrollbarWidthVar());
+    view.addEventListener('relocate', updateScrollbarWidthVar);
 
     function applyHorizontalPadding(desiredPx, columnCount) {
         console.log('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
@@ -2497,9 +2518,8 @@
             applyVerticalPadding(settings.topBottomPadding);
             applyHorizontalPadding(settings.leftRightPadding, effectiveColumnCount);
             // [cwfm] flow 剛設定完，捲軸有沒有可能跟著換了，重新量測一次
-            // ——直接傳這次真正要套用的 settings.flow，不要讓函式內部去
-            // 讀還沒同步的全域參照。
-            updateScrollbarWidthVar(settings.flow);
+            // ——這次改成直接從內部容器量測，不再需要傳 flow 判斷。
+            updateScrollbarWidthVar();
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         try {
