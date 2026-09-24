@@ -417,7 +417,7 @@
             // 在工具列這段區域內完全看不到、也點不到。不同瀏覽器/系統
             // 的原生捲軸寬度不完全一樣，抓一個常見的數值（Windows 版
             // Chrome/Firefox 常見約 16px）。
-            '  position: fixed; left: 0; right: 16px; bottom: 0;',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); bottom: 0;',
             '  display: flex; align-items: center; gap: 10px;',
             '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
             '  color: var(--cwfm-text); font-family: sans-serif; font-size: 13px;',
@@ -450,7 +450,7 @@
             // [cwfm] 同樣右側留出捲軸寬度——這塊透明區塊雖然看不到，但
             // 沒有排除 pointer-events，一樣會攔截滑鼠事件，如果整條貼到
             // 最右邊，捲軸落在這 44px 範圍內的部分會連拖曳都點不到。
-            '  position: fixed; left: 0; right: 16px; height: 44px; z-index: 999998;',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); height: 44px; z-index: 999998;',
             '}',
             '.cwfm-autohide-zone.cwfm-top { top: 0; }',
             '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
@@ -524,7 +524,7 @@
             // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
             '.cwfm-toolbar-top {',
             // [cwfm] 理由同下方工具列：右側留出捲軸寬度，不要蓋住捲軸。
-            '  position: fixed; left: 0; right: 16px; top: 0;',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); top: 0;',
             '  display: flex; align-items: center; gap: 6px;',
             '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
             '  color: var(--cwfm-text); font-family: sans-serif;',
@@ -1984,6 +1984,16 @@
     // 所以這裡兩個屬性一起算：gap 負責「保底最小值」，max-inline-size
     // 負責「螢幕夠寬時不要讓內容把多餘空間占滿」，兩者算式殊途同歸，
     // 都是把使用者想要的像素值換算成對應的百分比/像素。
+    // [cwfm] 精準量測 #viewer 目前實際的捲軸寬度，不是用猜的固定值——
+    // 不同瀏覽器/系統/縮放比例，原生捲軸寬度不完全一樣，猜一個數字
+    // 容易跟實際值差個一兩像素。offsetWidth 減 clientWidth 就是捲軸
+    // 實際佔用的寬度；分頁模式下沒有捲軸，這個差值天生就會是 0，
+    // 不用另外判斷 flow 是哪個模式。
+    function updateScrollbarWidthVar() {
+        const w = Math.max(0, viewerContainer.offsetWidth - viewerContainer.clientWidth);
+        document.documentElement.style.setProperty('--cwfm-scrollbar-w', w + 'px');
+    }
+
     function applyHorizontalPadding(desiredPx, columnCount) {
         console.log('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
@@ -2431,6 +2441,8 @@
             view.renderer.setAttribute('max-column-count', effectiveColumnCount);
             applyVerticalPadding(settings.topBottomPadding);
             applyHorizontalPadding(settings.leftRightPadding, effectiveColumnCount);
+            // [cwfm] flow 剛設定完，捲軸有沒有可能跟著換了，重新量測一次。
+            updateScrollbarWidthVar();
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         try {
@@ -2490,6 +2502,7 @@
                     const resizeEffectiveColumnCount = window.__cwfm.settings.flow === 'scrolled'
                         ? 1 : window.__cwfm.settings.maxColumnCount;
                     applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, resizeEffectiveColumnCount);
+                    updateScrollbarWidthVar();
                     updateDivider(window.__cwfm.settings);
                 } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
                 // [cwfm] 定位點對齊要排在留白套用之後——對齊過程要用到的
