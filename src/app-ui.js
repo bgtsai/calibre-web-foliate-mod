@@ -852,11 +852,14 @@
             // 降低透明度、游標改成不可用樣式，確保看得出來這個欄位現在
             // 不能調整，不是單純沒反應。
             '.cwfm-value-input:disabled { opacity: 0.4; cursor: not-allowed; }',
-            // [cwfm] 「軟性停用」——設定本身依然可以改，只是外觀變淡，
-            // 提示使用者目前調了也不會有實際效果。跟上面 :disabled 那條
-            // 的差別：那條是真的關閉互動能力，這條只是視覺提示，input
-            // 仍然是可以點擊、可以改的。
-            '.cwfm-field-softdisabled { opacity: 0.4; }',
+            // [cwfm] 開關元件(.cwfm-switch)原本沒有針對停用狀態設計過
+            // 樣式——這個元件的外觀完全是 CSS 畫出來的(軌道、滑塊都是
+            // 偽元素)，瀏覽器原生的 :disabled 樣式對這種自訂外觀不會
+            // 有作用，要自己接上，不然 disabled=true 之後畫面上完全看
+            // 不出差別。
+            '.cwfm-switch input:disabled + .cwfm-switch-track { opacity: 0.4; }',
+            '.cwfm-switch input:disabled { cursor: not-allowed; }',
+            '.cwfm-switch:has(input:disabled) { cursor: not-allowed; }',
             '.cwfm-panel input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }',
             // [cwfm] 單位文字（%、px、em、或空字串）長度不一樣，導致輸入框
             // 本身的右邊界跟著單位文字的寬度跑掉、參差不齊——輸入框自己
@@ -2061,6 +2064,15 @@
         let w;
         if (container) {
             w = Math.max(0, container.offsetWidth - container.clientWidth);
+            // [cwfm] 量到真實、可靠的非零數字時，順便更新「固定保留值」
+            // ——這個固定值原本只在頁面剛載入的當下用探測元素量一次，
+            // 之後永遠不會再更新，如果一開始是分頁模式載入、後來才切到
+            // 捲動模式，這個固定值會一直卡在頁面載入當下那個(可能被
+            // 隱藏捲軸擴充功能影響過的)舊數字，不會自我修正。這裡只要
+            // 曾經進過一次捲動模式、有真正的捲軸可以量，就用這個更可靠
+            // 的數字覆蓋掉固定值，之後不管切回哪個模式，按鈕排版層用的
+            // 都會是正確數字。
+            if (w > 0) document.documentElement.style.setProperty('--cwfm-scrollbar-w-fixed', w + 'px');
         } else {
             const flow = window.__cwfm?.settings?.flow;
             const fixedW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cwfm-scrollbar-w-fixed')) || 0;
@@ -3843,15 +3855,25 @@
         // 變淡（不管是哪一種，這個開關現在都不會有實際效果）。「功能」
         // 這個開關：只有捲動模式本身會讓它變淡（跟使用者自己開關無關，
         // 捲動模式下這個功能整個被系統強制關閉）。
-        function updateTapZoneCheckboxVisuals() {
+        function updateTapZoneDisabledStates() {
             const scrolledMode = flowSelect.value === 'scrolled';
-            tapZoneEnabledCheckbox.closest('.cwfm-field').classList.toggle('cwfm-field-softdisabled', scrolledMode);
-            tapZoneVisibleCheckbox.closest('.cwfm-field').classList.toggle('cwfm-field-softdisabled', scrolledMode || !tapZoneEnabledCheckbox.checked);
+            const enabledOn = tapZoneEnabledCheckbox.checked;
+            // [cwfm] 改成真停用(.disabled = true)，不再只是視覺變淡——
+            // 查了業界慣例(SAP Fiori 等)：一個控制項目前完全沒有作用時，
+            // 標準做法是連互動能力都拿掉，不是維持可以操作、只是外觀
+            // 變淡。三個控制項(功能開關、顯示開關、寬度滑桿含旁邊的
+            // 數字輸入框)統一在這裡處理，確保停用時機完全同步。
+            tapZoneEnabledCheckbox.disabled = scrolledMode;
+            tapZoneVisibleCheckbox.disabled = scrolledMode || !enabledOn;
+            const widthDisabled = scrolledMode || !enabledOn;
+            tapZoneWidthSlider.disabled = widthDisabled;
+            tapZoneWidthValueInput.disabled = widthDisabled;
         }
-        flowSelect.addEventListener('change', updateTapZoneCheckboxVisuals);
-        tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneCheckboxVisuals);
-        updateTapZoneCheckboxVisuals();
-        addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPx', 0, 300, 5, 'px');
+        flowSelect.addEventListener('change', updateTapZoneDisabledStates);
+        tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneDisabledStates);
+        const tapZoneWidthSlider = addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPx', 0, 300, 5, 'px');
+        const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
+        updateTapZoneDisabledStates();
 
         document.body.appendChild(panel);
 
