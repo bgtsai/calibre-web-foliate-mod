@@ -77,6 +77,85 @@
             btn_add_key: '+ \u65b0\u589e',
             hint_press_key: '\u8acb\u6309\u4e0b\u6309\u9375\u2026\uff08Esc \u53d6\u6d88\uff09',
             hint_key_used: '\u5df2\u7d93\u88ab\u4f7f\u7528\u4e86\uff0c\u63db\u4e00\u7d44\u770b\u770b',
+            err_no_viewer2: '[cwfm] 找不到 #viewer 容器',
+            err_no_current_pos2: '沒有目前位置可以同步',
+            log_bookmark_synced2: '[cwfm:bookmark] 已同步到伺服器：',
+            log_bookmark_removed2: '[cwfm:bookmark] 已從伺服器移除書籤',
+            err_download_failed2: '下載 epub 失敗：HTTP ',
+            log_restore_local2: '[cwfm:bookmark] 已還原本機記憶的閱讀位置：',
+            err_restore_local2: '[cwfm:bookmark] 還原本機記憶位置失敗',
+            log_restore_server2: '[cwfm:bookmark] 已還原伺服器書籤位置：',
+            err_restore_server2: '[cwfm:bookmark] 還原伺服器書籤位置失敗，改從頭開始',
+            err_open_book2: '[cwfm] 開啟書籍失敗：',
+            err_book_load_ui2: '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。',
+            err_local_write2: '[cwfm:bookmark] 本機記憶寫入失敗',
+            err_auto_sync2: '[cwfm:bookmark] 停留自動同步失敗',
+            err_keydown2: '[cwfm:keydown] 翻頁失敗',
+            err_divider_create2: '[cwfm:divider] 建立分隔線失敗',
+            err_divider_update2: '[cwfm:divider] 更新分隔線位置失敗',
+            err_theme_scheme2: '[cwfm:theme] 判斷面板深淺色失敗',
+            log_no_saved2: '[cwfm:settings] GM 儲存沒有存過設定，使用預設值',
+            log_read2: '[cwfm:settings] 從 GM 儲存讀回設定：',
+            err_read2: '[cwfm:settings] 讀取設定失敗，改用預設值',
+            log_write_sent2: '[cwfm:settings] 已送出寫入請求（GM 儲存）：',
+            err_save2: '[cwfm:settings] 儲存設定失敗',
+            err_parse_font: '[cwfm:font] 解析字型名稱失敗，退回用檔名',
+            err_font_indexeddb: '[cwfm:font] IndexedDB 裡找不到這個上傳字型的資料',
+            err_apply_font: '[cwfm:font] 套用上傳字型失敗',
+            log_hpad_start: '[cwfm:align:t] applyHorizontalPadding() 開始 t=',
+            log_hpad_end: '[cwfm:align:t] applyHorizontalPadding() 結束 t=',
+            log_vpad_start: '[cwfm:align:t] applyVerticalPadding() 開始 t=',
+            log_vpad_end: '[cwfm:align:t] applyVerticalPadding() 結束（render() 呼叫完，但 render() 內部不保證此刻已經跑完，見前面討論）t=',
+            log_relocate: '[cwfm:align:t] relocate 事件 reason=',
+            log_stash_skip: ') 發生時仍有暫存未接回去，跳過更新鎖定的定位點（可能來自書內超連結等未包裝的跳轉路徑）',
+            err_reconcile_missing: '[cwfm:align] 接回暫存內容時找不到複製容器，DOM 可能已經跟預期不一致',
+            err_reconcile_failed: '[cwfm:align] 接回暫存內容失敗',
+            txt_no_preview: '(無法預覽)',
+            log_align_start: '[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=',
+            log_no_contents: '[cwfm:align:t] 沒有 contents，中止',
+            log_no_anchor: '[cwfm:align:t] 沒有鎖定的定位點，中止',
+            log_cfi_not_chapter: '[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=',
+            log_no_range: '[cwfm:align:t] anchor(doc) 拿不到 range，中止',
+            log_resolved_content: '[cwfm:align:t] 解析到的位置 內容=',
+            log_anchor_outermost: '[cwfm:align:t] anchorElement 已經是最外層，中止',
+            log_extract_empty: '[cwfm:align:t] extractRange 是空的（前面本來就沒內容），中止',
+            log_extract_done: '[cwfm:align:t] extractContents() 完成 t=',
+            log_moved_content: '[cwfm:align:t] 搬移後的定位點內容=',
+            log_maxinline_before: '[cwfm:align:h] 對齊前 maxInlineSize=',
+            log_scroll_first: '[cwfm:align:t] scrollToAnchor() 第一次完成 t=',
+            txt_content: ' 內容=',
+            log_settle_end: '[cwfm:align:t] 排版引擎穩定偵測結束 t=',
+            txt_elapsed: ' 耗時=',
+            log_final_correction: '[cwfm:align:t] 最終校正完成 t=',
+            txt_after_align_content: ' 對齊後實際第一個可見內容=',
+            txt_check_result: ' | 校對結果：',
+            txt_match: '一致 ✓',
+            txt_mismatch: '不一致 ✗',
+            log_mismatch_expected: '[cwfm:align] 校對不一致！預期=',
+            txt_actual: ' 實際=',
+            log_maxinline_after: '[cwfm:align:h] 對齊後 maxInlineSize=',
+            err_align_nav: '[cwfm:align] 對齊後導覽失敗',
+            log_align_all_done: '[cwfm:align:t] cwfmAlignAnchorToPageStart() 全部結束 t=',
+            txt_total_elapsed: '（總耗時 ',
+            err_align_failed: '[cwfm:align] 定位點對齊失敗',
+            err_align_prev: '[cwfm:align] 往前翻頁時處理暫存內容失敗',
+            err_align_next: '[cwfm:align] 往後翻頁時處理暫存內容失敗',
+            err_tapzone_apply: '[cwfm:tapzone] 套用左右翻頁點擊區設定失敗',
+            err_apply_font_style: '[cwfm:settings] 套用字體樣式失敗',
+            err_check_uploaded: '[cwfm:font] 檢查上傳字型失敗',
+            err_apply_layout: '[cwfm:settings] 套用版面屬性失敗',
+            err_apply_autohide: '[cwfm:settings] 套用自動隱藏開關失敗',
+            err_apply_main_bg: '[cwfm:settings] 套用 #main 背景色失敗',
+            log_resize_raw: '[cwfm:resize] 收到原始 resize 通知，累計=',
+            log_resize_exec: '[cwfm:resize] 防抖動後真正執行，累計=',
+            err_resize_padding: '[cwfm:settings] 視窗縮放後重新套用留白失敗',
+            err_resize_align: '[cwfm:align] resize 後定位點對齊失敗',
+            hint_rgb_example: '例如：255, 128, 0',
+            hint_rgb_format: '輸入格式：R, G, B（每個數值 0~255）',
+            hint_hsv_example: '例如：210, 80, 90',
+            hint_hsv_format: '輸入格式：H, S, V（H 是 0~360，S/V 是 0~100）',
+            hint_hex_example: '例如：#FF8000',
+            hint_hex_format: '輸入格式：#RRGGBB（也接受不帶 # 、或直接輸入英文色彩名稱）',
         },
         en: {
             group_theme: 'Theme',
@@ -147,6 +226,85 @@
             btn_add_key: '+ Add',
             hint_press_key: 'Press a key\u2026 (Esc to cancel)',
             hint_key_used: ' is already in use, try another combo',
+            err_no_viewer2: '[cwfm] #viewer container not found',
+            err_no_current_pos2: 'No current position to sync',
+            log_bookmark_synced2: '[cwfm:bookmark] Synced to server: ',
+            log_bookmark_removed2: '[cwfm:bookmark] Bookmark removed from server',
+            err_download_failed2: 'Failed to download epub: HTTP ',
+            log_restore_local2: '[cwfm:bookmark] Restored locally-remembered position: ',
+            err_restore_local2: '[cwfm:bookmark] Failed to restore locally-remembered position',
+            log_restore_server2: '[cwfm:bookmark] Restored server bookmark position: ',
+            err_restore_server2: '[cwfm:bookmark] Failed to restore server bookmark position, starting from the beginning',
+            err_open_book2: '[cwfm] Failed to open book: ',
+            err_book_load_ui2: '(Calibre-Web Foliate Reader Mod) Failed to load the book. See the console for details.',
+            err_local_write2: '[cwfm:bookmark] Failed to write local memory',
+            err_auto_sync2: '[cwfm:bookmark] Idle auto-sync failed',
+            err_keydown2: '[cwfm:keydown] Page turn failed',
+            err_divider_create2: '[cwfm:divider] Failed to create divider',
+            err_divider_update2: '[cwfm:divider] Failed to update divider position',
+            err_theme_scheme2: '[cwfm:theme] Failed to determine panel light/dark scheme',
+            log_no_saved2: '[cwfm:settings] No saved settings in GM storage, using defaults',
+            log_read2: '[cwfm:settings] Read settings from GM storage: ',
+            err_read2: '[cwfm:settings] Failed to read settings, using defaults',
+            log_write_sent2: '[cwfm:settings] Write request sent (GM storage): ',
+            err_save2: '[cwfm:settings] Failed to save settings',
+            err_parse_font: '[cwfm:font] Failed to parse font name, falling back to filename',
+            err_font_indexeddb: '[cwfm:font] Font data not found in IndexedDB',
+            err_apply_font: '[cwfm:font] Failed to apply uploaded font',
+            log_hpad_start: '[cwfm:align:t] applyHorizontalPadding() start t=',
+            log_hpad_end: '[cwfm:align:t] applyHorizontalPadding() end t=',
+            log_vpad_start: '[cwfm:align:t] applyVerticalPadding() start t=',
+            log_vpad_end: '[cwfm:align:t] applyVerticalPadding() end (render() called, but internal completion not guaranteed yet) t=',
+            log_relocate: '[cwfm:align:t] relocate event reason=',
+            log_stash_skip: ') occurred while a stash was still unreconciled, skipping anchor lock update (may be from an unwrapped in-book link jump)',
+            err_reconcile_missing: '[cwfm:align] Copy container not found when reconciling stashed content; DOM may no longer match expectations',
+            err_reconcile_failed: '[cwfm:align] Failed to reconcile stashed content',
+            txt_no_preview: '(no preview)',
+            log_align_start: '[cwfm:align:t] cwfmAlignAnchorToPageStart() start t=',
+            log_no_contents: '[cwfm:align:t] no contents, aborting',
+            log_no_anchor: '[cwfm:align:t] no locked anchor, aborting',
+            log_cfi_not_chapter: '[cwfm:align:t] cfi not in current chapter, aborting resolved.index=',
+            log_no_range: '[cwfm:align:t] could not get range from anchor(doc), aborting',
+            log_resolved_content: '[cwfm:align:t] resolved position content=',
+            log_anchor_outermost: '[cwfm:align:t] anchorElement already at outermost level, aborting',
+            log_extract_empty: '[cwfm:align:t] extractRange is empty (no content before it to begin with), aborting',
+            log_extract_done: '[cwfm:align:t] extractContents() done t=',
+            log_moved_content: '[cwfm:align:t] moved anchor content=',
+            log_maxinline_before: '[cwfm:align:h] maxInlineSize before align=',
+            log_scroll_first: '[cwfm:align:t] scrollToAnchor() first pass done t=',
+            txt_content: ' content=',
+            log_settle_end: '[cwfm:align:t] layout-settle detection ended t=',
+            txt_elapsed: ' elapsed=',
+            log_final_correction: '[cwfm:align:t] final correction done t=',
+            txt_after_align_content: ' actual first visible content after align=',
+            txt_check_result: ' | verification result: ',
+            txt_match: 'match ✓',
+            txt_mismatch: 'mismatch ✗',
+            log_mismatch_expected: '[cwfm:align] Verification mismatch! expected=',
+            txt_actual: ' actual=',
+            log_maxinline_after: '[cwfm:align:h] maxInlineSize after align=',
+            err_align_nav: '[cwfm:align] Navigation failed after align',
+            log_align_all_done: '[cwfm:align:t] cwfmAlignAnchorToPageStart() fully done t=',
+            txt_total_elapsed: ' (total elapsed ',
+            err_align_failed: '[cwfm:align] Anchor alignment failed',
+            err_align_prev: '[cwfm:align] Failed to process stashed content when going to previous page',
+            err_align_next: '[cwfm:align] Failed to process stashed content when going to next page',
+            err_tapzone_apply: '[cwfm:tapzone] Failed to apply tap-zone settings',
+            err_apply_font_style: '[cwfm:settings] Failed to apply font style',
+            err_check_uploaded: '[cwfm:font] Failed to check uploaded font',
+            err_apply_layout: '[cwfm:settings] Failed to apply layout properties',
+            err_apply_autohide: '[cwfm:settings] Failed to apply auto-hide toggle',
+            err_apply_main_bg: '[cwfm:settings] Failed to apply #main background color',
+            log_resize_raw: '[cwfm:resize] Received raw resize notification, count=',
+            log_resize_exec: '[cwfm:resize] Executed after debounce, count=',
+            err_resize_padding: '[cwfm:settings] Failed to reapply padding after window resize',
+            err_resize_align: '[cwfm:align] Anchor alignment failed after resize',
+            hint_rgb_example: 'e.g. 255, 128, 0',
+            hint_rgb_format: 'Format: R, G, B (each value 0-255)',
+            hint_hsv_example: 'e.g. 210, 80, 90',
+            hint_hsv_format: 'Format: H, S, V (H is 0-360, S/V are 0-100)',
+            hint_hex_example: 'e.g. #FF8000',
+            hint_hex_format: 'Format: #RRGGBB (also accepts no #, or a CSS color name)',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
@@ -194,7 +352,7 @@
 
     const viewerContainer = document.querySelector(VIEWER_SELECTOR);
     if (!viewerContainer) {
-        console.error('[cwfm] 找不到 #viewer 容器');
+        console.error(t('err_no_viewer2'));
         return;
     }
 
@@ -323,9 +481,9 @@
 
     function syncBookmarkToServer(cfi) {
         const wrapped = wrapCfi(cfi);
-        if (!wrapped) return Promise.reject(new Error('沒有目前位置可以同步'));
+        if (!wrapped) return Promise.reject(new Error(t('err_no_current_pos2')));
         return postBookmarkValue(wrapped).then(() => {
-            dlog('[cwfm:bookmark] 已同步到伺服器：', wrapped);
+            dlog(t('log_bookmark_synced2'), wrapped);
         });
     }
 
@@ -337,14 +495,14 @@
     // 同一個端點送出空字串。這裡照同樣的方式實作。
     function removeServerBookmark() {
         return postBookmarkValue('').then(() => {
-            dlog('[cwfm:bookmark] 已從伺服器移除書籤');
+            dlog(t('log_bookmark_removed2'));
         });
     }
 
     let book;
     try {
         const res = await fetch('/show/' + BOOK_ID + '/epub/file.epub', { credentials: 'same-origin' });
-        if (!res.ok) throw new Error('下載 epub 失敗：HTTP ' + res.status);
+        if (!res.ok) throw new Error(t('err_download_failed2') + res.status);
         const blob = await res.blob();
         const file = new File([blob], BOOK_ID + '.epub', { type: 'application/epub+zip' });
 
@@ -364,10 +522,10 @@
             if (localRememberEnabled && INITIAL_POSITION && INITIAL_POSITION.cfi) {
                 await view.goTo(INITIAL_POSITION.cfi);
                 restored = true;
-                dlog('[cwfm:bookmark] 已還原本機記憶的閱讀位置：', INITIAL_POSITION.cfi);
+                dlog(t('log_restore_local2'), INITIAL_POSITION.cfi);
             }
         } catch (e) {
-            console.error('[cwfm:bookmark] 還原本機記憶位置失敗', e);
+            console.error(t('err_restore_local2'), e);
         }
 
         if (!restored) {
@@ -381,18 +539,18 @@
                 try {
                     await view.goTo(serverBookmark);
                     restored = true;
-                    dlog('[cwfm:bookmark] 已還原伺服器書籤位置：', serverBookmark);
+                    dlog(t('log_restore_server2'), serverBookmark);
                 } catch (e) {
-                    console.error('[cwfm:bookmark] 還原伺服器書籤位置失敗，改從頭開始', e);
+                    console.error(t('err_restore_server2'), e);
                 }
             }
         }
 
         if (!restored) view.renderer.next();
     } catch (e) {
-        console.error('[cwfm] 開啟書籍失敗：', e);
+        console.error(t('err_open_book2'), e);
         viewerContainer.innerHTML = '';
-        viewerContainer.textContent = '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。';
+        viewerContainer.textContent = t('err_book_load_ui2');
         return;
     }
 
@@ -418,7 +576,7 @@
         try {
             gmSet(POSITION_KEY, { cfi, fraction });
         } catch (err) {
-            console.error('[cwfm:bookmark] 本機記憶寫入失敗', err);
+            console.error(t('err_local_write2'), err);
         }
     });
 
@@ -451,7 +609,7 @@
                     window.__cwfm.onBookmarkSynced?.(cfi);
                 })
                 .catch((err) =>
-                    console.error('[cwfm:bookmark] 停留自動同步失敗', err)
+                    console.error(t('err_auto_sync2'), err)
                 );
         }, delayMs);
     });
@@ -487,7 +645,7 @@
             if (pagingKeys.prev.includes(combo)) cwfmGoLeft();
             else if (pagingKeys.next.includes(combo)) cwfmGoRight();
         } catch (err) {
-            console.error('[cwfm:keydown] 翻頁失敗', err);
+            console.error(t('err_keydown2'), err);
         }
     }
     document.addEventListener('keydown', handleKeydown);
@@ -1365,7 +1523,7 @@
     const divider = document.createElement('div');
     divider.className = 'cwfm-divider';
     divider.dataset.cwfmOwned = 'true';
-    try { viewerContainer.appendChild(divider); } catch (e) { console.error('[cwfm:divider] 建立分隔線失敗', e); }
+    try { viewerContainer.appendChild(divider); } catch (e) { console.error(t('err_divider_create2'), e); }
 
     function updateDivider(settings) {
         try {
@@ -1383,7 +1541,7 @@
             divider.style.height = Math.max(0, heightPx) + 'px';
             divider.classList.toggle('cwfm-show', settings.maxColumnCount >= 2 && settings.flow === 'paginated');
         } catch (e) {
-            console.error('[cwfm:divider] 更新分隔線位置失敗', e);
+            console.error(t('err_divider_update2'), e);
         }
     }
 
@@ -1537,7 +1695,7 @@
             // 管面板存不存在，CSS 選擇器（html[data-cwfm-scheme] .cwfm-panel）
             // 之後面板一建立就會自動生效，不用另外處理時序。
             document.documentElement.dataset.cwfmScheme = isDark ? 'dark' : 'light';
-        } catch (e) { console.error('[cwfm:theme] 判斷面板深淺色失敗', e); }
+        } catch (e) { console.error(t('err_theme_scheme2'), e); }
     }
 
     // [cwfm] auto 模式原本交給 CSS 的 color-scheme 屬性讓瀏覽器自己決定
@@ -1577,14 +1735,14 @@
     function loadSettings() {
         try {
             if (!INITIAL_SETTINGS) {
-                dlog('[cwfm:settings] GM 儲存沒有存過設定，使用預設值');
+                dlog(t('log_no_saved2'));
                 return { ...DEFAULT_SETTINGS };
             }
             const parsed = { ...DEFAULT_SETTINGS, ...INITIAL_SETTINGS };
-            dlog('[cwfm:settings] 從 GM 儲存讀回設定：', parsed);
+            dlog(t('log_read2'), parsed);
             return parsed;
         } catch (e) {
-            console.error('[cwfm:settings] 讀取設定失敗，改用預設值', e);
+            console.error(t('err_read2'), e);
             return { ...DEFAULT_SETTINGS };
         }
     }
@@ -1592,9 +1750,9 @@
     function saveSettings(settings) {
         try {
             gmSet(STORAGE_KEY, settings);
-            dlog('[cwfm:settings] 已送出寫入請求（GM 儲存）：', settings);
+            dlog(t('log_write_sent2'), settings);
         } catch (e) {
-            console.error('[cwfm:settings] 儲存設定失敗', e);
+            console.error(t('err_save2'), e);
         }
     }
 
@@ -2061,7 +2219,7 @@
             const name = cwfmParseSfntName(dv, 0);
             return name || cwfmStripExt(fileName);
         } catch (e) {
-            console.error('[cwfm:font] 解析字型名稱失敗，退回用檔名', e);
+            console.error(t('err_parse_font'), e);
             return cwfmStripExt(fileName);
         }
     }
@@ -2086,7 +2244,7 @@
         if (match.id === cwfmActiveFontFaceKey) return; // 已經是目前套用中的這個，不用重讀
         try {
             const record = await cwfmLoadFontBlob(match.id);
-            if (!record) { console.error('[cwfm:font] IndexedDB 裡找不到這個上傳字型的資料', match.id); return; }
+            if (!record) { console.error(t('err_font_indexeddb'), match.id); return; }
             const bytes = new Uint8Array(record.data);
             let binary = '';
             for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
@@ -2096,7 +2254,7 @@
             cwfmActiveFontFaceKey = match.id;
             applySettings(settings); // 重新套用一次，這次帶著已經準備好的 @font-face
         } catch (e) {
-            console.error('[cwfm:font] 套用上傳字型失敗', e);
+            console.error(t('err_apply_font'), e);
         }
     }
 
@@ -2268,7 +2426,7 @@
     view.addEventListener('relocate', updateScrollbarWidthVar);
 
     function applyHorizontalPadding(desiredPx, columnCount) {
-        dlog('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
+        dlog(t('log_hpad_start') + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalWidth = rect.width || 1;
 
@@ -2305,7 +2463,7 @@
         const maxInlineSizePx = Math.round(contentWidth / (columnCount || 1));
         dlog('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx);
         view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
-        dlog('[cwfm:align:t] applyHorizontalPadding() 結束 t=' + performance.now().toFixed(1));
+        dlog(t('log_hpad_end') + performance.now().toFixed(1));
     }
 
     // [cwfm] margin 這個屬性一定要帶 px 單位，這是上下留白怎麼調都沒反應
@@ -2321,7 +2479,7 @@
     // 注意第 720 行有段 JS 會用 parseFloat 把這個變數讀回去做欄寬計算，
     // parseFloat('120px') 與 parseFloat('120') 結果相同，加上 px 不影響它。
     function applyVerticalPadding(desiredPx) {
-        dlog('[cwfm:align:t] applyVerticalPadding() 開始 t=' + performance.now().toFixed(1));
+        dlog(t('log_vpad_start') + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalHeight = rect.height || 1;
         view.renderer.setAttribute('margin', desiredPx + 'px');
@@ -2330,7 +2488,7 @@
         dlog('[cwfm:node] applyVerticalPadding() desiredPx=' + desiredPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
         view.renderer.setAttribute('max-block-size', maxBlockSizePx + 'px');
         view.renderer.render();
-        dlog('[cwfm:align:t] applyVerticalPadding() 結束（render() 呼叫完，但 render() 內部不保證此刻已經跑完，見前面討論）t=' + performance.now().toFixed(1));
+        dlog(t('log_vpad_end') + performance.now().toFixed(1));
     }
 
     // [cwfm] 翻頁精準定位（原本叫「實驗性功能」）的存檔開關已經改到
@@ -2371,7 +2529,7 @@
     // view 本身）——查證過 view 重新包裝 relocate 事件時，沒有把 reason
     // 這個欄位轉傳出來，只有排版引擎自己原始的事件才有。
     view.renderer.addEventListener('relocate', (e) => {
-        dlog('[cwfm:align:t] relocate 事件 reason=' + e.detail?.reason + ' t=' + performance.now().toFixed(1));
+        dlog(t('log_relocate') + e.detail?.reason + ' t=' + performance.now().toFixed(1));
     });
     let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
 
@@ -2398,7 +2556,7 @@
         // 算出來的 cfi 可能是對著殘缺的樹算出來的、不可靠——寧可不更新，
         // 也不要記錄一個可能有問題的值進去。
         if (cwfmAnchorStash) {
-            console.warn('[cwfm:align] relocate(reason=' + reason + ') 發生時仍有暫存未接回去，跳過更新鎖定的定位點（可能來自書內超連結等未包裝的跳轉路徑）');
+            console.warn('[cwfm:align] relocate(reason=' + reason + t('log_stash_skip'));
             return;
         }
         const cfi = view.lastLocation?.cfi;
@@ -2461,10 +2619,10 @@
                 cwfmMergeCloneChain(clonedTop, originalChain, 0);
                 leaf.normalize();
             } else {
-                console.error('[cwfm:align] 接回暫存內容時找不到複製容器，DOM 可能已經跟預期不一致');
+                console.error(t('err_reconcile_missing'));
             }
         } catch (e) {
-            console.error('[cwfm:align] 接回暫存內容失敗', e);
+            console.error(t('err_reconcile_failed'), e);
         } finally {
             cwfmAnchorStash = null;
             cwfmAligningAnchor = false;
@@ -2532,7 +2690,7 @@
         if (window.__cwfm.settings?.flow === 'scrolled') return;
         if (cwfmAligningAnchor) return;
         const t0 = performance.now();
-        dlog('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
+        dlog(t('log_align_start') + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
         try {
             // [cwfm] 先把任何還沒接回去的暫存內容接回去，確保接下來解析
             // cwfmLockedAnchorCfi 的時候，文件是完整、沒被動過手腳的乾淨
@@ -2541,36 +2699,36 @@
             cwfmReinsertStash();
 
             const contents = view.renderer.getContents();
-            if (!contents.length) { dlog('[cwfm:align:t] 沒有 contents，中止'); return; }
+            if (!contents.length) { dlog(t('log_no_contents')); return; }
             const { doc, index } = contents[0];
 
             const targetCfi = cwfmLockedAnchorCfi;
             dlog('[cwfm:align:t] cwfmLockedAnchorCfi=' + targetCfi);
-            if (!targetCfi) { dlog('[cwfm:align:t] 沒有鎖定的定位點，中止'); return; }
+            if (!targetCfi) { dlog(t('log_no_anchor')); return; }
             const resolved = view.resolveCFI(targetCfi);
-            if (!resolved || resolved.index !== index) { dlog('[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=' + resolved?.index + ' currentIndex=' + index); return; }
+            if (!resolved || resolved.index !== index) { dlog(t('log_cfi_not_chapter') + resolved?.index + ' currentIndex=' + index); return; }
             const range = resolved.anchor(doc);
-            if (!range) { dlog('[cwfm:align:t] anchor(doc) 拿不到 range，中止'); return; }
+            if (!range) { dlog(t('log_no_range')); return; }
 
             const container = range.startContainer;
             const offset = range.startOffset;
             const anchorElement = container.nodeType === 3 ? container.parentNode : container;
-            dlog('[cwfm:align:t] 解析到的位置 內容=' + cwfmTextPreview(container, offset));
+            dlog(t('log_resolved_content') + cwfmTextPreview(container, offset));
 
             const body = doc.body;
-            if (!anchorElement || anchorElement === body) { dlog('[cwfm:align:t] anchorElement 已經是最外層，中止'); return; }
+            if (!anchorElement || anchorElement === body) { dlog(t('log_anchor_outermost')); return; }
 
             const originalChain = cwfmAncestorChain(anchorElement, body);
 
             const extractRange = doc.createRange();
             extractRange.setStart(body, 0);
             extractRange.setEnd(container, offset);
-            if (extractRange.collapsed) { dlog('[cwfm:align:t] extractRange 是空的（前面本來就沒內容），中止'); return; }
+            if (extractRange.collapsed) { dlog(t('log_extract_empty')); return; }
 
             cwfmAligningAnchor = true;
             const extracted = extractRange.extractContents();
             cwfmAnchorStash = { originalChain, fragment: extracted, sectionIndex: index };
-            dlog('[cwfm:align:t] extractContents() 完成 t=' + performance.now().toFixed(1));
+            dlog(t('log_extract_done') + performance.now().toFixed(1));
 
             // [cwfm] 搬走之後，定位點文字現在是章節最前面的內容，原本卡在
             // 邊界的那個容器（originalChain 最底層）現在的 firstChild 就是
@@ -2584,11 +2742,11 @@
             if (leaf.firstChild) freshRange.setStart(leaf.firstChild, 0);
             else freshRange.setStart(leaf, 0);
             freshRange.collapse(true);
-            dlog('[cwfm:align:t] 搬移後的定位點內容=' + expectedText);
+            dlog(t('log_moved_content') + expectedText);
 
             // [cwfm] 診斷紀錄：跟水平留白/欄寬有關的幾個數字記下來，
             // 下次重現時直接比對這些數字，不用再猜是不是留白算錯。
-            dlog('[cwfm:align:h] 對齊前 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
+            dlog(t('log_maxinline_before') + view.renderer.getAttribute('max-inline-size')
                 + ' gap=' + view.renderer.getAttribute('gap')
                 + ' maxColumnCount=' + view.renderer.getAttribute('max-column-count'));
 
@@ -2596,8 +2754,8 @@
                 .then(async () => {
                     const firstVisible = view.renderer.getVisibleRange?.();
                     const firstText = firstVisible ? cwfmTextPreview(firstVisible.startContainer, firstVisible.startOffset) : '(null)';
-                    dlog('[cwfm:align:t] scrollToAnchor() 第一次完成 t=' + performance.now().toFixed(1)
-                        + ' 內容=' + firstText);
+                    dlog(t('log_scroll_first') + performance.now().toFixed(1)
+                        + t('txt_content') + firstText);
 
                     // [cwfm] 排版引擎自己內部有一個 ResizeObserver 監看書本
                     // 內容尺寸，一變就呼叫 expand()；我們搬移/接回內容本身
@@ -2608,8 +2766,8 @@
                     // 直接量測 cwfmLayoutChangedAt 時間戳，不是猜畫面內容
                     // 或猜要等多久。
                     const { lastSeenChangedAt, elapsed: settleElapsed } = await cwfmWaitForLayoutSettle(true);
-                    dlog('[cwfm:align:t] 排版引擎穩定偵測結束 t=' + performance.now().toFixed(1)
-                        + ' 耗時=' + settleElapsed.toFixed(1) + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
+                    dlog(t('log_settle_end') + performance.now().toFixed(1)
+                        + t('txt_elapsed') + settleElapsed.toFixed(1) + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
 
                     // [cwfm] 不管穩定與否，都強制校正一次——穩定的情況下這
                     // 次呼叫應該幾乎沒有變化（本來就在對的位置）；等到上限
@@ -2620,21 +2778,21 @@
                     const finalVisible = view.renderer.getVisibleRange?.();
                     const actualText = finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)';
                     const matched = actualText === expectedText;
-                    dlog('[cwfm:align:t] 最終校正完成 t=' + performance.now().toFixed(1)
-                        + ' 對齊後實際第一個可見內容=' + actualText
-                        + ' | 校對結果：' + (matched ? '一致 ✓' : '不一致 ✗'));
+                    dlog(t('log_final_correction') + performance.now().toFixed(1)
+                        + t('txt_after_align_content') + actualText
+                        + t('txt_check_result') + (matched ? t('txt_match') : t('txt_mismatch')));
                     if (!matched) {
-                        console.warn('[cwfm:align] 校對不一致！預期=' + expectedText + ' 實際=' + actualText);
+                        console.warn(t('log_mismatch_expected') + expectedText + t('txt_actual') + actualText);
                     }
-                    dlog('[cwfm:align:h] 對齊後 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
+                    dlog(t('log_maxinline_after') + view.renderer.getAttribute('max-inline-size')
                         + ' gap=' + view.renderer.getAttribute('gap')
                         + ' rendererRect.left=' + view.renderer.getBoundingClientRect().left
                         + ' viewerRect.left=' + viewerContainer.getBoundingClientRect().left);
                 })
-                .catch((e) => console.error('[cwfm:align] 對齊後導覽失敗', e))
-                .finally(() => { cwfmAligningAnchor = false; dlog('[cwfm:align:t] cwfmAlignAnchorToPageStart() 全部結束 t=' + performance.now().toFixed(1) + '（總耗時 ' + (performance.now() - t0).toFixed(1) + 'ms）'); });
+                .catch((e) => console.error(t('err_align_nav'), e))
+                .finally(() => { cwfmAligningAnchor = false; dlog(t('log_align_all_done') + performance.now().toFixed(1) + t('txt_total_elapsed') + (performance.now() - t0).toFixed(1) + 'ms）'); });
         } catch (e) {
-            console.error('[cwfm:align] 定位點對齊失敗', e);
+            console.error(t('err_align_failed'), e);
             cwfmAligningAnchor = false;
         }
     }
@@ -2670,7 +2828,7 @@
                 await cwfmWaitForLayoutSettle(true);
             }
         } catch (e) {
-            console.error('[cwfm:align] 往前翻頁時處理暫存內容失敗', e);
+            console.error(t('err_align_prev'), e);
         }
         await view.goLeft();
     }
@@ -2684,23 +2842,23 @@
                 await cwfmWaitForLayoutSettle(true);
             }
         } catch (e) {
-            console.error('[cwfm:align] 往後翻頁時處理暫存內容失敗', e);
+            console.error(t('err_align_next'), e);
         }
         await view.goRight();
     }
 
     function applySettings(settings) {
         cwfmUpdatePanelScheme(settings);
-        try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error('[cwfm:tapzone] 套用左右翻頁點擊區設定失敗', e); }
+        try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error(t('err_tapzone_apply'), e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
-        } catch (e) { console.error('[cwfm:settings] 套用字體樣式失敗', e); }
+        } catch (e) { console.error(t('err_apply_font_style'), e); }
         // [cwfm] 非同步、不 await——applySettings() 本身是同步函式，這裡
         // 只負責「檢查目前選用的字型是不是換成了不同的上傳字型，是的話
         // 去讀取、準備好之後再重新呼叫一次 applySettings()」。cwfmRefreshActiveFontFace
         // 內部自己會判斷要不要真的重讀（同一個字型不重複讀 IndexedDB），
         // 這裡每次呼叫的成本很低。
-        cwfmRefreshActiveFontFace(settings).catch((e) => console.error('[cwfm:font] 檢查上傳字型失敗', e));
+        cwfmRefreshActiveFontFace(settings).catch((e) => console.error(t('err_check_uploaded'), e));
         try {
             view.renderer.setAttribute('flow', settings.flow);
             // [cwfm] 捲動模式下強制鎖回 1 欄——原本不管 flow 是分頁還是
@@ -2718,10 +2876,10 @@
             // ——這次改成直接從內部容器量測，不再需要傳 flow 判斷。
             updateScrollbarWidthVar();
             updateDivider(settings);
-        } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
+        } catch (e) { console.error(t('err_apply_layout'), e); }
         try {
             updateAutoHideEnabled(settings.autoHideToolbar);
-        } catch (e) { console.error('[cwfm:settings] 套用自動隱藏開關失敗', e); }
+        } catch (e) { console.error(t('err_apply_autohide'), e); }
         // [cwfm] #main 是 Calibre-Web 原本介面最底層的容器，原本背景色是
         // 寫死的白色（Calibre-Web 自己的 main.css），我們自己的工具列背景
         // 帶透明度（rgba(24,24,24,0.92)），縫隙會透出底下這層顏色，變成
@@ -2741,7 +2899,7 @@
                 // 使用者截圖回報的那個灰色殘影。這裡一併蓋掉。
                 main.style.setProperty('box-shadow', 'none', 'important');
             }
-        } catch (e) { console.error('[cwfm:settings] 套用 #main 背景色失敗', e); }
+        } catch (e) { console.error(t('err_apply_main_bg'), e); }
         window.__cwfm.settings = settings;
     }
 
@@ -2760,11 +2918,11 @@
     let resizeExecCount = 0; // 診斷用：防抖動後實際執行了幾次
     window.addEventListener('resize', () => {
         resizeRawCount++;
-        dlog('[cwfm:resize] 收到原始 resize 通知，累計=' + resizeRawCount + ' t=' + performance.now().toFixed(1));
+        dlog(t('log_resize_raw') + resizeRawCount + ' t=' + performance.now().toFixed(1));
         clearTimeout(resizeDebounceTimer);
         resizeDebounceTimer = setTimeout(() => {
             resizeExecCount++;
-            dlog('[cwfm:resize] 防抖動後真正執行，累計=' + resizeExecCount + ' t=' + performance.now().toFixed(1));
+            dlog(t('log_resize_exec') + resizeExecCount + ' t=' + performance.now().toFixed(1));
             if (window.__cwfm.settings) {
                 try {
                     applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
@@ -2778,12 +2936,12 @@
                     applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, resizeEffectiveColumnCount);
                     updateScrollbarWidthVar();
                     updateDivider(window.__cwfm.settings);
-                } catch (e) { console.error('[cwfm:settings] 視窗縮放後重新套用留白失敗', e); }
+                } catch (e) { console.error(t('err_resize_padding'), e); }
                 // [cwfm] 定位點對齊要排在留白套用之後——對齊過程要用到的
                 // this.size（頁面尺寸）必須是新版面留白套用完之後的正確值。
                 try {
                     cwfmAlignAnchorToPageStart();
-                } catch (e) { console.error('[cwfm:align] resize 後定位點對齊失敗', e); }
+                } catch (e) { console.error(t('err_resize_align'), e); }
             }
         }, CWFM_RESIZE_DEBOUNCE_MS);
     });
