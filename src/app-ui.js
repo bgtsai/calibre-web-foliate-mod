@@ -2017,21 +2017,17 @@
     }
     document.documentElement.style.setProperty('--cwfm-scrollbar-w-fixed', measureFixedScrollbarWidth() + 'px');
 
-    // [cwfm] 精準量測 #viewer 目前實際的捲軸寬度，不是用猜的固定值——
-    // 不同瀏覽器/系統/縮放比例，原生捲軸寬度不完全一樣，猜一個數字
-    // 容易跟實際值差個一兩像素。offsetWidth 減 clientWidth 就是捲軸
-    // 實際佔用的寬度；分頁模式下沒有捲軸，這個差值天生就會是 0，
-    // 不用另外判斷 flow 是哪個模式。
+    // [cwfm] 用 Console 診斷確認：#viewer 這個外層容器自己的
+    // offsetWidth/clientWidth 完全相等，代表它自己從頭到尾沒有溢出——
+    // 真正顯示出來的捲軸，是 foliate-view 內部一個 closed 的 Shadow DOM
+    // 裡的 #container，外部完全碰不到、量不到，量 #viewer 這條路本身
+    // 就走不通，不是時機點的問題。改成不依賴內容溢出偵測，直接照目前
+    // 是不是捲動模式決定要不要留白（用探測元素量出的固定捲軸寬度）。
     function updateScrollbarWidthVar() {
-        const w = Math.max(0, viewerContainer.offsetWidth - viewerContainer.clientWidth);
-        document.documentElement.style.setProperty('--cwfm-scrollbar-w', w + 'px');
+        const scrolled = window.__cwfm?.settings?.flow === 'scrolled';
+        const fixedW = getComputedStyle(document.documentElement).getPropertyValue('--cwfm-scrollbar-w-fixed').trim() || '0px';
+        document.documentElement.style.setProperty('--cwfm-scrollbar-w', scrolled ? fixedW : '0px');
     }
-    // [cwfm] 補上更可靠的時機點——書本內容是非同步撐開的，只在「設定
-    // 變動」「視窗縮放」這兩個時機點量測，使用者如果打開書之後兩者都
-    // 沒觸發，量到的會是內容還沒撐開時的舊值（很可能是 0），背景層就會
-    // 誤判成不用留白，蓋住捲軸。relocate 事件在內容真正渲染完成、
-    // 使用者實際看到的位置更新時才會觸發，這裡補上，確保拿到的是內容
-    // 撐開之後的真實數字。
     view.addEventListener('relocate', updateScrollbarWidthVar);
 
     function applyHorizontalPadding(desiredPx, columnCount) {
