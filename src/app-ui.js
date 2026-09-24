@@ -205,6 +205,7 @@
             dlg_reload_title: '需要重新整理',
             dlg_reload_msg: '語言設定已儲存，要立即重新整理頁面套用新語言嗎？',
             btn_reload_now: '立即重新整理',
+            hint_drag_handle: '拖動移動位置',
         },
         en: {
             group_theme: 'Theme',
@@ -405,6 +406,7 @@
             dlg_reload_title: 'Reload Required',
             dlg_reload_msg: 'Language setting saved. Reload the page now to apply the change?',
             btn_reload_now: 'Reload Now',
+            hint_drag_handle: 'Drag to move',
         },
     };
 
@@ -1959,18 +1961,35 @@
     // 取消或點背景為 false。目前只有刪除上傳字型會用到（規則規定一律
     // 要跳確認，不看背後掛了幾個名稱），寫成共用函式方便之後其他地方
     // 需要「刪除前先確認」的時候重複使用。
+    // [cwfm] 三個對話框(確認/輸入/提示)共用的外殼——原本各自獨立重複
+    // 建立 overlay、box、標題、按鈕列、點擊背景關閉這五段完全一樣的
+    // 邏輯，三份程式碼要改樣式或行為都要改三次，容易漏改。抽出來共用，
+    // 各自呼叫端只需要處理自己專屬的內容(訊息文字/輸入框)跟按鈕。
+    function cwfmBuildDialogShell(title) {
+        const overlay = document.createElement('div');
+        overlay.className = 'cwfm-confirm-overlay';
+        const box = document.createElement('div');
+        box.className = 'cwfm-confirm-box';
+        const h = document.createElement('h4');
+        h.textContent = title;
+        const btnRow = document.createElement('div');
+        btnRow.className = 'cwfm-confirm-buttons';
+        box.appendChild(h);
+        overlay.appendChild(box);
+        return {
+            overlay, box, h, btnRow,
+            closeOnOutsideClick(handler) {
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) handler(); });
+            },
+            mount() { document.body.appendChild(overlay); },
+        };
+    }
+
     function cwfmConfirmDialog(title, message, confirmLabel) {
         return new Promise((resolve) => {
-            const overlay = document.createElement('div');
-            overlay.className = 'cwfm-confirm-overlay';
-            const box = document.createElement('div');
-            box.className = 'cwfm-confirm-box';
-            const h = document.createElement('h4');
-            h.textContent = title;
+            const { overlay, box, btnRow, closeOnOutsideClick, mount } = cwfmBuildDialogShell(title);
             const p = document.createElement('p');
             p.textContent = message;
-            const btnRow = document.createElement('div');
-            btnRow.className = 'cwfm-confirm-buttons';
             const cancelBtn = document.createElement('button');
             cancelBtn.type = 'button';
             cancelBtn.textContent = t('dlg_cancel');
@@ -1990,14 +2009,12 @@
             }
             cancelBtn.addEventListener('click', () => close(false));
             okBtn.addEventListener('click', () => close(true));
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+            closeOnOutsideClick(() => close(false));
             btnRow.appendChild(cancelBtn);
             btnRow.appendChild(okBtn);
-            box.appendChild(h);
             box.appendChild(p);
             box.appendChild(btnRow);
-            overlay.appendChild(box);
-            document.body.appendChild(overlay);
+            mount();
         });
     }
 
@@ -2011,18 +2028,11 @@
     // null。
     function cwfmPromptDialog(title, placeholder) {
         return new Promise((resolve) => {
-            const overlay = document.createElement('div');
-            overlay.className = 'cwfm-confirm-overlay';
-            const box = document.createElement('div');
-            box.className = 'cwfm-confirm-box';
-            const h = document.createElement('h4');
-            h.textContent = title;
+            const { overlay, box, btnRow, closeOnOutsideClick, mount } = cwfmBuildDialogShell(title);
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'cwfm-prompt-input';
             if (placeholder) input.placeholder = placeholder;
-            const btnRow = document.createElement('div');
-            btnRow.className = 'cwfm-confirm-buttons';
             const cancelBtn = document.createElement('button');
             cancelBtn.type = 'button';
             cancelBtn.textContent = t('dlg_cancel');
@@ -2044,14 +2054,12 @@
                 if (e.key === 'Enter') close(input.value.trim() || null);
                 else if (e.key === 'Escape') close(null);
             });
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+            closeOnOutsideClick(() => close(null));
             btnRow.appendChild(cancelBtn);
             btnRow.appendChild(okBtn);
-            box.appendChild(h);
             box.appendChild(input);
             box.appendChild(btnRow);
-            overlay.appendChild(box);
-            document.body.appendChild(overlay);
+            mount();
             input.focus();
         });
     }
@@ -2062,29 +2070,20 @@
     // 判斷使用者選了什麼，原生 alert() 也是同樣的單向通知性質）。
     function cwfmAlertDialog(title, message) {
         return new Promise((resolve) => {
-            const overlay = document.createElement('div');
-            overlay.className = 'cwfm-confirm-overlay';
-            const box = document.createElement('div');
-            box.className = 'cwfm-confirm-box';
-            const h = document.createElement('h4');
-            h.textContent = title;
+            const { overlay, box, btnRow, closeOnOutsideClick, mount } = cwfmBuildDialogShell(title);
             const p = document.createElement('p');
             p.textContent = message;
-            const btnRow = document.createElement('div');
-            btnRow.className = 'cwfm-confirm-buttons';
             const okBtn = document.createElement('button');
             okBtn.type = 'button';
             okBtn.textContent = t('dlg_got_it');
             okBtn.className = 'cwfm-confirm-ok';
             function close() { overlay.remove(); resolve(); }
             okBtn.addEventListener('click', close);
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+            closeOnOutsideClick(close);
             btnRow.appendChild(okBtn);
-            box.appendChild(h);
             box.appendChild(p);
             box.appendChild(btnRow);
-            overlay.appendChild(box);
-            document.body.appendChild(overlay);
+            mount();
         });
     }
 
@@ -3102,7 +3101,7 @@
         document.body.insertAdjacentHTML('beforeend', `
 <div id="cwfm-cp-wrap" class="cwfm-cp-wrap" data-cwfm-owned="true">
   <div id="cwfm-cp" class="cwfm-cp">
-    <div class="cp-drag-handle" title="\u62d6\u52d5\u79fb\u52d5\u4f4d\u7f6e"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></svg></div>
+    <div class="cp-drag-handle" title="${t('hint_drag_handle')}"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></svg></div>
     <div class="cp-grad-wrap">
       <div class="cp-grad-box">
         <div class="cp-grad-white"></div>
@@ -3149,7 +3148,7 @@
         </div>
       </div>
       <div class="cp-actions">
-        <button class="cp-btn cp-btn-cancel">\u53d6\u6d88</button>
+        <button class="cp-btn cp-btn-cancel">${t('dlg_cancel')}</button>
         <button class="cp-btn cp-btn-ok">OK</button>
       </div>
     </div>
