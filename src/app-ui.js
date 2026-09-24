@@ -225,7 +225,8 @@
             lang_en: 'English',
             lang_zh: '繁體中文',
             dlg_reload_title: '需要重新整理',
-            dlg_reload_msg: '語言設定已儲存，請重新整理頁面使新語言生效。',
+            dlg_reload_msg: '語言設定已儲存，要立即重新整理頁面套用新語言嗎？',
+            btn_reload_now: '立即重新整理',
         },
         en: {
             group_theme: 'Theme',
@@ -446,7 +447,8 @@
             lang_en: 'English',
             lang_zh: '繁體中文',
             dlg_reload_title: 'Reload Required',
-            dlg_reload_msg: 'Language setting saved. Please reload the page for the new language to take effect.',
+            dlg_reload_msg: 'Language setting saved. Reload the page now to apply the change?',
+            btn_reload_now: 'Reload Now',
         },
     };
 
@@ -3566,20 +3568,6 @@
         // 核心機制（存/套用/刪除）確認邏輯沒問題之後，再回頭處理介面
         // 分區、群組這類排版問題——跟使用者討論過，故意先分開，避免
         // 機制邏輯的問題跟排版調整的問題混在一起，難以分辨是哪邊出錯。
-        beginGroup(t('group_language'));
-        const uiLangSelect = addSelectField(t('field_ui_language'), 'uiLanguage', [
-            ['auto', t('lang_auto')],
-            ['en', t('lang_en')],
-            ['zh', t('lang_zh')],
-        ]);
-        // [cwfm] 語言切換需要重新整理頁面才會生效——整個面板是用 t()
-        // 在建立當下就把文字寫死進 DOM，不是每次都重新查表渲染，改變
-        // 語言設定沒辦法立刻反映在畫面上。存檔照舊(不影響其他設定同時
-        // 修改)，另外跳提示告知使用者需要重新整理。
-        uiLangSelect.addEventListener('change', () => {
-            cwfmAlertDialog(t('dlg_reload_title'), t('dlg_reload_msg'));
-        });
-
         beginGroup(t('group_theme'));
         (function buildThemeUI() {
             const field = document.createElement('div');
@@ -4388,6 +4376,28 @@
         const tapZoneWidthSlider = addRangeField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         updateTapZoneDisabledStates();
+
+        // [cwfm] 語言分組移到最後——查過業界慣例(Matomo 自己 GitHub 上的
+        // 討論)：語言這種使用者最多只改一次、改完就不會再碰的設定，
+        // 應該放在使用者最少注意到的位置，不該是第一個接觸到的控制項。
+        beginGroup(t('group_language'));
+        const uiLangSelect = addSelectField(t('field_ui_language'), 'uiLanguage', [
+            ['auto', t('lang_auto')],
+            ['en', t('lang_en')],
+            ['zh', t('lang_zh')],
+        ]);
+        // [cwfm] 語言切換需要重新整理頁面才會生效——整個面板是用 t()
+        // 在建立當下就把文字寫死進 DOM，不是每次都重新查表渲染，改變
+        // 語言設定沒辦法立刻反映在畫面上。
+        uiLangSelect.addEventListener('change', async () => {
+            // [cwfm] 確認式對話框——按「確定」直接重新整理頁面，不用
+            // 使用者自己再手動按一次；按「取消」則維持在原本頁面上，
+            // 語言設定已經存了，下次重新整理時還是會生效。
+            // location.reload() 是標準瀏覽器 API，一般網頁的 JS 就能
+            // 直接呼叫，不需要任何特殊權限。
+            const confirmed = await cwfmConfirmDialog(t('dlg_reload_title'), t('dlg_reload_msg'), t('btn_reload_now'));
+            if (confirmed) location.reload();
+        });
 
         document.body.appendChild(panel);
 
