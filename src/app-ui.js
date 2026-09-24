@@ -62,6 +62,18 @@
             dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
             title_reading_settings: '\u95B1\u8B80\u8A2D\u5B9A',
             aria_toc: '\u76EE\u9304',
+            field_color_text: '\u81ea\u8a02\u6587\u5b57\u984f\u8272',
+            field_color_bg: '\u81ea\u8a02\u80cc\u666f\u984f\u8272',
+            field_key_prev: '\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375',
+            field_key_next: '\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375',
+            btn_add_scheme: '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272',
+            btn_add_font_name: '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31',
+            btn_upload_font: '+ \u4e0a\u50b3\u5b57\u578b',
+            btn_add_theme: '+ \u65b0\u589e\uff0f\u53e6\u5b58\u4e3b\u984c',
+            theme_auto: '\u8ddf\u96a8\u7cfb\u7d71',
+            theme_light: '\u4eae\u8272',
+            theme_dark: '\u6697\u8272',
+            theme_sepia: '\u5fa9\u53e4\u9ec3',
         },
         en: {
             group_theme: 'Theme',
@@ -117,6 +129,18 @@
             dlg_confirm_delete: 'Confirm Delete',
             title_reading_settings: 'Reading Settings',
             aria_toc: 'Table of Contents',
+            field_color_text: 'Custom Text Color',
+            field_color_bg: 'Custom Background Color',
+            field_key_prev: 'Previous Page Shortcut',
+            field_key_next: 'Next Page Shortcut',
+            btn_add_scheme: '+ Save Current Color Scheme',
+            btn_add_font_name: '+ Add Font Name',
+            btn_upload_font: '+ Upload Font',
+            btn_add_theme: '+ New / Save As Theme',
+            theme_auto: 'Follow System',
+            theme_light: 'Light',
+            theme_dark: 'Dark',
+            theme_sepia: 'Sepia',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
@@ -774,9 +798,15 @@
             '}',
             '.cwfm-group:last-child { margin-bottom: 0; }',
             '.cwfm-group-title {',
+            // [cwfm] 查證 Cal.com 設計文件確認：標題層要用比內文更深、
+            // 更醒目的顏色(主要文字色)，內文才用次要的淡灰色——原本
+            // 這裡顏色用反了，用次要色(--cwfm-text-secondary)，導致
+            // 標題看起來比底下的欄位標籤還不顯眼，跟「標題該跳出來」
+            // 的設計原則相反。字級小、大寫、加字距這種「類別標籤」式
+            // 處理是合理的設計選擇，維持不變，只改顏色。
             '  margin: 0 0 10px; font-size: 11px; font-weight: 600;',
             '  letter-spacing: 0.04em; text-transform: uppercase;',
-            '  color: var(--cwfm-text-secondary);',
+            '  color: var(--cwfm-text);',
             '}',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
@@ -3263,7 +3293,7 @@
                 const addBtn = document.createElement('button');
                 addBtn.type = 'button';
                 addBtn.className = 'cwfm-keychip-add';
-                addBtn.textContent = '+ \u65b0\u589e\uff0f\u53e6\u5b58\u4e3b\u984c';
+                addBtn.textContent = t('btn_add_theme');
                 addBtn.addEventListener('click', async () => {
                     const name = await cwfmPromptDialog('\u9019\u500b\u4f48\u666f\u4e3b\u984c\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u8b80\u5c0f\u8aaa\u7528');
                     if (!name) return;
@@ -3667,10 +3697,10 @@
             // 「自訂」不再是這裡的固定第五個選項，改成下面 savedColorSchemes
             // 那份使用者自己管理的清單，可以存不止一組。
             const builtinOptions = [
-                ['auto', '\u8ddf\u96a8\u7cfb\u7d71'],
-                ['light', '\u4eae\u8272'],
-                ['dark', '\u6697\u8272'],
-                ['sepia', '\u5fa9\u53e4\u9ec3'],
+                ['auto', t('theme_auto')],
+                ['light', t('theme_light')],
+                ['dark', t('theme_dark')],
+                ['sepia', t('theme_sepia')],
             ];
 
             function applyBuiltin(value) {
@@ -3738,7 +3768,7 @@
                 const addBtn = document.createElement('button');
                 addBtn.type = 'button';
                 addBtn.className = 'cwfm-keychip-add';
-                addBtn.textContent = '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272';
+                addBtn.textContent = t('btn_add_scheme');
                 addBtn.addEventListener('click', async () => {
                     const name = await cwfmPromptDialog('\u9019\u7d44\u81ea\u8a02\u914d\u8272\u8981\u53eb\u4ec0\u9ebc\u540d\u5b57\uff1f', '\u4f8b\u5982\uff1a\u591c\u9592\u95b1\u8b80');
                     if (!name) return;
@@ -3763,8 +3793,8 @@
                 },
             };
         })();
-        const textColorSwatchBtn = addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
-        const bgColorSwatchBtn = addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
+        const textColorSwatchBtn = addColorField(t('field_color_text'), 'customTextColor');
+        const bgColorSwatchBtn = addColorField(t('field_color_bg'), 'customBackgroundColor');
         addCheckboxField(t('field_prefer_original_text_color'), 'preferOriginalTextColor');
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
@@ -3874,7 +3904,7 @@
                 const addNameBtn = document.createElement('button');
                 addNameBtn.type = 'button';
                 addNameBtn.className = 'cwfm-keychip-add';
-                addNameBtn.textContent = '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31';
+                addNameBtn.textContent = t('btn_add_font_name');
                 addNameBtn.addEventListener('click', async () => {
                     const name = await cwfmPromptDialog(
                         '\u8f38\u5165\u5b57\u578b\u540d\u7a31',
@@ -3891,7 +3921,7 @@
                 const addBtn = document.createElement('button');
                 addBtn.type = 'button';
                 addBtn.className = 'cwfm-keychip-add';
-                addBtn.textContent = '+ \u4e0a\u50b3\u5b57\u578b';
+                addBtn.textContent = t('btn_upload_font');
                 addBtn.addEventListener('click', () => uploadInput.click());
                 wrap.appendChild(addBtn);
             }
@@ -3973,8 +4003,8 @@
         updateColumnFieldLock();
 
         beginGroup(t('group_keybindings'));
-        addKeyListField('\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.prev, settings.pagingKeys.next);
-        addKeyListField('\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.next, settings.pagingKeys.prev);
+        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, settings.pagingKeys.next);
+        addKeyListField(t('field_key_next'), settings.pagingKeys.next, settings.pagingKeys.prev);
 
         beginGroup(t('group_reading_behavior'));
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
