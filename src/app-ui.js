@@ -441,6 +441,14 @@
             '  background: var(--cwfm-toolbar-bg); z-index: 999998; pointer-events: none;',
             '  transition: transform 0.3s ease;',
             '  box-shadow: 0 -2px 10px var(--cwfm-shadow-soft), 0 -1px 0 var(--cwfm-shadow-ring);',
+            // [cwfm] box-shadow 的模糊半徑本身會往元素四周暈開，不只上下，
+            // 連左右也會超出邊界一小段——以前背景層貼齊螢幕右緣，暈出去
+            // 的部分直接跑到螢幕外面看不到；現在背景層右緣往內縮讓位給
+            // 捲軸，暈開的陰影會正好蓋到捲軸的位置。用 clip-path 只裁掉
+            // 右側超出邊界的部分，上/下/左三個方向刻意留很大的負值不裁，
+            // 保留原本設計要露出來的上方陰影效果（inset() 的語法是
+            // 上/右/下/左，負值代表往外擴張、不裁切）。
+            '  clip-path: inset(-20px 0 -20px -20px);',
             '}',
             '.cwfm-toolbar-bg.cwfm-autohidden { transform: translateY(100%); box-shadow: none; }',
             // [cwfm] 自動隱藏：滑動到邊緣外（不是 display:none，維持
@@ -550,6 +558,10 @@
             // [cwfm] 跟下方工具列同一套邏輯，方向對稱：往下投影（貼在
             // 畫面上緣），加一條細細的底邊緣線。
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 1px 0 var(--cwfm-shadow-ring);',
+            // [cwfm] 同下方工具列，右側裁掉暈出去的陰影，避免蓋到捲軸——
+            // 這裡方向相反，陰影是往下投影（保留），所以留白的是下/左/上
+            // 三個方向，裁的是右邊。
+            '  clip-path: inset(-20px 0 -20px -20px);',
             '}',
             '.cwfm-toolbar-top-bg.cwfm-autohidden { transform: translateY(-100%); box-shadow: none; }',
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
