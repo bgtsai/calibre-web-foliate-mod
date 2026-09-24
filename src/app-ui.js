@@ -2026,6 +2026,13 @@
         const w = Math.max(0, viewerContainer.offsetWidth - viewerContainer.clientWidth);
         document.documentElement.style.setProperty('--cwfm-scrollbar-w', w + 'px');
     }
+    // [cwfm] 補上更可靠的時機點——書本內容是非同步撐開的，只在「設定
+    // 變動」「視窗縮放」這兩個時機點量測，使用者如果打開書之後兩者都
+    // 沒觸發，量到的會是內容還沒撐開時的舊值（很可能是 0），背景層就會
+    // 誤判成不用留白，蓋住捲軸。relocate 事件在內容真正渲染完成、
+    // 使用者實際看到的位置更新時才會觸發，這裡補上，確保拿到的是內容
+    // 撐開之後的真實數字。
+    view.addEventListener('relocate', updateScrollbarWidthVar);
 
     function applyHorizontalPadding(desiredPx, columnCount) {
         console.log('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
