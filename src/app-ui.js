@@ -390,7 +390,7 @@
             '  --cwfm-shadow-ring-strong: rgba(255,255,255,0.18);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.3); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.16);',
-            '  --cwfm-toolbar-bg: rgba(10,10,10,0.92);',
+            '  --cwfm-toolbar-bg: rgb(10,10,10);',
             // [cwfm] 開關關閉狀態專用的軌道填色——跟 --cwfm-border-light
             // 分開一個變數，因為 border-light 在淺色模式下是接近透明的
             // rgba(0,0,0,0.08)，套在開關軌道上，跟白色滑塊之間的對比度
@@ -408,7 +408,7 @@
             '  --cwfm-shadow-ring-strong: rgba(0,0,0,0.22);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.12);',
-            '  --cwfm-toolbar-bg: rgba(255,255,255,0.92);',
+            '  --cwfm-toolbar-bg: rgb(255,255,255);',
             '  --cwfm-switch-off-track: #c7c7c7;',
             '}',
             '.cwfm-toolbar {',
@@ -2035,12 +2035,19 @@
     // 裡的 #container，外部完全碰不到、量不到，量 #viewer 這條路本身
     // 就走不通，不是時機點的問題。改成不依賴內容溢出偵測，直接照目前
     // 是不是捲動模式決定要不要留白（用探測元素量出的固定捲軸寬度）。
-    function updateScrollbarWidthVar() {
-        const scrolled = window.__cwfm?.settings?.flow === 'scrolled';
+    function updateScrollbarWidthVar(explicitFlow) {
+        // [cwfm] 優先用明確傳進來的 flow 值，不要只靠讀 window.__cwfm.settings
+        // 這個全域參照——applySettings() 內部呼叫時，這個全域參照要到
+        // 整個函式跑完才會同步成這次真正要套用的新設定，這裡如果只讀
+        // 全域，讀到的永遠是上一輪的舊值，永遠慢半拍。relocate、視窗
+        // 縮放這些從 applySettings() 外部呼叫的情況，這時候全域參照已經
+        // 是正確的最新值，才退回讀取。
+        const flow = explicitFlow !== undefined ? explicitFlow : window.__cwfm?.settings?.flow;
+        const scrolled = flow === 'scrolled';
         const fixedW = getComputedStyle(document.documentElement).getPropertyValue('--cwfm-scrollbar-w-fixed').trim() || '0px';
         document.documentElement.style.setProperty('--cwfm-scrollbar-w', scrolled ? fixedW : '0px');
     }
-    view.addEventListener('relocate', updateScrollbarWidthVar);
+    view.addEventListener('relocate', () => updateScrollbarWidthVar());
 
     function applyHorizontalPadding(desiredPx, columnCount) {
         console.log('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
@@ -2489,8 +2496,10 @@
             view.renderer.setAttribute('max-column-count', effectiveColumnCount);
             applyVerticalPadding(settings.topBottomPadding);
             applyHorizontalPadding(settings.leftRightPadding, effectiveColumnCount);
-            // [cwfm] flow 剛設定完，捲軸有沒有可能跟著換了，重新量測一次。
-            updateScrollbarWidthVar();
+            // [cwfm] flow 剛設定完，捲軸有沒有可能跟著換了，重新量測一次
+            // ——直接傳這次真正要套用的 settings.flow，不要讓函式內部去
+            // 讀還沒同步的全域參照。
+            updateScrollbarWidthVar(settings.flow);
             updateDivider(settings);
         } catch (e) { console.error('[cwfm:settings] 套用版面屬性失敗', e); }
         try {
