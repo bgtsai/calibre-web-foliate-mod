@@ -58,6 +58,8 @@
             err_settings_read: '[cwfm:settings] \u8b80\u53d6\u8a2d\u5b9a\u5931\u6557\uff0c\u6539\u7528\u9810\u8a2d\u503c',
             log_settings_write_sent: '[cwfm:settings] \u5df2\u9001\u51fa\u5beb\u5165\u8acb\u6c42\uff08GM \u5132\u5b58\uff09\uff1a',
             err_settings_save: '[cwfm:settings] \u5132\u5b58\u8a2d\u5b9a\u5931\u6557',
+            dlg_cancel: '\u53d6\u6d88',
+            dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
         },
         en: {
             group_theme: 'Theme',
@@ -109,9 +111,17 @@
             err_settings_read: '[cwfm:settings] Failed to read settings, using defaults',
             log_settings_write_sent: '[cwfm:settings] Write request sent (GM storage): ',
             err_settings_save: '[cwfm:settings] Failed to save settings',
+            dlg_cancel: 'Cancel',
+            dlg_confirm_delete: 'Confirm Delete',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
+    // [cwfm] 除錯開關——正式發表的腳本，逐步追蹤用的 console.log 通常
+    // 會收斂掉（對一般使用者沒意義、洩漏內部實作細節），但 console.error
+    // 這種真正的失敗訊息會保留，日後排查問題還是需要。預設關閉，不是
+    // 直接刪掉這些 log，需要除錯時改成 true 就會恢復印出。
+    const CWFM_DEBUG = false;
+    function dlog(...args) { if (CWFM_DEBUG) console.log(...args); }
     // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
     // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
     function t(key) {
@@ -281,7 +291,7 @@
         const wrapped = wrapCfi(cfi);
         if (!wrapped) return Promise.reject(new Error('沒有目前位置可以同步'));
         return postBookmarkValue(wrapped).then(() => {
-            console.log('[cwfm:bookmark] 已同步到伺服器：', wrapped);
+            dlog('[cwfm:bookmark] 已同步到伺服器：', wrapped);
         });
     }
 
@@ -293,7 +303,7 @@
     // 同一個端點送出空字串。這裡照同樣的方式實作。
     function removeServerBookmark() {
         return postBookmarkValue('').then(() => {
-            console.log('[cwfm:bookmark] 已從伺服器移除書籤');
+            dlog('[cwfm:bookmark] 已從伺服器移除書籤');
         });
     }
 
@@ -320,7 +330,7 @@
             if (localRememberEnabled && INITIAL_POSITION && INITIAL_POSITION.cfi) {
                 await view.goTo(INITIAL_POSITION.cfi);
                 restored = true;
-                console.log('[cwfm:bookmark] 已還原本機記憶的閱讀位置：', INITIAL_POSITION.cfi);
+                dlog('[cwfm:bookmark] 已還原本機記憶的閱讀位置：', INITIAL_POSITION.cfi);
             }
         } catch (e) {
             console.error('[cwfm:bookmark] 還原本機記憶位置失敗', e);
@@ -337,7 +347,7 @@
                 try {
                     await view.goTo(serverBookmark);
                     restored = true;
-                    console.log('[cwfm:bookmark] 已還原伺服器書籤位置：', serverBookmark);
+                    dlog('[cwfm:bookmark] 已還原伺服器書籤位置：', serverBookmark);
                 } catch (e) {
                     console.error('[cwfm:bookmark] 還原伺服器書籤位置失敗，改從頭開始', e);
                 }
@@ -1527,11 +1537,11 @@
     function loadSettings() {
         try {
             if (!INITIAL_SETTINGS) {
-                console.log('[cwfm:settings] GM 儲存沒有存過設定，使用預設值');
+                dlog('[cwfm:settings] GM 儲存沒有存過設定，使用預設值');
                 return { ...DEFAULT_SETTINGS };
             }
             const parsed = { ...DEFAULT_SETTINGS, ...INITIAL_SETTINGS };
-            console.log('[cwfm:settings] 從 GM 儲存讀回設定：', parsed);
+            dlog('[cwfm:settings] 從 GM 儲存讀回設定：', parsed);
             return parsed;
         } catch (e) {
             console.error('[cwfm:settings] 讀取設定失敗，改用預設值', e);
@@ -1542,7 +1552,7 @@
     function saveSettings(settings) {
         try {
             gmSet(STORAGE_KEY, settings);
-            console.log('[cwfm:settings] 已送出寫入請求（GM 儲存）：', settings);
+            dlog('[cwfm:settings] 已送出寫入請求（GM 儲存）：', settings);
         } catch (e) {
             console.error('[cwfm:settings] 儲存設定失敗', e);
         }
@@ -1685,7 +1695,7 @@
             btnRow.className = 'cwfm-confirm-buttons';
             const cancelBtn = document.createElement('button');
             cancelBtn.type = 'button';
-            cancelBtn.textContent = '\u53d6\u6d88';
+            cancelBtn.textContent = t('dlg_cancel');
             cancelBtn.className = 'cwfm-confirm-cancel';
             const okBtn = document.createElement('button');
             okBtn.type = 'button';
@@ -1694,7 +1704,7 @@
             // 這種不是刪除的動作重複使用，硬套同一句文字，使用者會看到
             // 「確定刪除」但實際上是要覆蓋，語意不對。沒有傳這個參數時
             // 維持原本的預設文字，不影響其他真的是刪除的呼叫點。
-            okBtn.textContent = confirmLabel || '\u78ba\u5b9a\u522a\u9664';
+            okBtn.textContent = confirmLabel || t('dlg_confirm_delete');
             okBtn.className = 'cwfm-confirm-ok';
             function close(result) {
                 overlay.remove();
@@ -1737,7 +1747,7 @@
             btnRow.className = 'cwfm-confirm-buttons';
             const cancelBtn = document.createElement('button');
             cancelBtn.type = 'button';
-            cancelBtn.textContent = '\u53d6\u6d88';
+            cancelBtn.textContent = t('dlg_cancel');
             cancelBtn.className = 'cwfm-confirm-cancel';
             const okBtn = document.createElement('button');
             okBtn.type = 'button';
@@ -2218,7 +2228,7 @@
     view.addEventListener('relocate', updateScrollbarWidthVar);
 
     function applyHorizontalPadding(desiredPx, columnCount) {
-        console.log('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
+        dlog('[cwfm:align:t] applyHorizontalPadding() 開始 t=' + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalWidth = rect.width || 1;
 
@@ -2253,9 +2263,9 @@
 
         const contentWidth = Math.max(100, totalWidth - desiredPx * 2);
         const maxInlineSizePx = Math.round(contentWidth / (columnCount || 1));
-        console.log('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx);
+        dlog('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx);
         view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
-        console.log('[cwfm:align:t] applyHorizontalPadding() 結束 t=' + performance.now().toFixed(1));
+        dlog('[cwfm:align:t] applyHorizontalPadding() 結束 t=' + performance.now().toFixed(1));
     }
 
     // [cwfm] margin 這個屬性一定要帶 px 單位，這是上下留白怎麼調都沒反應
@@ -2271,16 +2281,16 @@
     // 注意第 720 行有段 JS 會用 parseFloat 把這個變數讀回去做欄寬計算，
     // parseFloat('120px') 與 parseFloat('120') 結果相同，加上 px 不影響它。
     function applyVerticalPadding(desiredPx) {
-        console.log('[cwfm:align:t] applyVerticalPadding() 開始 t=' + performance.now().toFixed(1));
+        dlog('[cwfm:align:t] applyVerticalPadding() 開始 t=' + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalHeight = rect.height || 1;
         view.renderer.setAttribute('margin', desiredPx + 'px');
         const contentHeight = Math.max(100, totalHeight - desiredPx * 2);
         const maxBlockSizePx = Math.round(contentHeight);
-        console.log('[cwfm:node] applyVerticalPadding() desiredPx=' + desiredPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
+        dlog('[cwfm:node] applyVerticalPadding() desiredPx=' + desiredPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
         view.renderer.setAttribute('max-block-size', maxBlockSizePx + 'px');
         view.renderer.render();
-        console.log('[cwfm:align:t] applyVerticalPadding() 結束（render() 呼叫完，但 render() 內部不保證此刻已經跑完，見前面討論）t=' + performance.now().toFixed(1));
+        dlog('[cwfm:align:t] applyVerticalPadding() 結束（render() 呼叫完，但 render() 內部不保證此刻已經跑完，見前面討論）t=' + performance.now().toFixed(1));
     }
 
     // [cwfm] 翻頁精準定位（原本叫「實驗性功能」）的存檔開關已經改到
@@ -2321,7 +2331,7 @@
     // view 本身）——查證過 view 重新包裝 relocate 事件時，沒有把 reason
     // 這個欄位轉傳出來，只有排版引擎自己原始的事件才有。
     view.renderer.addEventListener('relocate', (e) => {
-        console.log('[cwfm:align:t] relocate 事件 reason=' + e.detail?.reason + ' t=' + performance.now().toFixed(1));
+        dlog('[cwfm:align:t] relocate 事件 reason=' + e.detail?.reason + ' t=' + performance.now().toFixed(1));
     });
     let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
 
@@ -2482,7 +2492,7 @@
         if (window.__cwfm.settings?.flow === 'scrolled') return;
         if (cwfmAligningAnchor) return;
         const t0 = performance.now();
-        console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
+        dlog('[cwfm:align:t] cwfmAlignAnchorToPageStart() 開始 t=' + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
         try {
             // [cwfm] 先把任何還沒接回去的暫存內容接回去，確保接下來解析
             // cwfmLockedAnchorCfi 的時候，文件是完整、沒被動過手腳的乾淨
@@ -2491,36 +2501,36 @@
             cwfmReinsertStash();
 
             const contents = view.renderer.getContents();
-            if (!contents.length) { console.log('[cwfm:align:t] 沒有 contents，中止'); return; }
+            if (!contents.length) { dlog('[cwfm:align:t] 沒有 contents，中止'); return; }
             const { doc, index } = contents[0];
 
             const targetCfi = cwfmLockedAnchorCfi;
-            console.log('[cwfm:align:t] cwfmLockedAnchorCfi=' + targetCfi);
-            if (!targetCfi) { console.log('[cwfm:align:t] 沒有鎖定的定位點，中止'); return; }
+            dlog('[cwfm:align:t] cwfmLockedAnchorCfi=' + targetCfi);
+            if (!targetCfi) { dlog('[cwfm:align:t] 沒有鎖定的定位點，中止'); return; }
             const resolved = view.resolveCFI(targetCfi);
-            if (!resolved || resolved.index !== index) { console.log('[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=' + resolved?.index + ' currentIndex=' + index); return; }
+            if (!resolved || resolved.index !== index) { dlog('[cwfm:align:t] cfi 不在目前這一章，中止 resolved.index=' + resolved?.index + ' currentIndex=' + index); return; }
             const range = resolved.anchor(doc);
-            if (!range) { console.log('[cwfm:align:t] anchor(doc) 拿不到 range，中止'); return; }
+            if (!range) { dlog('[cwfm:align:t] anchor(doc) 拿不到 range，中止'); return; }
 
             const container = range.startContainer;
             const offset = range.startOffset;
             const anchorElement = container.nodeType === 3 ? container.parentNode : container;
-            console.log('[cwfm:align:t] 解析到的位置 內容=' + cwfmTextPreview(container, offset));
+            dlog('[cwfm:align:t] 解析到的位置 內容=' + cwfmTextPreview(container, offset));
 
             const body = doc.body;
-            if (!anchorElement || anchorElement === body) { console.log('[cwfm:align:t] anchorElement 已經是最外層，中止'); return; }
+            if (!anchorElement || anchorElement === body) { dlog('[cwfm:align:t] anchorElement 已經是最外層，中止'); return; }
 
             const originalChain = cwfmAncestorChain(anchorElement, body);
 
             const extractRange = doc.createRange();
             extractRange.setStart(body, 0);
             extractRange.setEnd(container, offset);
-            if (extractRange.collapsed) { console.log('[cwfm:align:t] extractRange 是空的（前面本來就沒內容），中止'); return; }
+            if (extractRange.collapsed) { dlog('[cwfm:align:t] extractRange 是空的（前面本來就沒內容），中止'); return; }
 
             cwfmAligningAnchor = true;
             const extracted = extractRange.extractContents();
             cwfmAnchorStash = { originalChain, fragment: extracted, sectionIndex: index };
-            console.log('[cwfm:align:t] extractContents() 完成 t=' + performance.now().toFixed(1));
+            dlog('[cwfm:align:t] extractContents() 完成 t=' + performance.now().toFixed(1));
 
             // [cwfm] 搬走之後，定位點文字現在是章節最前面的內容，原本卡在
             // 邊界的那個容器（originalChain 最底層）現在的 firstChild 就是
@@ -2534,11 +2544,11 @@
             if (leaf.firstChild) freshRange.setStart(leaf.firstChild, 0);
             else freshRange.setStart(leaf, 0);
             freshRange.collapse(true);
-            console.log('[cwfm:align:t] 搬移後的定位點內容=' + expectedText);
+            dlog('[cwfm:align:t] 搬移後的定位點內容=' + expectedText);
 
             // [cwfm] 診斷紀錄：跟水平留白/欄寬有關的幾個數字記下來，
             // 下次重現時直接比對這些數字，不用再猜是不是留白算錯。
-            console.log('[cwfm:align:h] 對齊前 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
+            dlog('[cwfm:align:h] 對齊前 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
                 + ' gap=' + view.renderer.getAttribute('gap')
                 + ' maxColumnCount=' + view.renderer.getAttribute('max-column-count'));
 
@@ -2546,7 +2556,7 @@
                 .then(async () => {
                     const firstVisible = view.renderer.getVisibleRange?.();
                     const firstText = firstVisible ? cwfmTextPreview(firstVisible.startContainer, firstVisible.startOffset) : '(null)';
-                    console.log('[cwfm:align:t] scrollToAnchor() 第一次完成 t=' + performance.now().toFixed(1)
+                    dlog('[cwfm:align:t] scrollToAnchor() 第一次完成 t=' + performance.now().toFixed(1)
                         + ' 內容=' + firstText);
 
                     // [cwfm] 排版引擎自己內部有一個 ResizeObserver 監看書本
@@ -2558,7 +2568,7 @@
                     // 直接量測 cwfmLayoutChangedAt 時間戳，不是猜畫面內容
                     // 或猜要等多久。
                     const { lastSeenChangedAt, elapsed: settleElapsed } = await cwfmWaitForLayoutSettle(true);
-                    console.log('[cwfm:align:t] 排版引擎穩定偵測結束 t=' + performance.now().toFixed(1)
+                    dlog('[cwfm:align:t] 排版引擎穩定偵測結束 t=' + performance.now().toFixed(1)
                         + ' 耗時=' + settleElapsed.toFixed(1) + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
 
                     // [cwfm] 不管穩定與否，都強制校正一次——穩定的情況下這
@@ -2570,19 +2580,19 @@
                     const finalVisible = view.renderer.getVisibleRange?.();
                     const actualText = finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)';
                     const matched = actualText === expectedText;
-                    console.log('[cwfm:align:t] 最終校正完成 t=' + performance.now().toFixed(1)
+                    dlog('[cwfm:align:t] 最終校正完成 t=' + performance.now().toFixed(1)
                         + ' 對齊後實際第一個可見內容=' + actualText
                         + ' | 校對結果：' + (matched ? '一致 ✓' : '不一致 ✗'));
                     if (!matched) {
                         console.warn('[cwfm:align] 校對不一致！預期=' + expectedText + ' 實際=' + actualText);
                     }
-                    console.log('[cwfm:align:h] 對齊後 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
+                    dlog('[cwfm:align:h] 對齊後 maxInlineSize=' + view.renderer.getAttribute('max-inline-size')
                         + ' gap=' + view.renderer.getAttribute('gap')
                         + ' rendererRect.left=' + view.renderer.getBoundingClientRect().left
                         + ' viewerRect.left=' + viewerContainer.getBoundingClientRect().left);
                 })
                 .catch((e) => console.error('[cwfm:align] 對齊後導覽失敗', e))
-                .finally(() => { cwfmAligningAnchor = false; console.log('[cwfm:align:t] cwfmAlignAnchorToPageStart() 全部結束 t=' + performance.now().toFixed(1) + '（總耗時 ' + (performance.now() - t0).toFixed(1) + 'ms）'); });
+                .finally(() => { cwfmAligningAnchor = false; dlog('[cwfm:align:t] cwfmAlignAnchorToPageStart() 全部結束 t=' + performance.now().toFixed(1) + '（總耗時 ' + (performance.now() - t0).toFixed(1) + 'ms）'); });
         } catch (e) {
             console.error('[cwfm:align] 定位點對齊失敗', e);
             cwfmAligningAnchor = false;
@@ -2710,11 +2720,11 @@
     let resizeExecCount = 0; // 診斷用：防抖動後實際執行了幾次
     window.addEventListener('resize', () => {
         resizeRawCount++;
-        console.log('[cwfm:resize] 收到原始 resize 通知，累計=' + resizeRawCount + ' t=' + performance.now().toFixed(1));
+        dlog('[cwfm:resize] 收到原始 resize 通知，累計=' + resizeRawCount + ' t=' + performance.now().toFixed(1));
         clearTimeout(resizeDebounceTimer);
         resizeDebounceTimer = setTimeout(() => {
             resizeExecCount++;
-            console.log('[cwfm:resize] 防抖動後真正執行，累計=' + resizeExecCount + ' t=' + performance.now().toFixed(1));
+            dlog('[cwfm:resize] 防抖動後真正執行，累計=' + resizeExecCount + ' t=' + performance.now().toFixed(1));
             if (window.__cwfm.settings) {
                 try {
                     applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
@@ -4304,7 +4314,7 @@
         // 監聽器移除處的說明——這裡改成明確掛在 fullscreenchange 上，
         // 不用再靠巧合。
         document.addEventListener('fullscreenchange', () => {
-            console.log('[cwfm:align:t] fullscreenchange 事件 t=' + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
+            dlog('[cwfm:align:t] fullscreenchange 事件 t=' + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
             renderFullscreenIcon();
             cwfmWakeBars();
         });
@@ -4480,9 +4490,9 @@
         const initialCfi = view.lastLocation?.cfi;
         if (initialCfi) {
             cwfmLockedAnchorCfi = initialCfi;
-            console.log('[cwfm:align:t] 開書完成，初始鎖定定位點=' + initialCfi);
+            dlog('[cwfm:align:t] 開書完成，初始鎖定定位點=' + initialCfi);
         }
     } catch (e) { console.error('[cwfm:align] 初始鎖定定位點失敗', e); }
 
-    console.log('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
+    dlog('[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：', BOOK_ID);
 })();
