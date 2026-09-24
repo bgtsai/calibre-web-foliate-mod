@@ -1003,14 +1003,14 @@
             // 對齊每一列——每一列寬度本來就一樣，兩端對齊自然會讓所有
             // 開關的右邊界對齊在同一條線上。
             '.cwfm-panel .cwfm-checkbox-row {',
-            // [cwfm] 原本 align-items:center 會把核取方塊對齊「整段文字
-            // 的正中央」——文字只有一行時看不出差別，超過一行就會整個
-            // 往下沉，跟第一行對不上。改成 baseline（跟文字基準線對齊，
-            // 瀏覽器對齊文字用的標準做法，多行文字時瀏覽器自己會對齊
-            // 第一行的基準線），不是我自己猜一個 margin 偏移量——上一輪
-            // 用 flex-start + 自己猜的 margin-top: 2px，方向猜錯了，改用
-            // 瀏覽器原生對齊機制比較可靠。
-            '  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 14px 0 4px;',
+            // [cwfm] 改回 flex-start，跟 .cwfm-row(輸入框那類欄位)用
+            // 同一套對齊方式——上一輪改成 baseline，想法是讓瀏覽器自己
+            // 對齊文字基準線，但開關元件(switchWrap)本身沒有任何文字
+            // 內容，沒有基準線可以依附，瀏覽器對這種情況的處理不可預期，
+            // 使用者實測確認多行文字時開關還是沒有貼齊第一行。既然
+            // flex-start 已經證實對輸入框那類欄位有效，這裡改用同一套
+            // 做法，全面板統一對齊邏輯。
+            '  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 14px 0 4px;',
             '}',
             '.cwfm-panel .cwfm-checkbox-row label { margin: 0; }',
             // [cwfm] 滑動開關本身：膠囊軌道 + 圓形滑塊，關閉是中性灰色，
