@@ -34,28 +34,6 @@
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
             field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
             unit_seconds: '\u79d2',
-            err_no_viewer: '[cwfm] \u627e\u4e0d\u5230 #viewer \u5bb9\u5668',
-            err_no_current_pos: '\u6c92\u6709\u76ee\u524d\u4f4d\u7f6e\u53ef\u4ee5\u540c\u6b65',
-            log_bookmark_synced: '[cwfm:bookmark] \u5df2\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff1a',
-            log_bookmark_removed: '[cwfm:bookmark] \u5df2\u5f9e\u4f3a\u670d\u5668\u79fb\u9664\u66f8\u7c64',
-            err_download_failed: '\u4e0b\u8f09 epub \u5931\u6557\uff1aHTTP ',
-            log_restore_local: '[cwfm:bookmark] \u5df2\u9084\u539f\u672c\u6a5f\u8a18\u61b6\u7684\u95b1\u8b80\u4f4d\u7f6e\uff1a',
-            err_restore_local: '[cwfm:bookmark] \u9084\u539f\u672c\u6a5f\u8a18\u61b6\u4f4d\u7f6e\u5931\u6557',
-            log_restore_server: '[cwfm:bookmark] \u5df2\u9084\u539f\u4f3a\u670d\u5668\u66f8\u7c64\u4f4d\u7f6e\uff1a',
-            err_restore_server: '[cwfm:bookmark] \u9084\u539f\u4f3a\u670d\u5668\u66f8\u7c64\u4f4d\u7f6e\u5931\u6557\uff0c\u6539\u5f9e\u982d\u958b\u59cb',
-            err_open_book: '[cwfm] \u958b\u555f\u66f8\u7c4d\u5931\u6557\uff1a',
-            err_book_load_failed_ui: '\uff08Calibre-Web Foliate Reader Mod\uff09\u66f8\u7c4d\u8f09\u5165\u5931\u6557\uff0c\u8a73\u898b\u4e3b\u63a7\u53f0\u932f\u8aa4\u8a0a\u606f\u3002',
-            err_local_write: '[cwfm:bookmark] \u672c\u6a5f\u8a18\u61b6\u5beb\u5165\u5931\u6557',
-            err_auto_sync: '[cwfm:bookmark] \u505c\u7559\u81ea\u52d5\u540c\u6b65\u5931\u6557',
-            err_keydown_pageturn: '[cwfm:keydown] \u7ffb\u9801\u5931\u6557',
-            err_divider_create: '[cwfm:divider] \u5efa\u7acb\u5206\u9694\u7dda\u5931\u6557',
-            err_divider_update: '[cwfm:divider] \u66f4\u65b0\u5206\u9694\u7dda\u4f4d\u7f6e\u5931\u6557',
-            err_theme_scheme: '[cwfm:theme] \u5224\u65b7\u9762\u677f\u6df1\u6dfa\u8272\u5931\u6557',
-            log_settings_no_saved: '[cwfm:settings] GM \u5132\u5b58\u6c92\u6709\u5b58\u904e\u8a2d\u5b9a\uff0c\u4f7f\u7528\u9810\u8a2d\u503c',
-            log_settings_read: '[cwfm:settings] \u5f9e GM \u5132\u5b58\u8b80\u56de\u8a2d\u5b9a\uff1a',
-            err_settings_read: '[cwfm:settings] \u8b80\u53d6\u8a2d\u5b9a\u5931\u6557\uff0c\u6539\u7528\u9810\u8a2d\u503c',
-            log_settings_write_sent: '[cwfm:settings] \u5df2\u9001\u51fa\u5beb\u5165\u8acb\u6c42\uff08GM \u5132\u5b58\uff09\uff1a',
-            err_settings_save: '[cwfm:settings] \u5132\u5b58\u8a2d\u5b9a\u5931\u6557',
             dlg_cancel: '\u53d6\u6d88',
             dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
             title_reading_settings: '\u95B1\u8B80\u8A2D\u5B9A',
@@ -223,7 +201,7 @@
             field_ui_language: '介面語言（切換後需要重新整理頁面才會生效）',
             lang_auto: '自動（依瀏覽器判斷）',
             lang_en: 'English',
-            lang_zh: '繁體中文',
+            lang_zh: '正體中文',
             dlg_reload_title: '需要重新整理',
             dlg_reload_msg: '語言設定已儲存，要立即重新整理頁面套用新語言嗎？',
             btn_reload_now: '立即重新整理',
@@ -256,28 +234,6 @@
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
             field_tap_zone_width: 'Left/Right Tap Zone Width',
             unit_seconds: 'sec',
-            err_no_viewer: '[cwfm] #viewer container not found',
-            err_no_current_pos: 'No current position to sync',
-            log_bookmark_synced: '[cwfm:bookmark] Synced to server: ',
-            log_bookmark_removed: '[cwfm:bookmark] Bookmark removed from server',
-            err_download_failed: 'Failed to download epub: HTTP ',
-            log_restore_local: '[cwfm:bookmark] Restored locally-remembered position: ',
-            err_restore_local: '[cwfm:bookmark] Failed to restore locally-remembered position',
-            log_restore_server: '[cwfm:bookmark] Restored server bookmark position: ',
-            err_restore_server: '[cwfm:bookmark] Failed to restore server bookmark position, starting from the beginning',
-            err_open_book: '[cwfm] Failed to open book: ',
-            err_book_load_failed_ui: '(Calibre-Web Foliate Reader Mod) Failed to load the book. See the console for details.',
-            err_local_write: '[cwfm:bookmark] Failed to write local memory',
-            err_auto_sync: '[cwfm:bookmark] Idle auto-sync failed',
-            err_keydown_pageturn: '[cwfm:keydown] Page turn failed',
-            err_divider_create: '[cwfm:divider] Failed to create divider',
-            err_divider_update: '[cwfm:divider] Failed to update divider position',
-            err_theme_scheme: '[cwfm:theme] Failed to determine panel light/dark scheme',
-            log_settings_no_saved: '[cwfm:settings] No saved settings in GM storage, using defaults',
-            log_settings_read: '[cwfm:settings] Read settings from GM storage: ',
-            err_settings_read: '[cwfm:settings] Failed to read settings, using defaults',
-            log_settings_write_sent: '[cwfm:settings] Write request sent (GM storage): ',
-            err_settings_save: '[cwfm:settings] Failed to save settings',
             dlg_cancel: 'Cancel',
             dlg_confirm_delete: 'Confirm Delete',
             title_reading_settings: 'Reading Settings',
@@ -445,7 +401,7 @@
             field_ui_language: 'Interface Language (reload the page for the change to take effect)',
             lang_auto: 'Auto (based on browser)',
             lang_en: 'English',
-            lang_zh: '繁體中文',
+            lang_zh: '正體中文',
             dlg_reload_title: 'Reload Required',
             dlg_reload_msg: 'Language setting saved. Reload the page now to apply the change?',
             btn_reload_now: 'Reload Now',
@@ -481,7 +437,7 @@
     // [cwfm] 語言判斷——放在 INITIAL_SETTINGS 宣告之後，才能同步讀到
     // 使用者存過的語言偏好(settings.uiLanguage)，不用等 loadSettings()
     // 非同步跑完。優先順序：使用者手動選過的值('en'／'zh') > 自動偵測。
-    // 自動偵測讀 navigator.language，開頭是 zh 就用繁體中文，其他一律
+    // 自動偵測讀 navigator.language，開頭是 zh 就用正體中文，其他一律
     // 用英文——查證過這只是瀏覽器「網頁內容偏好語言」這組獨立設定，
     // 不一定跟瀏覽器介面顯示語言、更不會跟伺服器端(Calibre-Web 本身)
     // 顯示的語言一致，所以才需要這個手動覆蓋選項，不能只靠自動偵測。
@@ -1227,41 +1183,6 @@
             '  font-size: 13px; padding: 6px 8px; margin-bottom: 16px;',
             '}',
             '.cwfm-prompt-input:focus { border-color: var(--cwfm-accent); outline: none; }',
-            // [cwfm] 字型輸入框的膠囊造型：輸入區 + 細分隔線 + 一顆代表
-            // Enter 的小按鈕，按下去效果等同按鍵盤 Enter，讓「打完要確認」
-            // 這件事看得見，不用使用者自己猜。
-            '.cwfm-pill-input {',
-            '  display: flex; align-items: stretch; background: var(--cwfm-surface);',
-            '  border: 1px solid var(--cwfm-border-light); border-radius: 4px; overflow: hidden;',
-            '}',
-            '.cwfm-pill-input:focus-within { border-color: var(--cwfm-accent); }',
-            '.cwfm-panel .cwfm-pill-input input[type="text"] {',
-            // [cwfm] 選擇器故意寫得比 .cwfm-panel input[type="text"](下面
-            // 那條套用在整個面板所有文字輸入框的通用規則)優先權更高——
-            // 上面那條規則權重比這裡原本寫的規則高，會把這裡想清掉的
-            // 邊框/背景蓋回去，這才是「嵌套」真正的原因，不是瀏覽器
-            // 自己的行為。
-            '  flex: 1; min-width: 0; background: none; border: none; color: var(--cwfm-text);',
-            '  font-size: 13px; padding: 5px 8px; outline: none; box-shadow: none;',
-            '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
-            '  border-radius: 0;',
-            '}',
-            '.cwfm-pill-enter {',
-            // [cwfm] 查了自己另一支腳本(route-rain/RouteRain.user.js)裡
-            // 密碼輸入框旁邊那顆眼睛圖示按鈕，已經驗證能用的做法——按鈕
-            // 背景是透明的，跟輸入區共用同一塊底色，只靠一條細分隔線
-            // 區分，沒有另外畫一塊不同顏色的矩形。之前兩輪一直在修圓角，
-            // 但真正的根因是背景色不同：只要按鈕跟輸入區顏色不一樣，
-            // 不管圓角修得多準，視覺上都會像兩塊拼起來的矩形，圓角反而
-            // 是次要問題。這裡改成跟輸入區同一個背景色。
-            '  flex: 0 0 auto; background: none; border: none; border-left: 1px solid var(--cwfm-border-light);',
-            '  border-radius: 0 4px 4px 0; margin: 0; color: var(--cwfm-text-secondary); padding: 0 10px; cursor: pointer;',
-            '  display: flex; align-items: center; justify-content: center;',
-            '  -webkit-appearance: none; -moz-appearance: none; appearance: none;',
-            '  outline: none; box-shadow: none;',
-            '}',
-            '.cwfm-pill-enter svg { width: 14px; height: 14px; display: block; pointer-events: none; }',
-            '.cwfm-pill-enter:hover { color: var(--cwfm-text); background: var(--cwfm-surface-elevated); }',
             '.cwfm-confirm-box p { margin: 0 0 16px; color: var(--cwfm-text-secondary); font-size: 13px; line-height: 1.6; }',
             '.cwfm-confirm-buttons { display: flex; justify-content: flex-end; gap: 8px; }',
             '.cwfm-confirm-cancel, .cwfm-confirm-ok {',
