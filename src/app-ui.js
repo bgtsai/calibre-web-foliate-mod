@@ -74,6 +74,9 @@
             theme_light: '\u4eae\u8272',
             theme_dark: '\u6697\u8272',
             theme_sepia: '\u5fa9\u53e4\u9ec3',
+            btn_add_key: '+ \u65b0\u589e',
+            hint_press_key: '\u8acb\u6309\u4e0b\u6309\u9375\u2026\uff08Esc \u53d6\u6d88\uff09',
+            hint_key_used: '\u5df2\u7d93\u88ab\u4f7f\u7528\u4e86\uff0c\u63db\u4e00\u7d44\u770b\u770b',
         },
         en: {
             group_theme: 'Theme',
@@ -141,6 +144,9 @@
             theme_light: 'Light',
             theme_dark: 'Dark',
             theme_sepia: 'Sepia',
+            btn_add_key: '+ Add',
+            hint_press_key: 'Press a key\u2026 (Esc to cancel)',
+            hint_key_used: ' is already in use, try another combo',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
@@ -3439,14 +3445,14 @@
                 const addBtn = document.createElement('button');
                 addBtn.type = 'button';
                 addBtn.className = 'cwfm-keychip-add';
-                addBtn.textContent = '+ \u65b0\u589e';
+                addBtn.textContent = t('btn_add_key');
                 addBtn.addEventListener('click', () => startRecording(addBtn));
                 listEl.appendChild(addBtn);
             }
 
             function startRecording(addBtn) {
                 const originalText = addBtn.textContent;
-                addBtn.textContent = '\u8acb\u6309\u4e0b\u6309\u9375\u2026\uff08Esc \u53d6\u6d88\uff09';
+                addBtn.textContent = t('hint_press_key');
                 addBtn.disabled = true;
                 hintEl.style.display = 'none';
 
@@ -3464,7 +3470,7 @@
                     const combo = formatKeyCombo(e);
                     if (!combo) return; // 還在按修飾鍵，繼續等下一次 keydown
                     if (list.includes(combo) || otherList.includes(combo)) {
-                        hintEl.textContent = '\u300c' + combo + '\u300d\u5df2\u7d93\u88ab\u4f7f\u7528\u4e86\uff0c\u63db\u4e00\u7d44\u770b\u770b';
+                        hintEl.textContent = '\u300c' + combo + '\u300d' + t('hint_key_used');
                         hintEl.style.display = 'block';
                         cleanup();
                         return;
