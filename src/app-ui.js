@@ -1,12 +1,10 @@
 ;(async () => {
     // [cwfm] 語言字典——比照「YouTube Home Filter」那支腳本查證過的做法
-    // （en/zh 兩個物件，每個裡面用同一組 key 對應該語言的文字）。自動
-    // 偵測 navigator.language：開頭是 zh 就用繁體中文，其他一律用英文
-    // （符合使用者說的「繁中就繁中、其他都英文」這個二分邏輯，不特別
-    // 處理簡體）。這裡先建好架構跟偵測邏輯，字典內容跟實際替換是後續
-    // 分批進行的大工程（掃描過，全篇含除錯訊息在內約 190 處不重複的
-    // 中文字串），不是一次能做完的規模。
-    const CWFM_LOCALE = (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    // （en/zh 兩個物件，每個裡面用同一組 key 對應該語言的文字）。這個
+    // 物件本身只是靜態資料，跟 settings 沒有依賴關係，留在這裡；真正
+    // 決定「用哪個語言」的判斷邏輯(CWFM_LOCALE)，因為要讀使用者存的
+    // 語言偏好(settings.uiLanguage)，移到後面 INITIAL_SETTINGS 宣告
+    // 之後才計算，見那裡的說明。
     const CWFM_LANG = {
         zh: {
             group_theme: '\u4f48\u666f\u4e3b\u984c',
@@ -221,6 +219,13 @@
             log_init_anchor: '[cwfm:align:t] 開書完成，初始鎖定定位點=',
             err_init_anchor: '[cwfm:align] 初始鎖定定位點失敗',
             log_takeover: '[cwfm] Calibre-Web Foliate Reader Mod 已接管閱讀器，書籍 ID：',
+            group_language: '語言 / Language',
+            field_ui_language: '介面語言（切換後需要重新整理頁面才會生效）',
+            lang_auto: '自動（依瀏覽器判斷）',
+            lang_en: 'English',
+            lang_zh: '繁體中文',
+            dlg_reload_title: '需要重新整理',
+            dlg_reload_msg: '語言設定已儲存，請重新整理頁面使新語言生效。',
         },
         en: {
             group_theme: 'Theme',
@@ -435,20 +440,15 @@
             log_init_anchor: '[cwfm:align:t] Book opened, initial locked anchor=',
             err_init_anchor: '[cwfm:align] Failed to lock initial anchor',
             log_takeover: '[cwfm] Calibre-Web Foliate Reader Mod has taken over the reader, book ID: ',
+            group_language: '語言 / Language',
+            field_ui_language: 'Interface Language (reload the page for the change to take effect)',
+            lang_auto: 'Auto (based on browser)',
+            lang_en: 'English',
+            lang_zh: '繁體中文',
+            dlg_reload_title: 'Reload Required',
+            dlg_reload_msg: 'Language setting saved. Please reload the page for the new language to take effect.',
         },
     };
-    const T = CWFM_LANG[CWFM_LOCALE];
-    // [cwfm] 除錯開關——正式發表的腳本，逐步追蹤用的 console.log 通常
-    // 會收斂掉（對一般使用者沒意義、洩漏內部實作細節），但 console.error
-    // 這種真正的失敗訊息會保留，日後排查問題還是需要。預設關閉，不是
-    // 直接刪掉這些 log，需要除錯時改成 true 就會恢復印出。
-    const CWFM_DEBUG = false;
-    function dlog(...args) { if (CWFM_DEBUG) console.log(...args); }
-    // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
-    // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
-    function t(key) {
-        return T[key] !== undefined ? T[key] : key;
-    }
 
     const VIEWER_SELECTOR = '__VIEWER_SELECTOR__';
     const BOOK_ID = '__BOOK_ID__';
@@ -475,6 +475,30 @@
     // 是實測抓到的真實 bug，不是假設性的風險。
     const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";
     const INITIAL_POSITION = "__INITIAL_POSITION__";
+
+    // [cwfm] 語言判斷——放在 INITIAL_SETTINGS 宣告之後，才能同步讀到
+    // 使用者存過的語言偏好(settings.uiLanguage)，不用等 loadSettings()
+    // 非同步跑完。優先順序：使用者手動選過的值('en'／'zh') > 自動偵測。
+    // 自動偵測讀 navigator.language，開頭是 zh 就用繁體中文，其他一律
+    // 用英文——查證過這只是瀏覽器「網頁內容偏好語言」這組獨立設定，
+    // 不一定跟瀏覽器介面顯示語言、更不會跟伺服器端(Calibre-Web 本身)
+    // 顯示的語言一致，所以才需要這個手動覆蓋選項，不能只靠自動偵測。
+    const CWFM_UI_LANG_PREF = INITIAL_SETTINGS && (INITIAL_SETTINGS.uiLanguage === 'en' || INITIAL_SETTINGS.uiLanguage === 'zh')
+        ? INITIAL_SETTINGS.uiLanguage
+        : null;
+    const CWFM_LOCALE = CWFM_UI_LANG_PREF || ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+    const T = CWFM_LANG[CWFM_LOCALE];
+    // [cwfm] 除錯開關——正式發表的腳本，逐步追蹤用的 console.log 通常
+    // 會收斂掉（對一般使用者沒意義、洩漏內部實作細節），但 console.error
+    // 這種真正的失敗訊息會保留，日後排查問題還是需要。預設關閉，不是
+    // 直接刪掉這些 log，需要除錯時改成 true 就會恢復印出。
+    const CWFM_DEBUG = false;
+    function dlog(...args) { if (CWFM_DEBUG) console.log(...args); }
+    // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
+    // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
+    function t(key) {
+        return T[key] !== undefined ? T[key] : key;
+    }
 
     function gmSet(key, value) {
         document.dispatchEvent(new CustomEvent('cwfm:gm-set', { detail: { key, value } }));
@@ -1755,6 +1779,9 @@
         // 之前用單一個 colorPickerMode 共用，導致動一個欄位的分頁、
         // 另一個欄位也被連動切換過去。
         colorPickerModeByKey: {},
+        // [cwfm] 介面顯示語言：'auto'(預設，依瀏覽器判斷) / 'en' / 'zh'
+        // （使用者手動選定，覆蓋自動偵測）。
+        uiLanguage: 'auto',
         // [cwfm] 左右翻頁點擊區：畫面左右兩側各一塊感應區，點擊觸發
         // 往前/往後翻頁，比照原本 epub.js 就有的做法。功能開關(是否
         // 響應點擊)跟顯示開關(是否畫得出來)刻意分開——可以只開功能、
@@ -3539,6 +3566,20 @@
         // 核心機制（存/套用/刪除）確認邏輯沒問題之後，再回頭處理介面
         // 分區、群組這類排版問題——跟使用者討論過，故意先分開，避免
         // 機制邏輯的問題跟排版調整的問題混在一起，難以分辨是哪邊出錯。
+        beginGroup(t('group_language'));
+        const uiLangSelect = addSelectField(t('field_ui_language'), 'uiLanguage', [
+            ['auto', t('lang_auto')],
+            ['en', t('lang_en')],
+            ['zh', t('lang_zh')],
+        ]);
+        // [cwfm] 語言切換需要重新整理頁面才會生效——整個面板是用 t()
+        // 在建立當下就把文字寫死進 DOM，不是每次都重新查表渲染，改變
+        // 語言設定沒辦法立刻反映在畫面上。存檔照舊(不影響其他設定同時
+        // 修改)，另外跳提示告知使用者需要重新整理。
+        uiLangSelect.addEventListener('change', () => {
+            cwfmAlertDialog(t('dlg_reload_title'), t('dlg_reload_msg'));
+        });
+
         beginGroup(t('group_theme'));
         (function buildThemeUI() {
             const field = document.createElement('div');
