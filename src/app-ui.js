@@ -36,6 +36,28 @@
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
             field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
             unit_seconds: '\u79d2',
+            err_no_viewer: '[cwfm] \u627e\u4e0d\u5230 #viewer \u5bb9\u5668',
+            err_no_current_pos: t('err_no_current_pos'),
+            log_bookmark_synced: '[cwfm:bookmark] \u5df2\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff1a',
+            log_bookmark_removed: '[cwfm:bookmark] \u5df2\u5f9e\u4f3a\u670d\u5668\u79fb\u9664\u66f8\u7c64',
+            err_download_failed: t('err_download_failed'),
+            log_restore_local: '[cwfm:bookmark] \u5df2\u9084\u539f\u672c\u6a5f\u8a18\u61b6\u7684\u95b1\u8b80\u4f4d\u7f6e\uff1a',
+            err_restore_local: '[cwfm:bookmark] \u9084\u539f\u672c\u6a5f\u8a18\u61b6\u4f4d\u7f6e\u5931\u6557',
+            log_restore_server: '[cwfm:bookmark] \u5df2\u9084\u539f\u4f3a\u670d\u5668\u66f8\u7c64\u4f4d\u7f6e\uff1a',
+            err_restore_server: '[cwfm:bookmark] \u9084\u539f\u4f3a\u670d\u5668\u66f8\u7c64\u4f4d\u7f6e\u5931\u6557\uff0c\u6539\u5f9e\u982d\u958b\u59cb',
+            err_open_book: '[cwfm] \u958b\u555f\u66f8\u7c4d\u5931\u6557\uff1a',
+            err_book_load_failed_ui: t('err_book_load_failed_ui'),
+            err_local_write: '[cwfm:bookmark] \u672c\u6a5f\u8a18\u61b6\u5beb\u5165\u5931\u6557',
+            err_auto_sync: '[cwfm:bookmark] \u505c\u7559\u81ea\u52d5\u540c\u6b65\u5931\u6557',
+            err_keydown_pageturn: '[cwfm:keydown] \u7ffb\u9801\u5931\u6557',
+            err_divider_create: '[cwfm:divider] \u5efa\u7acb\u5206\u9694\u7dda\u5931\u6557',
+            err_divider_update: '[cwfm:divider] \u66f4\u65b0\u5206\u9694\u7dda\u4f4d\u7f6e\u5931\u6557',
+            err_theme_scheme: '[cwfm:theme] \u5224\u65b7\u9762\u677f\u6df1\u6dfa\u8272\u5931\u6557',
+            log_settings_no_saved: '[cwfm:settings] GM \u5132\u5b58\u6c92\u6709\u5b58\u904e\u8a2d\u5b9a\uff0c\u4f7f\u7528\u9810\u8a2d\u503c',
+            log_settings_read: '[cwfm:settings] \u5f9e GM \u5132\u5b58\u8b80\u56de\u8a2d\u5b9a\uff1a',
+            err_settings_read: '[cwfm:settings] \u8b80\u53d6\u8a2d\u5b9a\u5931\u6557\uff0c\u6539\u7528\u9810\u8a2d\u503c',
+            log_settings_write_sent: '[cwfm:settings] \u5df2\u9001\u51fa\u5beb\u5165\u8acb\u6c42\uff08GM \u5132\u5b58\uff09\uff1a',
+            err_settings_save: '[cwfm:settings] \u5132\u5b58\u8a2d\u5b9a\u5931\u6557',
         },
         en: {
             group_theme: 'Theme',
@@ -65,6 +87,28 @@
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
             field_tap_zone_width: 'Left/Right Tap Zone Width',
             unit_seconds: 'sec',
+            err_no_viewer: '[cwfm] #viewer container not found',
+            err_no_current_pos: 'No current position to sync',
+            log_bookmark_synced: '[cwfm:bookmark] Synced to server: ',
+            log_bookmark_removed: '[cwfm:bookmark] Bookmark removed from server',
+            err_download_failed: 'Failed to download epub: HTTP ',
+            log_restore_local: '[cwfm:bookmark] Restored locally-remembered position: ',
+            err_restore_local: '[cwfm:bookmark] Failed to restore locally-remembered position',
+            log_restore_server: '[cwfm:bookmark] Restored server bookmark position: ',
+            err_restore_server: '[cwfm:bookmark] Failed to restore server bookmark position, starting from the beginning',
+            err_open_book: '[cwfm] Failed to open book: ',
+            err_book_load_failed_ui: '(Calibre-Web Foliate Reader Mod) Failed to load the book. See the console for details.',
+            err_local_write: '[cwfm:bookmark] Failed to write local memory',
+            err_auto_sync: '[cwfm:bookmark] Idle auto-sync failed',
+            err_keydown_pageturn: '[cwfm:keydown] Page turn failed',
+            err_divider_create: '[cwfm:divider] Failed to create divider',
+            err_divider_update: '[cwfm:divider] Failed to update divider position',
+            err_theme_scheme: '[cwfm:theme] Failed to determine panel light/dark scheme',
+            log_settings_no_saved: '[cwfm:settings] No saved settings in GM storage, using defaults',
+            log_settings_read: '[cwfm:settings] Read settings from GM storage: ',
+            err_settings_read: '[cwfm:settings] Failed to read settings, using defaults',
+            log_settings_write_sent: '[cwfm:settings] Write request sent (GM storage): ',
+            err_settings_save: '[cwfm:settings] Failed to save settings',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
@@ -943,7 +987,14 @@
             // 擠。給單位文字一個固定寬度，不管實際字數多少都佔用同樣的
             // 水平空間，輸入框的右邊界才會在所有欄位間保持一致。
             '.cwfm-value-input-wrap span { display: inline-block; width: 1.6em; text-align: left; }',
-            '.cwfm-panel .cwfm-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }',
+            // [cwfm] 改成頂端對齊(flex-start)，不再用置中(center)——
+            // 中文標籤大多是單行，置中沒有問題；但英文翻譯普遍比中文長，
+            // 換行成多行之後，置中會讓右邊的開關/輸入框往下掉到整個
+            // 文字區塊的正中央，跟文字第一行對不齊。改成頂端對齊，
+            // 不管標籤是一行還是好幾行，開關/輸入框都會固定貼齊第一行
+            // 的高度。這條是所有欄位共用的基礎規則，統一處理，不用每個
+            // 欄位各自調整。
+            '.cwfm-panel .cwfm-row { display: flex; align-items: flex-start; justify-content: space-between; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
             // [cwfm] 核取方塊改用獨立的排列方式，不跟範圍/顏色欄位共用
             // .cwfm-row 的排法——查了業界規範，開關這種元件多數規範建議
