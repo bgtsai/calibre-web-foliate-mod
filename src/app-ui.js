@@ -1,4 +1,79 @@
 ;(async () => {
+    // [cwfm] 語言字典——比照「YouTube Home Filter」那支腳本查證過的做法
+    // （en/zh 兩個物件，每個裡面用同一組 key 對應該語言的文字）。自動
+    // 偵測 navigator.language：開頭是 zh 就用繁體中文，其他一律用英文
+    // （符合使用者說的「繁中就繁中、其他都英文」這個二分邏輯，不特別
+    // 處理簡體）。這裡先建好架構跟偵測邏輯，字典內容跟實際替換是後續
+    // 分批進行的大工程（掃描過，全篇含除錯訊息在內約 190 處不重複的
+    // 中文字串），不是一次能做完的規模。
+    const CWFM_LOCALE = (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    const CWFM_LANG = {
+        zh: {
+            group_theme: '\u4f48\u666f\u4e3b\u984c',
+            group_color: '\u914d\u8272',
+            group_font: '\u5b57\u9ad4',
+            group_typography: '\u6587\u5b57\u6392\u7248',
+            group_layout: '\u7248\u9762\u914d\u7f6e',
+            group_keybindings: '\u7ffb\u9801\u5feb\u901f\u9375',
+            group_reading_behavior: '\u95b1\u8b80\u884c\u70ba',
+            field_prefer_original_text_color: '\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09',
+            field_font_size: '\u5B57\u7D1A',
+            field_letter_spacing: '\u5B57\u8DDD',
+            field_line_spacing: '\u884C\u8DDD',
+            field_justify: '\u5169\u7AEF\u5C0D\u9F4A',
+            field_hyphenate: '\u81EA\u52D5\u65B7\u5B57',
+            field_disable_ligatures: '\u95dc\u9589\u9023\u5b57\uff08\u53ef\u80fd\u4f7f\u8a5e\u5f59\u66ff\u63db\u5b57\u578b\u5931\u6548\uff09',
+            field_flow: '\u7ffb\u9801\u6a21\u5f0f\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\uff0c\u9583\u9801\u5feb\u901f\u9375\u4e0d\u6703\u89f8\u767c\u7ffb\u9801\uff0c\u9581\u5b9a\u53ea\u6709 1 \u6b04\uff09',
+            field_top_bottom_padding: '\u4e0a\u4e0b\u7559\u767d',
+            field_left_right_padding: '\u5de6\u53f3\u7559\u767d',
+            field_max_column_count: '\u6700\u5927\u6b04\u6578\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\u5f37\u5236\u9396\u5b9a\u70ba 1 \u6b04\uff0c\u9019\u88e1\u7684\u8a2d\u5b9a\u6703\u7121\u6cd5\u8abf\u6574\uff09',
+            field_precise_anchor_align: '\u7ffb\u9801\u7cbe\u6e96\u5b9a\u4f4d\uff1a\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede',
+            field_local_auto_remember: '\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09',
+            field_auto_sync_enabled: '\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09',
+            field_auto_sync_delay: '\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65',
+            field_auto_hide_toolbar: '\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09',
+            field_tap_zone_enabled: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd',
+            field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
+            field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
+            unit_seconds: '\u79d2',
+        },
+        en: {
+            group_theme: 'Theme',
+            group_color: 'Colors',
+            group_font: 'Font',
+            group_typography: 'Typography',
+            group_layout: 'Layout',
+            group_keybindings: 'Page-turn Shortcuts',
+            group_reading_behavior: 'Reading Behavior',
+            field_prefer_original_text_color: 'Prefer the books original text style (do not force-override text color)',
+            field_font_size: 'Font Size',
+            field_letter_spacing: 'Letter Spacing',
+            field_line_spacing: 'Line Spacing',
+            field_justify: 'Justify',
+            field_hyphenate: 'Auto-hyphenate',
+            field_disable_ligatures: 'Disable ligatures (may break vocabulary-substitution fonts)',
+            field_flow: 'Page Flow (in scroll mode, page-turn shortcuts do not trigger paging; locked to 1 column)',
+            field_top_bottom_padding: 'Top/Bottom Margin',
+            field_left_right_padding: 'Left/Right Margin',
+            field_max_column_count: 'Max Columns (locked to 1 in scroll mode; this setting becomes unadjustable)',
+            field_precise_anchor_align: 'Precise Page Alignment: try to precisely align the anchor point on resize/restore',
+            field_local_auto_remember: 'Remember reading progress locally (saved instantly on this browser; won\'t sync across devices)',
+            field_auto_sync_enabled: 'Auto-sync to server after idle (requires a CSRF-token request; readable across devices)',
+            field_auto_sync_delay: 'Sync After Idle (seconds)',
+            field_auto_hide_toolbar: 'Auto-hide Toolbar (slides to edge after 3s idle; hover edge or click to wake)',
+            field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
+            field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
+            field_tap_zone_width: 'Left/Right Tap Zone Width',
+            unit_seconds: 'sec',
+        },
+    };
+    const T = CWFM_LANG[CWFM_LOCALE];
+    // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
+    // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
+    function t(key) {
+        return T[key] !== undefined ? T[key] : key;
+    }
+
     const VIEWER_SELECTOR = '__VIEWER_SELECTOR__';
     const BOOK_ID = '__BOOK_ID__';
     const STORAGE_KEY = 'cwfm-settings';
@@ -3066,7 +3141,7 @@
         // 核心機制（存/套用/刪除）確認邏輯沒問題之後，再回頭處理介面
         // 分區、群組這類排版問題——跟使用者討論過，故意先分開，避免
         // 機制邏輯的問題跟排版調整的問題混在一起，難以分辨是哪邊出錯。
-        beginGroup('\u4f48\u666f\u4e3b\u984c');
+        beginGroup(t('group_theme'));
         (function buildThemeUI() {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
@@ -3504,7 +3579,7 @@
         // 只做「點選套用 + 標示目前選中哪一個」。colorSchemeState 提供
         // 一個 setValue()，讓下面 addColorField 的 change 事件（使用者
         // 自己調整顏色時，要自動切成「自訂」這個選項）可以呼叫。
-        beginGroup('\u914d\u8272');
+        beginGroup(t('group_color'));
         const colorSchemeState = (function buildColorSchemeUI() {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
@@ -3616,7 +3691,7 @@
         })();
         const textColorSwatchBtn = addColorField('\u81ea\u8a02\u6587\u5b57\u984f\u8272', 'customTextColor');
         const bgColorSwatchBtn = addColorField('\u81ea\u8a02\u80cc\u666f\u984f\u8272', 'customBackgroundColor');
-        addCheckboxField('\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09', 'preferOriginalTextColor');
+        addCheckboxField(t('field_prefer_original_text_color'), 'preferOriginalTextColor');
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
         // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
@@ -3624,7 +3699,7 @@
         // 不再用一個常駐的文字輸入框讓使用者打字——跟其他標籤清單
         // （佈景主題、配色）用同一套介面語言：點「+」跳出對話框輸入
         // 名稱，輸入完直接變成一個新標籤並套用，不用另外留一個輸入框。
-        beginGroup('\u5b57\u9ad4');
+        beginGroup(t('group_font'));
         (function buildFontChipsUI() {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
@@ -3777,21 +3852,21 @@
 
             render();
         })();
-        beginGroup('\u6587\u5b57\u6392\u7248');
-        addRangeField('\u5B57\u7D1A', 'fontSize', 70, 300, 5, '%');
-        addRangeField('\u5B57\u8DDD', 'letterSpacing', -0.05, 0.5, 0.01, 'em');
-        addRangeField('\u884C\u8DDD', 'lineSpacing', 1, 5, 0.1, '');
-        addCheckboxField('\u5169\u7AEF\u5C0D\u9F4A', 'justify');
-        addCheckboxField('\u81EA\u52D5\u65B7\u5B57', 'hyphenate');
+        beginGroup(t('group_typography'));
+        addRangeField(t('field_font_size'), 'fontSize', 70, 300, 5, '%');
+        addRangeField(t('field_letter_spacing'), 'letterSpacing', -0.05, 0.5, 0.01, 'em');
+        addRangeField(t('field_line_spacing'), 'lineSpacing', 1, 5, 0.1, '');
+        addCheckboxField(t('field_justify'), 'justify');
+        addCheckboxField(t('field_hyphenate'), 'hyphenate');
         // [cwfm] 查證後確認：詞彙替換字型（用 ccmp 這個 OpenType 機制把
         // 簡體詞彙替換成繁體詞彙）跟一般裝飾用連字，在瀏覽器眼中是同一套
         // 機制，沒有天生的區分方式，只能整組一起開關。開著的話詞彙替換
         // 正常運作，但可能導致特定詞彙間距比周圍窄；關掉則間距完全均勻，
         // 但字型的詞彙替換功能也會一併失效。預設不關閉（保留詞彙替換），
         // 讓使用者自己決定要不要犧牲間距換取替換失效。
-        addCheckboxField('\u95dc\u9589\u9023\u5b57\uff08\u53ef\u80fd\u4f7f\u8a5e\u5f59\u66ff\u63db\u5b57\u578b\u5931\u6548\uff09', 'disableLigatures');
-        beginGroup('\u7248\u9762\u914d\u7f6e');
-        const flowSelect = addSelectField('\u7ffb\u9801\u6a21\u5f0f\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\uff0c\u9583\u9801\u5feb\u901f\u9375\u4e0d\u6703\u89f8\u767c\u7ffb\u9801\uff0c\u9581\u5b9a\u53ea\u6709 1 \u6b04\uff09', 'flow', [
+        addCheckboxField(t('field_disable_ligatures'), 'disableLigatures');
+        beginGroup(t('group_layout'));
+        const flowSelect = addSelectField(t('field_flow'), 'flow', [
             ['paginated', '\u5206\u9801'],
             ['scrolled', '\u6372\u52D5'],
         ]);
@@ -3807,9 +3882,9 @@
         const rendererRect = view.renderer.getBoundingClientRect();
         const maxTopBottomPadding = Math.max(20, Math.floor(rendererRect.height / 2));
         const maxLeftRightPadding = Math.max(20, Math.floor(rendererRect.width / 2));
-        addRangeField('\u4e0a\u4e0b\u7559\u767d', 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
-        addRangeField('\u5de6\u53f3\u7559\u767d', 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
-        const columnSlider = addRangeField('\u6700\u5927\u6b04\u6578\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\u5f37\u5236\u9396\u5b9a\u70ba 1 \u6b04\uff0c\u9019\u88e1\u7684\u8a2d\u5b9a\u6703\u7121\u6cd5\u8abf\u6574\uff09', 'maxColumnCount', 1, 4, 1, '');
+        addRangeField(t('field_top_bottom_padding'), 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
+        addRangeField(t('field_left_right_padding'), 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
+        const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
         // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
         // 數字輸入框都停用），不是只有文字說明——使用者要求「捲動模式
         // 只接受 1 欄，這個欄位就不該讓人調」，切換翻頁模式的當下同步
@@ -3823,31 +3898,31 @@
         flowSelect.addEventListener('change', updateColumnFieldLock);
         updateColumnFieldLock();
 
-        beginGroup('\u7ffb\u9801\u5feb\u901f\u9375');
+        beginGroup(t('group_keybindings'));
         addKeyListField('\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.prev, settings.pagingKeys.next);
         addKeyListField('\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375', settings.pagingKeys.next, settings.pagingKeys.prev);
 
-        beginGroup('\u95b1\u8b80\u884c\u70ba');
+        beginGroup(t('group_reading_behavior'));
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
         // ——現在已經穩定到不會弄壞整個介面，改用一般的 addCheckboxField()，
         // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
-        addCheckboxField('\u7ffb\u9801\u7cbe\u6e96\u5b9a\u4f4d\uff1a\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede', 'preciseAnchorAlign');
+        addCheckboxField(t('field_precise_anchor_align'), 'preciseAnchorAlign');
 
         // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
         // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
         // 開關；功能二（手動同步）不需要開關，是工具列上的按鈕，使用者
         // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
-        addCheckboxField('\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09', 'localAutoRemember');
-        addCheckboxField('\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09', 'autoSyncEnabled');
-        addRangeField('\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65', 'autoSyncDelaySeconds', 1, 60, 1, '\u79d2');
-        addCheckboxField('\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09', 'autoHideToolbar');
+        addCheckboxField(t('field_local_auto_remember'), 'localAutoRemember');
+        addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
+        addRangeField(t('field_auto_sync_delay'), 'autoSyncDelaySeconds', 1, 60, 1, t('unit_seconds'));
+        addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
 
         // [cwfm] 左右翻頁點擊區：功能開關(能不能點擊翻頁)跟顯示開關
         // (看不看得到視覺提示)分開，可以只開功能不顯示視覺，區域照樣
         // 有作用；寬度可調(5~45%，避免設太窄點不到、或設太寬蓋掉太多
         // 閱讀內容)。
-        const tapZoneEnabledCheckbox = addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd', 'tapZoneEnabled');
-        const tapZoneVisibleCheckbox = addCheckboxField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09', 'tapZoneVisible');
+        const tapZoneEnabledCheckbox = addCheckboxField(t('field_tap_zone_enabled'), 'tapZoneEnabled');
+        const tapZoneVisibleCheckbox = addCheckboxField(t('field_tap_zone_visible'), 'tapZoneVisible');
         // [cwfm] 兩個開關的「視覺上看起來已停用」狀態——設定本身依然可以
         // 改（不用 input.disabled，那樣會連點擊都擋掉），只是外觀變淡，
         // 讓使用者一眼看出目前調了也不會有效果，不是介面壞掉沒反應。
@@ -3871,7 +3946,7 @@
         }
         flowSelect.addEventListener('change', updateTapZoneDisabledStates);
         tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneDisabledStates);
-        const tapZoneWidthSlider = addRangeField('\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6', 'tapZoneWidthPx', 0, 300, 5, 'px');
+        const tapZoneWidthSlider = addRangeField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         updateTapZoneDisabledStates();
 
