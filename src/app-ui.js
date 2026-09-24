@@ -1018,12 +1018,16 @@
             // 起來（opacity:0，但還是佔滿整個區域接收點擊/鍵盤操作），
             // 用 ::before 畫出滑塊本身，開關切換靠 :checked 這個原生
             // 狀態去驅動樣式變化，不用自己寫額外的 JS 去同步視覺狀態。
-            // 開關這種小圖示元件用文字基準線對齊會顯得太低，改成
-            // align-self: center，只針對這個元件覆蓋掉整行 baseline 的
-            // 對齊方式。
+            // [cwfm] 原本這裡有 align-self: center，是當初父層用
+            // baseline 對齊時，特地蓋掉整行 baseline、讓開關自己置中
+            // 用的——父層後來改回 flex-start，這條覆蓋規則卻忘了拿掉，
+            // 導致開關一直被強制置中、完全不受父層新設定影響（使用者
+            // 實測確認過）。這次拿掉，讓開關服從父層的 flex-start，
+            // 真正貼齊列的頂端。查過 .cwfm-switch 這個 class 整份程式碼
+            // 只有這一個使用情境，拿掉不會影響到其他地方。
             '.cwfm-switch {',
             '  position: relative; display: inline-block; width: 34px; height: 20px;',
-            '  flex-shrink: 0; order: 1; cursor: pointer; align-self: center;',
+            '  flex-shrink: 0; order: 1; cursor: pointer;',
             '}',
             '.cwfm-switch input {',
             '  position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer;',
