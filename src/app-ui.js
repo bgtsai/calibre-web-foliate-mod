@@ -412,14 +412,14 @@
             '  --cwfm-switch-off-track: #c7c7c7;',
             '}',
             '.cwfm-toolbar {',
-            // [cwfm] 右側留一段給捲軸的寬度，不要整條貼到最右邊——之前
-            // 工具列整條貼齊右緣，會蓋住撐滿全高之後的捲軸，導致捲軸
-            // 在工具列這段區域內完全看不到、也點不到。不同瀏覽器/系統
-            // 的原生捲軸寬度不完全一樣，抓一個常見的數值（Windows 版
-            // Chrome/Firefox 常見約 16px）。
-            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); bottom: 0;',
+            // [cwfm] 按鈕排版層——永遠固定留同一個寬度給捲軸(用探測元素
+            // 量出來的固定值，不受目前是不是真的有捲軸影響)，確保切換
+            // 分頁/捲動模式時，按鈕的相對位置完全不會跟著移動。背景範圍
+            // 才依模式決定，交給另一層 .cwfm-toolbar-bg 處理，不用背景
+            // 也不用自己管要不要蓋滿——直接透明，讓下面的背景層透出來。
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w-fixed, 0px); bottom: 0;',
             '  display: flex; align-items: center; gap: 10px;',
-            '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
+            '  padding: 8px 14px; background: transparent;',
             '  color: var(--cwfm-text); font-family: sans-serif; font-size: 13px;',
             '  z-index: 999999; box-sizing: border-box;',
             '  transition: transform 0.3s ease;',
@@ -432,6 +432,17 @@
             // 調陰影），這裡直接沿用，不用另外處理。
             '  box-shadow: 0 -2px 10px var(--cwfm-shadow-soft), 0 -1px 0 var(--cwfm-shadow-ring);',
             '}',
+            // [cwfm] 背景層——負責顏色鋪滿的範圍，依模式決定寬度（捲動
+            // 模式留捲軸空間、分頁模式直接鋪滿），跟上面按鈕排版層完全
+            // 分開，不影響按鈕位置。z-index 比按鈕層低，按鈕維持在上面
+            // 正常接收點擊。
+            '.cwfm-toolbar-bg {',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); bottom: 0; height: 44px;',
+            '  background: var(--cwfm-toolbar-bg); z-index: 999998; pointer-events: none;',
+            '  transition: transform 0.3s ease;',
+            '  box-shadow: 0 -2px 10px var(--cwfm-shadow-soft), 0 -1px 0 var(--cwfm-shadow-ring);',
+            '}',
+            '.cwfm-toolbar-bg.cwfm-autohidden { transform: translateY(100%); box-shadow: none; }',
             // [cwfm] 自動隱藏：滑動到邊緣外（不是 display:none，維持
             // transform 位移，這樣才能做滑入/滑出動畫）。上/下工具列各自
             // 往自己所在的那個邊滑出去。
@@ -523,17 +534,24 @@
             // [cwfm] 上方工具列：目錄、書籤、設定、全螢幕，比照一般 EPUB
             // 閱讀器慣例放在上方（下方工具列只留翻頁跟進度條）。
             '.cwfm-toolbar-top {',
-            // [cwfm] 理由同下方工具列：右側留出捲軸寬度，不要蓋住捲軸。
-            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); top: 0;',
+            // [cwfm] 按鈕排版層——理由同下方工具列，永遠固定留同一個寬度
+            // 給捲軸，不受模式影響，背景改用透明，讓背景層透出來。
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w-fixed, 0px); top: 0;',
             '  display: flex; align-items: center; gap: 6px;',
-            '  padding: 8px 14px; background: var(--cwfm-toolbar-bg);',
+            '  padding: 8px 14px; background: transparent;',
             '  color: var(--cwfm-text); font-family: sans-serif;',
             '  z-index: 999999; box-sizing: border-box;',
+            '  transition: transform 0.3s ease;',
+            '}',
+            '.cwfm-toolbar-top-bg {',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); top: 0; height: 44px;',
+            '  background: var(--cwfm-toolbar-bg); z-index: 999998; pointer-events: none;',
             '  transition: transform 0.3s ease;',
             // [cwfm] 跟下方工具列同一套邏輯，方向對稱：往下投影（貼在
             // 畫面上緣），加一條細細的底邊緣線。
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 1px 0 var(--cwfm-shadow-ring);',
             '}',
+            '.cwfm-toolbar-top-bg.cwfm-autohidden { transform: translateY(-100%); box-shadow: none; }',
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
             '.cwfm-toolbar-top button {',
             '  background: none; border: none; color: var(--cwfm-text);',
@@ -1984,6 +2002,21 @@
     // 所以這裡兩個屬性一起算：gap 負責「保底最小值」，max-inline-size
     // 負責「螢幕夠寬時不要讓內容把多餘空間占滿」，兩者算式殊途同歸，
     // 都是把使用者想要的像素值換算成對應的百分比/像素。
+    // [cwfm] 用一個看不見的探測元素，量出瀏覽器原生捲軸「不管現在有沒有
+    // 真的顯示」的固定寬度——跟量測 #viewer 那個「即時、隨內容有沒有
+    // 溢出而變動」的數字不一樣。按鈕排版層要用這個固定值，不管翻頁還是
+    // 捲動模式都固定留這個寬度，確保按鈕位置兩種模式完全一致；背景層
+    // 才用「依模式決定留不留」的邏輯。
+    function measureFixedScrollbarWidth() {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute; top:-9999px; width:100px; height:100px; overflow:scroll;';
+        document.body.appendChild(probe);
+        const w = probe.offsetWidth - probe.clientWidth;
+        probe.remove();
+        return w;
+    }
+    document.documentElement.style.setProperty('--cwfm-scrollbar-w-fixed', measureFixedScrollbarWidth() + 'px');
+
     // [cwfm] 精準量測 #viewer 目前實際的捲軸寬度，不是用猜的固定值——
     // 不同瀏覽器/系統/縮放比例，原生捲軸寬度不完全一樣，猜一個數字
     // 容易跟實際值差個一兩像素。offsetWidth 減 clientWidth 就是捲軸
@@ -3927,6 +3960,14 @@
         });
         bar.appendChild(nextBtn);
 
+        // [cwfm] 拆成兩層：bar 本身只負責按鈕排版，永遠固定寬度、固定
+        // 位置（右側永遠留捲軸空間，不管哪個模式），確保切換模式時按鈕
+        // 相對位置完全不會移動；bgLayer 是純背景層，寬度依模式決定
+        // （捲動模式留捲軸空間、分頁模式直接鋪滿），不影響按鈕排版。
+        const bgLayer = document.createElement('div');
+        bgLayer.className = 'cwfm-toolbar-bg';
+        bgLayer.dataset.cwfmOwned = 'true';
+        document.body.appendChild(bgLayer);
         document.body.appendChild(bar);
 
         // 依 relocate 事件同步進度條與百分比顯示（使用者正在拖曳時不要被蓋過去）
@@ -4065,6 +4106,11 @@
         });
         bar.appendChild(fullscreenBtn);
 
+        // [cwfm] 同下方工具列，拆成兩層。
+        const topBgLayer = document.createElement('div');
+        topBgLayer.className = 'cwfm-toolbar-top-bg';
+        topBgLayer.dataset.cwfmOwned = 'true';
+        document.body.appendChild(topBgLayer);
         document.body.appendChild(bar);
         return bar;
     }
@@ -4089,11 +4135,17 @@
     function cwfmShowBars() {
         toolbar?.classList.remove('cwfm-autohidden');
         topToolbar?.classList.remove('cwfm-autohidden');
+        // [cwfm] 背景層跟按鈕層是分開的兩個元素，自動隱藏要一起移動，
+        // 不然工具列滑走時背景層會卡在原地不動。
+        document.querySelector('.cwfm-toolbar-bg')?.classList.remove('cwfm-autohidden');
+        document.querySelector('.cwfm-toolbar-top-bg')?.classList.remove('cwfm-autohidden');
     }
     function cwfmHideBars() {
         if (cwfmAutoHideHoveringBar) return;
         toolbar?.classList.add('cwfm-autohidden');
         topToolbar?.classList.add('cwfm-autohidden');
+        document.querySelector('.cwfm-toolbar-bg')?.classList.add('cwfm-autohidden');
+        document.querySelector('.cwfm-toolbar-top-bg')?.classList.add('cwfm-autohidden');
     }
     function cwfmScheduleAutoHide() {
         clearTimeout(cwfmAutoHideTimer);
