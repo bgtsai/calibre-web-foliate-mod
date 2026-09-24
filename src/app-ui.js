@@ -60,6 +60,8 @@
             err_settings_save: '[cwfm:settings] \u5132\u5b58\u8a2d\u5b9a\u5931\u6557',
             dlg_cancel: '\u53d6\u6d88',
             dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
+            title_reading_settings: '\u95B1\u8B80\u8A2D\u5B9A',
+            aria_toc: '\u76EE\u9304',
         },
         en: {
             group_theme: 'Theme',
@@ -113,6 +115,8 @@
             err_settings_save: '[cwfm:settings] Failed to save settings',
             dlg_cancel: 'Cancel',
             dlg_confirm_delete: 'Confirm Delete',
+            title_reading_settings: 'Reading Settings',
+            aria_toc: 'Table of Contents',
         },
     };
     const T = CWFM_LANG[CWFM_LOCALE];
@@ -3179,7 +3183,7 @@
         header.className = 'cwfm-panel-header';
 
         const title = document.createElement('h3');
-        title.textContent = '\u95B1\u8B80\u8A2D\u5B9A'; // 閱讀設定
+        title.textContent = t('title_reading_settings');
         header.appendChild(title);
 
         const closeBtn = createCloseBtn(closeAllPanels);
@@ -4213,7 +4217,7 @@
 
         const tocBtn = document.createElement('button');
         tocBtn.innerHTML = ICONS.list;
-        tocBtn.setAttribute('aria-label', '\u76EE\u9304');
+        tocBtn.setAttribute('aria-label', t('aria_toc'));
         tocBtn.addEventListener('click', () => openPanel(tocPanel));
         bar.appendChild(tocBtn);
 
