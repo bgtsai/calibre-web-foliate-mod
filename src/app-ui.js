@@ -994,7 +994,12 @@
             // 不管標籤是一行還是好幾行，開關/輸入框都會固定貼齊第一行
             // 的高度。這條是所有欄位共用的基礎規則，統一處理，不用每個
             // 欄位各自調整。
-            '.cwfm-panel .cwfm-row { display: flex; align-items: flex-start; justify-content: space-between; margin: 14px 0 4px; }',
+            // [cwfm] 補上固定的最小間距——原本只靠 justify-content:
+            // space-between 撐開左右兩邊，標籤文字變長(尤其英文翻譯
+            // 普遍比中文長)之後，會把可用寬度擠光，導致文字跟控制項
+            // 幾乎貼在一起。跟 .cwfm-checkbox-row 用同樣的 12px，全面板
+            // 統一間距規則。
+            '.cwfm-panel .cwfm-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 14px 0 4px; }',
             '.cwfm-panel .cwfm-row label { margin: 0; }',
             // [cwfm] 核取方塊改用獨立的排列方式，不跟範圍/顏色欄位共用
             // .cwfm-row 的排法——查了業界規範，開關這種元件多數規範建議
