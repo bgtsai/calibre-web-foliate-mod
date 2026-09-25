@@ -4555,6 +4555,14 @@
             fieldsWrap.style.width = COLUMN_WIDTH + 'px';
             fieldsWrap.style.height = 'auto';
             const totalContentHeight = fieldsWrap.scrollHeight;
+            // [cwfm] 量每個分組(.cwfm-group，fieldsWrap 的直接子元素)
+            // 自己的高度，取最大值——這是「每一欄高度上限」的數學下限：
+            // 不管怎麼分欄，都不可能有一欄比它自己裝的最高分組還矮
+            // (每個分組本身 break-inside:avoid，不能被切開)。這個時間點
+            // 量測，是因為現在還是單欄、高度 auto，量到的是每個分組
+            // 真正、乾淨的高度，不會受多欄樣式影響。
+            const tallestGroupHeight = Array.from(fieldsWrap.children)
+                .reduce((max, el) => Math.max(max, el.offsetHeight), 0);
             const neededColumns = Math.max(1, Math.ceil(totalContentHeight / availableHeight));
             const columnCount = Math.min(neededColumns, maxColumnsByWidth);
             fieldsWrap.style.columnCount = String(columnCount);
@@ -4564,33 +4572,29 @@
             // 上限時，這裡如果還是把高度硬釘死在 availableHeight，多出來
             // 裝不下的內容會直接消失（欄數、高度雙重鎖死，內容沒有地方
             // 可以去），不是被裁切、是真的不會顯示，這才是使用者回報
-            // 「有些設定完全不見了」的根因。修法：欄數被上限夾住的情況
-            // 下，高度改成用「這麼多欄實際需要的高度」（用比例反推），
-            // 保證所有內容都裝得下，再讓面板自己垂直捲動，不再刻意鎖死
-            // 成 availableHeight。只有欄數沒被夾住(真的用需要的欄數)時，
-            // 才用 availableHeight 撐滿可用空間。
-            if (neededColumns > maxColumnsByWidth) {
-                const requiredHeight = Math.ceil(totalContentHeight / columnCount) + 40; // 留一點緩衝，避免壓線裁切
-                fieldsWrap.style.height = requiredHeight + 'px';
-            } else {
-                fieldsWrap.style.height = availableHeight + 'px';
-            }
-            // [cwfm] 最後一道保險——上面不管哪個分支算出來的高度，都是
-            // 用「總高度除以欄數」這種平均值去估計，CSS 多欄排版遇到
-            // 「不能切開的區塊」(break-inside:avoid，每個分組整個都是
-            // 這樣)、且各區塊大小差異大時，實際分配到每一欄的內容不會
-            // 剛好平均，簡單平均值的估計可能不夠，導致某些內容還是會
-            // 被擠到裝不下、直接消失。這裡設定完之後，再直接量一次
-            // fieldsWrap 目前「真正」需要的完整高度(暫時放寬高度限制
-            // 量出來)，如果比剛才設定的高度還高，代表估計不夠、有東西
-            // 会被擠掉，直接把高度撐大到量出來的真實需求，用實際量測
-            // 結果校正，不是只信估算公式。
-            {
-                const setHeight = parseFloat(fieldsWrap.style.height);
-                fieldsWrap.style.height = 'auto';
-                const actualNeededHeight = fieldsWrap.scrollHeight;
-                fieldsWrap.style.height = Math.max(setHeight, actualNeededHeight + 20) + 'px';
-            }
+            // 「有些設定完全不見了」的根因。
+            //
+            // 每一欄的高度上限，用「總高度÷欄數×1.3(溫和緩衝)」跟「面板
+            // 裡最高的單一分組高度(數學下限，因為分組本身不能被切開，
+            // 任何一欄都不可能比它自己裝的最高分組還矮)」兩者取較大值。
+            // 這樣「欄數×每欄高度上限」保證大於等於總內容高度、也保證
+            // 沒有任何分組會因為自己太高被擠出去——純數學算出來的結果，
+            // 不需要再實際重新量測一次。
+            //
+            // 上一輪曾經在這裡「重新量測」修正估算值，做法是先把高度
+            // 設回 auto 再量 scrollHeight——但這正好重現了我們更早之前
+            // 查出來、也修過的同一個 bug：column-fill:auto 沒有明確高度
+            // 時，瀏覽器不知道何時該換欄，所有內容會全部塞進第一欄，
+            // 量到的數字其實是「全部內容擠在單欄」的高度，不是「目前
+            // 這個欄數配置」真正需要的高度，會造成排版又跳回單欄。這次
+            // 全程只做算術，不再把 height 設回 auto。
+            const perColumnHeight = Math.max(
+                Math.ceil(totalContentHeight / columnCount * 1.3),
+                tallestGroupHeight + 20 // 留一點緩衝，避免壓線裁切
+            );
+            fieldsWrap.style.height = (neededColumns > maxColumnsByWidth
+                ? perColumnHeight
+                : Math.max(availableHeight, perColumnHeight)) + 'px';
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
             panel.style.maxWidth = 'calc(100vw - 40px)';
             panel.style.overflowX = 'auto';
