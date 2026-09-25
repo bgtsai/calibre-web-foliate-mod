@@ -1070,7 +1070,13 @@
             // [cwfm] 內容區塊補回左/右/下的 padding（上面已經被標題列自己
             // 的 padding 取代，這裡不用再補一次上）。設定面板的欄位區塊
             // 跟目錄面板的章節清單/空白提示，各自都要補。
-            '.cwfm-fields-wrap { column-gap: 24px; padding: 0 18px 18px 18px; }',
+            // [cwfm] column-fill 改成 auto——CSS 多欄排版預設(balance)
+            // 會試圖讓每一欄的高度盡量平均，遇到高度不一的區塊(indivisible，
+            // 因為 break-inside:avoid)時，反而會為了「平衡」而讓矮的
+            // 區塊自己獨佔一欄，不會疊到另一個矮區塊底下——這正是「明明
+            // 排得下卻被迫換行」的原因。改成 auto：依序把內容緊密塞滿
+            // 當前欄，塞不下才換下一欄，矮的區塊會自然疊起來。
+            '.cwfm-fields-wrap { column-gap: 24px; padding: 0 18px 18px 18px; column-fill: auto; }',
             '.cwfm-toc-view { padding: 0 18px 18px 18px; }',
             '.cwfm-empty-hint { padding: 0 18px 18px 18px; }',
             // [cwfm] 分組卡片：把性質相同的欄位包在一起，用「陰影模擬
@@ -4370,20 +4376,45 @@
             () => addRangeField(t('field_top_bottom_padding'), 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px'),
             () => addRangeField(t('field_target_content_height'), 'targetContentHeightPx', 50, Math.max(50, Math.floor(rendererRect.height)), 1, 'px')
         );
+        // [cwfm] 欄數、欄間距這兩個設定值本質上是一組的(間距只有欄數
+        // 大於 1 才有意義)，用跟配色/模式切換同一個 cwfm-color-input-group
+        // 邊框樣式把兩個欄位圈在一起，視覺上看得出來它們是一組。
+        const columnGroupWrap = document.createElement('div');
+        columnGroupWrap.className = 'cwfm-color-input-group';
+        columnGroupWrap.style.padding = '8px';
         const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
-        addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
+        const columnGapSlider = addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
+        const columnGroupField = columnSlider.closest('.cwfm-field');
+        const columnGapField = columnGapSlider.closest('.cwfm-field');
+        columnGroupWrap.appendChild(columnGroupField);
+        columnGroupWrap.appendChild(columnGapField);
+        panelTarget.appendChild(columnGroupWrap);
         // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
         // 數字輸入框都停用），不是只有文字說明——使用者要求「捲動模式
         // 只接受 1 欄，這個欄位就不該讓人調」，切換翻頁模式的當下同步
         // 更新鎖定狀態，一開啟面板也要照目前的 flow 狀態先正確初始化。
         const columnValueInput = columnSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
+        const columnGapValueInput = columnGapSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         function updateColumnFieldLock() {
             const locked = flowSelect.value === 'scrolled';
             columnSlider.disabled = locked;
             columnValueInput.disabled = locked;
+            updateColumnGapLock();
         }
+        // [cwfm] 只有 1 欄時，欄間距這個設定值天生沒有作用(欄跟欄之間
+        // 這件事本身就不存在)——比照「目前沒有作用的控制項該真停用」
+        // 的規矩，欄數等於 1 的時候把間距滑桿鎖住。捲動模式下欄數本身
+        // 就被鎖定成 1，間距同樣要跟著鎖住。
+        function updateColumnGapLock() {
+            const locked = flowSelect.value === 'scrolled' || parseInt(columnSlider.value, 10) <= 1;
+            columnGapSlider.disabled = locked;
+            columnGapValueInput.disabled = locked;
+        }
+        columnSlider.addEventListener('input', updateColumnGapLock);
+        columnValueInput.addEventListener('change', updateColumnGapLock);
         flowSelect.addEventListener('change', updateColumnFieldLock);
         updateColumnFieldLock();
+        updateColumnGapLock();
 
         // [cwfm] 捲動模式下，「垂直模式」的「內容優先」不只是沒作用，是
         // 概念上就不該存在(查證過：foliate-js 的 scrolled() 函式對一般
@@ -4495,7 +4526,7 @@
             // 被切掉。補上寬度上限：算出扣掉左右安全間距後，畫面最多
             // 放得下幾欄，欄數增加不能超過這個上限，超過就改成讓面板
             // 自己垂直捲動，不再繼續橫向撐寬。
-            const maxColumnsByWidth = Math.max(1, Math.floor((window.innerWidth - 40) / COLUMN_WIDTH));
+            const maxColumnsByWidth = Math.max(1, Math.floor((window.innerWidth - 100) / COLUMN_WIDTH));
             let columnCount = 1;
             fieldsWrap.style.columnCount = '1';
             fieldsWrap.style.width = COLUMN_WIDTH + 'px';
