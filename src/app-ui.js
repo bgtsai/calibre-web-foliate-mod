@@ -1399,13 +1399,11 @@
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
-            // [cwfm] 拿掉寫死的 width:32px——aspect-ratio 只有在某一邊
-            // 維持 auto 時才有作用，寬度跟高度同時被寫死/撐開的話，
-            // aspect-ratio 完全沒有可以調整的空間，等於形同虛設(之前
-            // 那次改動就是踩到這個問題，色塊變成瘦高的長方形，不是
-            // 正方形)。改成 width:auto，讓它真正跟著 align-items:stretch
-            // 撐開的高度換算出對應的正方形寬度。
-            '  width: auto; aspect-ratio: 1; border-radius: 4px;',
+            // [cwfm] 改用 JS 量測後直接設定寬度(見 addColorField 裡
+            // swatchBtn.style.width 那行)取代 aspect-ratio——實測發現
+            // aspect-ratio 在這個版面裡沒有正確生效，這裡不再依賴它，
+            // 寬度交給 JS 用真實 offsetHeight 精準設定。
+            '  border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
             // [cwfm] 色塊旁邊的數值輸入——不用點開取色器彈窗，直接在這裡
@@ -3984,6 +3982,14 @@
             row.appendChild(controlWrap);
             field.appendChild(row);
             panelTarget.appendChild(field);
+            // [cwfm] 色塊改成正方形——原本用 CSS 的 aspect-ratio 讓寬度
+            // 自動跟著 align-items:stretch 撐開的高度走，實測發現在這個
+            // 版面裡沒有正確生效(推演跟實際不一致，這是純 CSS 視覺
+            // 呈現，我們這邊沒辦法實際看畫面驗證，容易推演錯)。改成
+            // 插入到真實 DOM 之後，直接量測 offsetHeight(瀏覽器排版
+            // 完成後的真實高度，不是推算出來的)，把這個數字設成寬度，
+            // 保證跟實際畫面一致。
+            swatchBtn.style.width = swatchBtn.offsetHeight + 'px';
             return swatchBtn;
         }
 
