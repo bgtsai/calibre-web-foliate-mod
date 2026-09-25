@@ -206,6 +206,13 @@
             dlg_reload_msg: '語言設定已儲存，要立即重新整理頁面套用新語言嗎？',
             btn_reload_now: '立即重新整理',
             hint_drag_handle: '拖動移動位置',
+            mode_margin_priority: '留白優先',
+            mode_content_priority: '內容優先',
+            field_horizontal_mode: '水平模式',
+            field_vertical_mode: '垂直模式',
+            field_target_content_width: '內容寬度',
+            field_target_content_height: '內容高度',
+            field_column_gap: '兩欄之間的間距',
         },
         en: {
             group_theme: 'Theme',
@@ -407,6 +414,13 @@
             dlg_reload_msg: 'Language setting saved. Reload the page now to apply the change?',
             btn_reload_now: 'Reload Now',
             hint_drag_handle: 'Drag to move',
+            mode_margin_priority: 'Margin Priority',
+            mode_content_priority: 'Content Priority',
+            field_horizontal_mode: 'Horizontal Mode',
+            field_vertical_mode: 'Vertical Mode',
+            field_target_content_width: 'Content Width',
+            field_target_content_height: 'Content Height',
+            field_column_gap: 'Gap Between Columns',
         },
     };
 
@@ -1690,6 +1704,19 @@
         flow: 'paginated',
         topBottomPadding: 48,  // px，對應 renderer 的 margin 屬性
         leftRightPadding: 24,  // px，對應 renderer 的 gap 屬性（換算成百分比）
+        // [cwfm] 留白優先／內容優先——水平、垂直各自獨立的模式切換。
+        // 'margin'(留白優先，預設，維持原本行為)：使用者設定留白 px
+        // 值，內容區 = 可視範圍 − 留白 × 2。'content'(內容優先)：使用者
+        // 改設定「想要的內容寬/高度」，留白自動吃掉剩下的空間，讓內容
+        // 區在全螢幕/一般模式下維持同樣大小。
+        horizontalSizeMode: 'margin',
+        verticalSizeMode: 'margin',
+        targetContentWidthPx: 700,
+        targetContentHeightPx: 500,
+        // [cwfm] 欄間距——「兩欄之間的間距」，完全獨立、不受留白優先／
+        // 內容優先影響。使用者設定的是「每一條欄縫的寬度」，總共要留的
+        // 間距空間 = 這個值 × (欄數 − 1)，1 欄時天生是 0。
+        columnGapPx: 24,
         maxColumnCount: 2,
         localAutoRemember: true,   // 功能一：本機自動記憶開關
         autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
@@ -2504,43 +2531,52 @@
     }
     view.addEventListener('relocate', updateScrollbarWidthVar);
 
-    function applyHorizontalPadding(desiredPx, columnCount) {
+    // [cwfm] gap 補償公式——反推 paginator.js 原始碼裡那段會把數值放大
+    // 的反向公式（輸出間距 = -x/(x-1) × size），算出「餵什麼百分比進去，
+    // 最後吐出來的間距剛好等於我們真正想要的數字」。純代數反推：
+    //   想要的間距 = -x/(x-1) × size
+    //   解 x：x = 想要的間距 / (想要的間距 + size)
+    // desiredGapPx 是「總共想要的間距空間」（已經乘過欄數-1，不是單一
+    // 欄縫的寬度），size 是渲染器目前的寬度/高度。desiredGapPx <= 0 時
+    // 直接回傳 0%，不用跑公式（1 欄或使用者把間距設 0 的情況）。
+    function computeCompensatedGapPercent(desiredGapPx, size) {
+        if (desiredGapPx <= 0 || size <= 0) return 0;
+        const x = desiredGapPx / (desiredGapPx + size);
+        return x * 100;
+    }
+
+    function applyHorizontalPadding(settings, columnCount) {
         dlog(t('log_hpad_start') + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalWidth = rect.width || 1;
+        const cols = Math.max(1, columnCount || 1);
 
-        // [cwfm] 查證 paginator.js 原始碼確認：gap 屬性在捲動模式下，會
-        // 經過一段專門給「欄與欄之間距離」設計的反向補償公式（gap = -g/(g-1)*size），
-        // 這段公式在 g 偏大時會把數值放大好幾倍，捲動模式的 scrolled()
-        // 函式又把算出來的結果直接當成文件左右兩側的內距用——兩者疊在
-        // 一起，會算出遠超過可視寬度的內距，把可用文字空間擠壓到接近 0，
-        // 導致文字被迫一行一個字，就是這次排版嚴重損壞的根因。
-        //
-        // 而且這個內距本身是多餘的：下面 max-inline-size 這個數字是用單純
-        // 減法算的（totalWidth - desiredPx*2），沒有經過那段補償公式，
-        // 搭配 scrolled() 內部本來就有的 body { max-width; margin:auto }
-        // 置中機制，捲動模式下使用者設定的左右留白早就靠 max-inline-size
-        // 正確生效了，gap 算出來的內距是重複、而且有問題的第二層。
-        //
-        // 修法：捲動模式下 gap 固定設成 0%，不能只是不呼叫 setAttribute
-        // 跳過——切換模式前殘留的舊 gap 值還在，不明確蓋成安全值，沿用
-        // 舊數字一樣會出問題。分頁模式維持原本的算法不變（這段公式對
-        // 分頁模式的欄距是正確、已驗證過的用法，问题只在捲動模式）。
-        //
-        // 已知缺口：直式書寫（vertical=true）的書籍，scrolled() 對應的是
-        // padding 上下（不是左右），理論上同一個公式缺陷也會發生，只是
-        // 方向不同——這次沒有一併處理，日後遇到直式書籍可能會重現同類
-        // 問題。
-        if (view.renderer.getAttribute('flow') === 'scrolled') {
-            view.renderer.setAttribute('gap', '0%');
+        // [cwfm] gap 現在完全獨立，用使用者自己設定的 columnGapPx（單一
+        // 欄縫的寬度）× (欄數-1) 算出「總共要留的欄間距空間」，套用上面
+        // 驗證過的補償公式，不管幾欄、不管留白優先或內容優先，都不受
+        // 影響——只有欄數本身才會改變這個值。1 欄時 (cols-1)=0，總間距
+        // 空間天生就是 0，補償公式也會正確回傳 0%，不用另外特別判斷。
+        const totalGapSpace = (settings.columnGapPx || 0) * (cols - 1);
+        const gapPercent = computeCompensatedGapPercent(totalGapSpace, totalWidth);
+        view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
+
+        // [cwfm] 留白優先／內容優先——決定 effectiveMarginPx 這個「實際
+        // 套用的左右留白」怎麼算。留白優先：使用者設的就是留白本身，
+        // 照舊。內容優先：使用者設的是「想要的內容寬度」，留白反過來
+        // 用減法推回去，讓內容寬度不管可視範圍多大都維持不變。
+        let effectiveMarginPx;
+        let maxInlineSizePx;
+        if (settings.horizontalSizeMode === 'content') {
+            const targetWidth = Math.max(50, settings.targetContentWidthPx || 700);
+            effectiveMarginPx = Math.max(0, (totalWidth - targetWidth * cols) / 2);
+            maxInlineSizePx = Math.round(targetWidth);
         } else {
-            const gapPercent = (desiredPx * 2 / totalWidth) * 100;
-            view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
+            effectiveMarginPx = settings.leftRightPadding;
+            const contentWidth = Math.max(100, totalWidth - effectiveMarginPx * 2);
+            maxInlineSizePx = Math.round(contentWidth / cols);
         }
 
-        const contentWidth = Math.max(100, totalWidth - desiredPx * 2);
-        const maxInlineSizePx = Math.round(contentWidth / (columnCount || 1));
-        dlog('[cwfm:node] applyHorizontalPadding() desiredPx=' + desiredPx + ' columnCount=' + columnCount + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx);
+        dlog('[cwfm:node] applyHorizontalPadding() mode=' + settings.horizontalSizeMode + ' effectiveMarginPx=' + effectiveMarginPx + ' columnCount=' + cols + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx + ' gapPercent=' + gapPercent.toFixed(3));
         view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
         dlog(t('log_hpad_end') + performance.now().toFixed(1));
     }
@@ -2557,14 +2593,23 @@
     //   最早期 margin=0 時上下真的變成 0（0 是唯一合法的無單位長度）。
     // 注意第 720 行有段 JS 會用 parseFloat 把這個變數讀回去做欄寬計算，
     // parseFloat('120px') 與 parseFloat('120') 結果相同，加上 px 不影響它。
-    function applyVerticalPadding(desiredPx) {
+    function applyVerticalPadding(settings) {
         dlog(t('log_vpad_start') + performance.now().toFixed(1));
         const rect = view.renderer.getBoundingClientRect();
         const totalHeight = rect.height || 1;
-        view.renderer.setAttribute('margin', desiredPx + 'px');
-        const contentHeight = Math.max(100, totalHeight - desiredPx * 2);
-        const maxBlockSizePx = Math.round(contentHeight);
-        dlog('[cwfm:node] applyVerticalPadding() desiredPx=' + desiredPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
+        let effectiveMarginPx;
+        let maxBlockSizePx;
+        if (settings.verticalSizeMode === 'content') {
+            const targetHeight = Math.max(50, settings.targetContentHeightPx || 500);
+            effectiveMarginPx = Math.max(0, (totalHeight - targetHeight) / 2);
+            maxBlockSizePx = Math.round(targetHeight);
+        } else {
+            effectiveMarginPx = settings.topBottomPadding;
+            const contentHeight = Math.max(100, totalHeight - effectiveMarginPx * 2);
+            maxBlockSizePx = Math.round(contentHeight);
+        }
+        view.renderer.setAttribute('margin', effectiveMarginPx + 'px');
+        dlog('[cwfm:node] applyVerticalPadding() mode=' + settings.verticalSizeMode + ' effectiveMarginPx=' + effectiveMarginPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
         view.renderer.setAttribute('max-block-size', maxBlockSizePx + 'px');
         view.renderer.render();
         dlog(t('log_vpad_end') + performance.now().toFixed(1));
@@ -2949,8 +2994,8 @@
             // 強制鎖定覆蓋掉。
             const effectiveColumnCount = settings.flow === 'scrolled' ? 1 : settings.maxColumnCount;
             view.renderer.setAttribute('max-column-count', effectiveColumnCount);
-            applyVerticalPadding(settings.topBottomPadding);
-            applyHorizontalPadding(settings.leftRightPadding, effectiveColumnCount);
+            applyVerticalPadding(settings);
+            applyHorizontalPadding(settings, effectiveColumnCount);
             // [cwfm] flow 剛設定完，捲軸有沒有可能跟著換了，重新量測一次
             // ——這次改成直接從內部容器量測，不再需要傳 flow 判斷。
             updateScrollbarWidthVar();
@@ -3004,7 +3049,7 @@
             dlog(t('log_resize_exec') + resizeExecCount + ' t=' + performance.now().toFixed(1));
             if (window.__cwfm.settings) {
                 try {
-                    applyVerticalPadding(window.__cwfm.settings.topBottomPadding);
+                    applyVerticalPadding(window.__cwfm.settings);
                     // [cwfm] 比照 applySettings() 裡的做法：捲動模式下欄數
                     // 要強制當成 1，不能直接傳原始 maxColumnCount——這裡
                     // 原本漏掉這層轉換，縮放視窗時，捲動模式底下的最大
@@ -3012,7 +3057,7 @@
                     // 算出比實際應有寬度更窄的數字。
                     const resizeEffectiveColumnCount = window.__cwfm.settings.flow === 'scrolled'
                         ? 1 : window.__cwfm.settings.maxColumnCount;
-                    applyHorizontalPadding(window.__cwfm.settings.leftRightPadding, resizeEffectiveColumnCount);
+                    applyHorizontalPadding(window.__cwfm.settings, resizeEffectiveColumnCount);
                     updateScrollbarWidthVar();
                     updateDivider(window.__cwfm.settings);
                 } catch (e) { console.error(t('err_resize_padding'), e); }
@@ -4229,8 +4274,32 @@
         const rendererRect = view.renderer.getBoundingClientRect();
         const maxTopBottomPadding = Math.max(20, Math.floor(rendererRect.height / 2));
         const maxLeftRightPadding = Math.max(20, Math.floor(rendererRect.width / 2));
+        // [cwfm] 留白優先／內容優先——水平、垂直各自獨立的模式選擇。
+        // 這裡先用下拉選單（已經證實穩定的 addSelectField），不是分頁
+        // 切換式的 UI——原本討論的方向是比照取色器那套 HEX/RGB/HSV
+        // 分頁樣式做「切換顯示/隱藏對應欄位」，但這需要額外的顯示切換
+        // 邏輯，這次時間上沒有把握做到完全驗證過，選擇保守做法：兩種
+        // 模式的欄位都直接顯示、不做動態隱藏，避免又introduce一個沒
+        // 驗證過的互動邏輯出包。面板會因此多幾個欄位，但都是已經證實
+        // 穩定的 addRangeField/addSelectField，不冒新的風險。
+        addSelectField(t('field_horizontal_mode'), 'horizontalSizeMode', [
+            ['margin', t('mode_margin_priority')],
+            ['content', t('mode_content_priority')],
+        ]);
+        addSelectField(t('field_vertical_mode'), 'verticalSizeMode', [
+            ['margin', t('mode_margin_priority')],
+            ['content', t('mode_content_priority')],
+        ]);
         addRangeField(t('field_top_bottom_padding'), 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
         addRangeField(t('field_left_right_padding'), 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
+        // [cwfm] 留白優先／內容優先——內容優先模式下，目標內容寬/高度的
+        // 上限，用目前 renderer 尺寸算一次（跟上面 maxTopBottomPadding／
+        // maxLeftRightPadding 同一個層級的做法，都是面板打開當下算一次，
+        // 不是即時跟著縮放視窗變動——真正即時反應上限這件事還沒做，
+        // 這裡先做到跟既有欄位一致的程度）。
+        addRangeField(t('field_target_content_width'), 'targetContentWidthPx', 50, Math.max(50, Math.floor(rendererRect.width)), 1, 'px');
+        addRangeField(t('field_target_content_height'), 'targetContentHeightPx', 50, Math.max(50, Math.floor(rendererRect.height)), 1, 'px');
+        addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
         // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
         // 數字輸入框都停用），不是只有文字說明——使用者要求「捲動模式
