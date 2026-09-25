@@ -4489,15 +4489,30 @@
             const availableHeight = window.innerHeight - 88 - headerHeight - 36; // 36 是面板自己的上下 padding
             const COLUMN_WIDTH = 300;
             const SAFETY_MAX_COLUMNS = 8;
+            // [cwfm] 原本這個迴圈只檢查高度夠不夠放，完全沒檢查欄數增加
+            // 之後總寬度會不會超出瀏覽器可視範圍——內容變高時，迴圈會
+            // 一直加欄數想辦法把高度塞下，加到最後面板比視窗還寬，右邊
+            // 被切掉。補上寬度上限：算出扣掉左右安全間距後，畫面最多
+            // 放得下幾欄，欄數增加不能超過這個上限，超過就改成讓面板
+            // 自己垂直捲動，不再繼續橫向撐寬。
+            const maxColumnsByWidth = Math.max(1, Math.floor((window.innerWidth - 40) / COLUMN_WIDTH));
             let columnCount = 1;
             fieldsWrap.style.columnCount = '1';
             fieldsWrap.style.width = COLUMN_WIDTH + 'px';
-            while (fieldsWrap.scrollHeight > availableHeight && columnCount < SAFETY_MAX_COLUMNS) {
+            while (fieldsWrap.scrollHeight > availableHeight
+                   && columnCount < SAFETY_MAX_COLUMNS
+                   && columnCount < maxColumnsByWidth) {
                 columnCount += 1;
                 fieldsWrap.style.columnCount = String(columnCount);
                 fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
             }
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
+            // [cwfm] 寬度已經到上限、高度還是塞不下的情況，讓面板本身
+            // 垂直捲動，不再繼續加欄數（加了也會被畫面裁切，看不到）。
+            if (fieldsWrap.scrollHeight > availableHeight) {
+                panel.style.maxHeight = (availableHeight + headerHeight + 36) + 'px';
+                panel.style.overflowY = 'auto';
+            }
         } catch (e) {
             console.error(t('err_auto_layout'), e);
         }
