@@ -1414,7 +1414,7 @@
             '.cwfm-color-row label { padding-top: 0; }',
             '.cwfm-color-control-wrap { display: flex; align-items: flex-start; gap: 8px; }',
             '.cwfm-color-input-group {',
-            '  display: flex; flex-direction: column;',
+            '  display: flex; flex-direction: column; flex: 1;',
             '  border: 1px solid var(--cwfm-border-light); border-radius: 4px; overflow: hidden;',
             '}',
             '.cwfm-color-mode-tabs { display: flex; background: var(--cwfm-border-light); }',
@@ -1516,7 +1516,7 @@
             '  width:100%; box-sizing:border-box; padding:5px 8px; font-size:11px;',
             '  border:1px solid var(--cwfm-border-light); border-radius:6px; outline:none;',
             '  font-family:"Courier New",monospace; background:var(--cwfm-surface-elevated); color:var(--cwfm-text);',
-            '  text-align:center;',
+            '  text-align:right;',
             '}',
             '.cwfm-cp .cp-summary:focus { border-color:var(--cwfm-accent); }',
             // [cwfm] 輸入格式辨識不出來時，短暫閃一下紅框，讓使用者知道
@@ -4296,6 +4296,13 @@
             label.textContent = axisLabel;
             wrap.appendChild(label);
 
+            // [cwfm] 用跟配色那邊(cwfm-color-input-group)同一個 class 把
+            // 分頁按鈕跟它要調整的內容圈在同一個邊框裡——直接沿用現成
+            // 的邊框樣式，讓使用者一眼看出這個 tab 的作用範圍是哪裡，
+            // 不重新設計一套新樣式。
+            const group = document.createElement('div');
+            group.className = 'cwfm-color-input-group';
+
             const tabs = document.createElement('div');
             tabs.className = 'cwfm-color-mode-tabs';
             const marginTab = document.createElement('button');
@@ -4308,10 +4315,12 @@
             contentTab.textContent = t('mode_content_priority');
             tabs.appendChild(marginTab);
             tabs.appendChild(contentTab);
-            wrap.appendChild(tabs);
+            group.appendChild(tabs);
 
             const area = document.createElement('div');
-            wrap.appendChild(area);
+            area.style.padding = '8px';
+            group.appendChild(area);
+            wrap.appendChild(group);
             panelTarget.appendChild(wrap);
 
             const marginSlider = buildMarginField();
@@ -4361,8 +4370,8 @@
             () => addRangeField(t('field_top_bottom_padding'), 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px'),
             () => addRangeField(t('field_target_content_height'), 'targetContentHeightPx', 50, Math.max(50, Math.floor(rendererRect.height)), 1, 'px')
         );
-        addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
+        addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
         // 數字輸入框都停用），不是只有文字說明——使用者要求「捲動模式
         // 只接受 1 欄，這個欄位就不該讓人調」，切換翻頁模式的當下同步
