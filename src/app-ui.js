@@ -2562,14 +2562,18 @@
 
         // [cwfm] 留白優先／內容優先——決定 effectiveMarginPx 這個「實際
         // 套用的左右留白」怎麼算。留白優先：使用者設的就是留白本身，
-        // 照舊。內容優先：使用者設的是「想要的內容寬度」，留白反過來
-        // 用減法推回去，讓內容寬度不管可視範圍多大都維持不變。
+        // 照舊。內容優先：使用者設的是「整個內容區塊的總寬度」（扣掉
+        // 左右留白之後、螢幕上那一整塊，不是每一欄各自的寬度）——不管
+        // 分幾欄，都要一起塞進這個固定的總寬度裡面，用這個總寬度反推
+        // 留白，再把這個總寬度扣掉欄間距空間後平分給每一欄，才是真正
+        // 餵給 paginator.js 的每欄寬度。
         let effectiveMarginPx;
         let maxInlineSizePx;
         if (settings.horizontalSizeMode === 'content') {
-            const targetWidth = Math.max(50, settings.targetContentWidthPx || 700);
-            effectiveMarginPx = Math.max(0, (totalWidth - targetWidth * cols) / 2);
-            maxInlineSizePx = Math.round(targetWidth);
+            const targetTotalContentWidth = Math.max(50, settings.targetContentWidthPx || 700);
+            effectiveMarginPx = Math.max(0, (totalWidth - targetTotalContentWidth) / 2);
+            const perColumnWidth = Math.max(50, (targetTotalContentWidth - totalGapSpace) / cols);
+            maxInlineSizePx = Math.round(perColumnWidth);
         } else {
             effectiveMarginPx = settings.leftRightPadding;
             const contentWidth = Math.max(100, totalWidth - effectiveMarginPx * 2);
