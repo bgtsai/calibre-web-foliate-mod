@@ -1426,6 +1426,9 @@
             '.cwfm-color-mode-tab:last-child { border-right: none; }',
             '.cwfm-color-mode-tab:hover { color: var(--cwfm-text); }',
             '.cwfm-color-mode-tab.active { background: var(--cwfm-accent-bg); color: var(--cwfm-text); }',
+            // [cwfm] 原本沒有為這個分頁按鈕定義過停用樣式——捲動模式下
+            // 鎖住「內容優先」分頁時用，比照其他控制項統一的停用視覺。
+            '.cwfm-color-mode-tab:disabled { opacity: 0.4; cursor: not-allowed; }',
             '.cwfm-color-value-input {',
             '  border: none; background: var(--cwfm-surface-elevated); color: var(--cwfm-text);',
             '  padding: 5px 8px; font-size: 12px; width: 100%; box-sizing: border-box;',
@@ -4278,31 +4281,86 @@
         const rendererRect = view.renderer.getBoundingClientRect();
         const maxTopBottomPadding = Math.max(20, Math.floor(rendererRect.height / 2));
         const maxLeftRightPadding = Math.max(20, Math.floor(rendererRect.width / 2));
-        // [cwfm] 留白優先／內容優先——水平、垂直各自獨立的模式選擇。
-        // 這裡先用下拉選單（已經證實穩定的 addSelectField），不是分頁
-        // 切換式的 UI——原本討論的方向是比照取色器那套 HEX/RGB/HSV
-        // 分頁樣式做「切換顯示/隱藏對應欄位」，但這需要額外的顯示切換
-        // 邏輯，這次時間上沒有把握做到完全驗證過，選擇保守做法：兩種
-        // 模式的欄位都直接顯示、不做動態隱藏，避免又introduce一個沒
-        // 驗證過的互動邏輯出包。面板會因此多幾個欄位，但都是已經證實
-        // 穩定的 addRangeField/addSelectField，不冒新的風險。
-        addSelectField(t('field_horizontal_mode'), 'horizontalSizeMode', [
-            ['margin', t('mode_margin_priority')],
-            ['content', t('mode_content_priority')],
-        ]);
-        addSelectField(t('field_vertical_mode'), 'verticalSizeMode', [
-            ['margin', t('mode_margin_priority')],
-            ['content', t('mode_content_priority')],
-        ]);
-        addRangeField(t('field_top_bottom_padding'), 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px');
-        addRangeField(t('field_left_right_padding'), 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px');
+        // [cwfm] 留白優先／內容優先——比照取色器 HEX/RGB/HSV 那套分頁
+        // 切換樣式（.cwfm-color-mode-tabs/.cwfm-color-mode-tab，現成、
+        // 已經證實穩定，直接沿用不重新設計）。水平、垂直各自一組，
+        // 分頁本身就是模式選擇，不需要另外的下拉選單。切換分頁時，
+        // 對應的滑桿顯示、另一個隱藏；兩個滑桿都用原本已驗證過的
+        // addRangeField() 建立，只是建立後從 panelTarget 搬進自己的
+        // 容器裡（DOM 元素本來就只能存在一個地方，appendChild 會
+        // 直接搬移，不是複製，不用另外重寫一套滑桿邏輯）。
+        function addSizeModeSwitcher(axisLabel, modeKey, buildMarginField, buildContentField) {
+            const wrap = document.createElement('div');
+            wrap.className = 'cwfm-field';
+            const label = document.createElement('label');
+            label.textContent = axisLabel;
+            wrap.appendChild(label);
+
+            const tabs = document.createElement('div');
+            tabs.className = 'cwfm-color-mode-tabs';
+            const marginTab = document.createElement('button');
+            marginTab.type = 'button';
+            marginTab.className = 'cwfm-color-mode-tab';
+            marginTab.textContent = t('mode_margin_priority');
+            const contentTab = document.createElement('button');
+            contentTab.type = 'button';
+            contentTab.className = 'cwfm-color-mode-tab';
+            contentTab.textContent = t('mode_content_priority');
+            tabs.appendChild(marginTab);
+            tabs.appendChild(contentTab);
+            wrap.appendChild(tabs);
+
+            const area = document.createElement('div');
+            wrap.appendChild(area);
+            panelTarget.appendChild(wrap);
+
+            const marginSlider = buildMarginField();
+            const marginFieldWrap = marginSlider.closest('.cwfm-field');
+            const contentSlider = buildContentField();
+            const contentFieldWrap = contentSlider.closest('.cwfm-field');
+            area.appendChild(marginFieldWrap);
+            area.appendChild(contentFieldWrap);
+
+            function updateTabs() {
+                const isContent = settings[modeKey] === 'content';
+                marginTab.classList.toggle('active', !isContent);
+                contentTab.classList.toggle('active', isContent);
+                marginFieldWrap.style.display = isContent ? 'none' : '';
+                contentFieldWrap.style.display = isContent ? '' : 'none';
+            }
+            marginTab.addEventListener('click', () => {
+                if (settings[modeKey] === 'margin') return;
+                settings[modeKey] = 'margin';
+                saveSettings(settings);
+                applySettings(settings);
+                updateTabs();
+            });
+            contentTab.addEventListener('click', () => {
+                if (settings[modeKey] === 'content') return;
+                settings[modeKey] = 'content';
+                saveSettings(settings);
+                applySettings(settings);
+                updateTabs();
+            });
+            updateTabs();
+            return { marginTab, contentTab, marginFieldWrap, contentFieldWrap, marginSlider, contentSlider };
+        }
+
         // [cwfm] 留白優先／內容優先——內容優先模式下，目標內容寬/高度的
         // 上限，用目前 renderer 尺寸算一次（跟上面 maxTopBottomPadding／
         // maxLeftRightPadding 同一個層級的做法，都是面板打開當下算一次，
         // 不是即時跟著縮放視窗變動——真正即時反應上限這件事還沒做，
         // 這裡先做到跟既有欄位一致的程度）。
-        addRangeField(t('field_target_content_width'), 'targetContentWidthPx', 50, Math.max(50, Math.floor(rendererRect.width)), 1, 'px');
-        addRangeField(t('field_target_content_height'), 'targetContentHeightPx', 50, Math.max(50, Math.floor(rendererRect.height)), 1, 'px');
+        const horizontalSwitcher = addSizeModeSwitcher(
+            t('field_horizontal_mode'), 'horizontalSizeMode',
+            () => addRangeField(t('field_left_right_padding'), 'leftRightPadding', 0, maxLeftRightPadding, 1, 'px'),
+            () => addRangeField(t('field_target_content_width'), 'targetContentWidthPx', 50, Math.max(50, Math.floor(rendererRect.width)), 1, 'px')
+        );
+        const verticalSwitcher = addSizeModeSwitcher(
+            t('field_vertical_mode'), 'verticalSizeMode',
+            () => addRangeField(t('field_top_bottom_padding'), 'topBottomPadding', 0, maxTopBottomPadding, 1, 'px'),
+            () => addRangeField(t('field_target_content_height'), 'targetContentHeightPx', 50, Math.max(50, Math.floor(rendererRect.height)), 1, 'px')
+        );
         addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
         // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
@@ -4317,6 +4375,23 @@
         }
         flowSelect.addEventListener('change', updateColumnFieldLock);
         updateColumnFieldLock();
+
+        // [cwfm] 捲動模式下，「垂直模式」的「內容優先」不只是沒作用，是
+        // 概念上就不該存在(查證過：foliate-js 的 scrolled() 函式對一般
+        // 書籍把文件高度設成 auto，不設上限，捲動模式的核心就是不該有
+        // 「限制可視高度」這件事)——這個分頁本身要鎖住、不能切換進去，
+        // 如果原本就在內容優先，切到捲動模式要自動切回留白優先。留白
+        // 優先(topBottomPadding，單純的上下留白)不受影響，繼續可調，
+        // 只有「內容優先」這個概念本身被鎖住。
+        function updateVerticalModeLock() {
+            const scrolledMode = flowSelect.value === 'scrolled';
+            verticalSwitcher.contentTab.disabled = scrolledMode;
+            if (scrolledMode && settings.verticalSizeMode === 'content') {
+                verticalSwitcher.marginTab.click();
+            }
+        }
+        flowSelect.addEventListener('change', updateVerticalModeLock);
+        updateVerticalModeLock();
 
         beginGroup(t('group_keybindings'));
         addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, settings.pagingKeys.next);
