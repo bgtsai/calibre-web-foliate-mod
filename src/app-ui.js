@@ -3982,14 +3982,11 @@
             row.appendChild(controlWrap);
             field.appendChild(row);
             panelTarget.appendChild(field);
-            // [cwfm] 色塊改成正方形——原本用 CSS 的 aspect-ratio 讓寬度
-            // 自動跟著 align-items:stretch 撐開的高度走，實測發現在這個
-            // 版面裡沒有正確生效(推演跟實際不一致，這是純 CSS 視覺
-            // 呈現，我們這邊沒辦法實際看畫面驗證，容易推演錯)。改成
-            // 插入到真實 DOM 之後，直接量測 offsetHeight(瀏覽器排版
-            // 完成後的真實高度，不是推算出來的)，把這個數字設成寬度，
-            // 保證跟實際畫面一致。
-            swatchBtn.style.width = swatchBtn.offsetHeight + 'px';
+            // [cwfm] 色塊寬度的量測，搬到 applyPanelAutoLayout() 欄寬
+            // 真正排定之後才做(見該函式最後面)——這裡原本插入 DOM 後
+            // 就立刻量測，但這個時間點面板整體欄寬還沒真正排定，旁邊
+            // HEX/RGB/HSV 那組元件的高度還是暫時狀態，量到的數字後來
+            // 對不上最終畫面(使用者截圖回報過色塊變形)。
             return swatchBtn;
         }
 
@@ -4620,6 +4617,15 @@
                     panel.style.maxHeight = '';
                     panel.style.overflowY = '';
                 }
+                // [cwfm] 色塊寬度在這裡才重新量測——欄寬到這裡已經真正
+                // 排定，色塊旁邊 HEX/RGB/HSV 那組元件的高度已經是最終
+                // 畫面會呈現的樣子，這時候量到的數字才準確。這個函式
+                // 本身會在每次真正需要重新排版時被呼叫(建立當下、全
+                // 螢幕切換)，色塊寬度也會跟著同步更新，不會卡在過期
+                // 的舊數字。
+                fieldsWrap.querySelectorAll('.cwfm-color-swatch-btn').forEach((swatchBtn) => {
+                    swatchBtn.style.width = swatchBtn.offsetHeight + 'px';
+                });
             } catch (e) {
                 console.error(t('err_auto_layout'), e);
             }
