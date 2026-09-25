@@ -4563,38 +4563,32 @@
             // 真正、乾淨的高度，不會受多欄樣式影響。
             const tallestGroupHeight = Array.from(fieldsWrap.children)
                 .reduce((max, el) => Math.max(max, el.offsetHeight), 0);
-            const neededColumns = Math.max(1, Math.ceil(totalContentHeight / availableHeight));
-            const columnCount = Math.min(neededColumns, maxColumnsByWidth);
-            fieldsWrap.style.columnCount = String(columnCount);
-            fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-            // [cwfm] 找到真正的 bug 了——當「內容真正需要的欄數」比
-            // 「畫面寬度塞得下的欄數上限」還多、欄數被 Math.min() 夾到
-            // 上限時，這裡如果還是把高度硬釘死在 availableHeight，多出來
-            // 裝不下的內容會直接消失（欄數、高度雙重鎖死，內容沒有地方
-            // 可以去），不是被裁切、是真的不會顯示，這才是使用者回報
-            // 「有些設定完全不見了」的根因。
-            //
-            // 每一欄的高度上限，用「總高度÷欄數×1.3(溫和緩衝)」跟「面板
-            // 裡最高的單一分組高度(數學下限，因為分組本身不能被切開，
-            // 任何一欄都不可能比它自己裝的最高分組還矮)」兩者取較大值。
-            // 這樣「欄數×每欄高度上限」保證大於等於總內容高度、也保證
-            // 沒有任何分組會因為自己太高被擠出去——純數學算出來的結果，
-            // 不需要再實際重新量測一次。
-            //
-            // 上一輪曾經在這裡「重新量測」修正估算值，做法是先把高度
-            // 設回 auto 再量 scrollHeight——但這正好重現了我們更早之前
-            // 查出來、也修過的同一個 bug：column-fill:auto 沒有明確高度
-            // 時，瀏覽器不知道何時該換欄，所有內容會全部塞進第一欄，
-            // 量到的數字其實是「全部內容擠在單欄」的高度，不是「目前
-            // 這個欄數配置」真正需要的高度，會造成排版又跳回單欄。這次
-            // 全程只做算術，不再把 height 設回 auto。
-            const perColumnHeight = Math.max(
+            // [cwfm] 找到上一版還漏算的一步：安全係數(1.3倍)把某一欄
+            // 撐得比可視範圍還高時，程式直接讓面板捲動，卻沒有先檢查
+            // 「畫面右邊還有沒有空間可以多開一欄」——多開一欄能讓每欄
+            // 分攤的內容變少、進而讓高度降下來，理論上更常見的情況下
+            // 根本不需要捲動。改成迴圈：從「內容大致需要幾欄」開始試，
+            // 只要算出來的欄高還超出可視範圍、而且畫面寬度還有餘裕可以
+            // 再加一欄，就加一欄重新算，直到高度塞得下、或欄數已經到
+            // 畫面寬度真正的上限為止(這時候才是真的需要捲動)。
+            let columnCount = Math.max(1, Math.min(
+                Math.ceil(totalContentHeight / availableHeight),
+                maxColumnsByWidth
+            ));
+            let perColumnHeight = Math.max(
                 Math.ceil(totalContentHeight / columnCount * 1.3),
                 tallestGroupHeight + 20 // 留一點緩衝，避免壓線裁切
             );
-            fieldsWrap.style.height = (neededColumns > maxColumnsByWidth
-                ? perColumnHeight
-                : Math.max(availableHeight, perColumnHeight)) + 'px';
+            while (perColumnHeight > availableHeight && columnCount < maxColumnsByWidth) {
+                columnCount += 1;
+                perColumnHeight = Math.max(
+                    Math.ceil(totalContentHeight / columnCount * 1.3),
+                    tallestGroupHeight + 20
+                );
+            }
+            fieldsWrap.style.columnCount = String(columnCount);
+            fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
+            fieldsWrap.style.height = Math.max(availableHeight, perColumnHeight) + 'px';
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
             panel.style.maxWidth = 'calc(100vw - 40px)';
             panel.style.overflowX = 'auto';
