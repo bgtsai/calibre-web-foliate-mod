@@ -4559,10 +4559,22 @@
             const columnCount = Math.min(neededColumns, maxColumnsByWidth);
             fieldsWrap.style.columnCount = String(columnCount);
             fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-            // [cwfm] 高度給滿可用空間（不是無限高)，column-fill:auto
-            // 才有依據知道何時換欄，內容自然依序流入、填滿，矮的區塊
-            // 會依序疊起來。
-            fieldsWrap.style.height = availableHeight + 'px';
+            // [cwfm] 找到真正的 bug 了——當「內容真正需要的欄數」比
+            // 「畫面寬度塞得下的欄數上限」還多、欄數被 Math.min() 夾到
+            // 上限時，這裡如果還是把高度硬釘死在 availableHeight，多出來
+            // 裝不下的內容會直接消失（欄數、高度雙重鎖死，內容沒有地方
+            // 可以去），不是被裁切、是真的不會顯示，這才是使用者回報
+            // 「有些設定完全不見了」的根因。修法：欄數被上限夾住的情況
+            // 下，高度改成用「這麼多欄實際需要的高度」（用比例反推），
+            // 保證所有內容都裝得下，再讓面板自己垂直捲動，不再刻意鎖死
+            // 成 availableHeight。只有欄數沒被夾住(真的用需要的欄數)時，
+            // 才用 availableHeight 撐滿可用空間。
+            if (neededColumns > maxColumnsByWidth) {
+                const requiredHeight = Math.ceil(totalContentHeight / columnCount) + 40; // 留一點緩衝，避免壓線裁切
+                fieldsWrap.style.height = requiredHeight + 'px';
+            } else {
+                fieldsWrap.style.height = availableHeight + 'px';
+            }
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
             panel.style.maxWidth = 'calc(100vw - 40px)';
             panel.style.overflowX = 'auto';
