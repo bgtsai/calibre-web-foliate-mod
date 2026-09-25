@@ -4575,6 +4575,22 @@
             } else {
                 fieldsWrap.style.height = availableHeight + 'px';
             }
+            // [cwfm] 最後一道保險——上面不管哪個分支算出來的高度，都是
+            // 用「總高度除以欄數」這種平均值去估計，CSS 多欄排版遇到
+            // 「不能切開的區塊」(break-inside:avoid，每個分組整個都是
+            // 這樣)、且各區塊大小差異大時，實際分配到每一欄的內容不會
+            // 剛好平均，簡單平均值的估計可能不夠，導致某些內容還是會
+            // 被擠到裝不下、直接消失。這裡設定完之後，再直接量一次
+            // fieldsWrap 目前「真正」需要的完整高度(暫時放寬高度限制
+            // 量出來)，如果比剛才設定的高度還高，代表估計不夠、有東西
+            // 会被擠掉，直接把高度撐大到量出來的真實需求，用實際量測
+            // 結果校正，不是只信估算公式。
+            {
+                const setHeight = parseFloat(fieldsWrap.style.height);
+                fieldsWrap.style.height = 'auto';
+                const actualNeededHeight = fieldsWrap.scrollHeight;
+                fieldsWrap.style.height = Math.max(setHeight, actualNeededHeight + 20) + 'px';
+            }
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
             panel.style.maxWidth = 'calc(100vw - 40px)';
             panel.style.overflowX = 'auto';
