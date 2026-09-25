@@ -1399,10 +1399,12 @@
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
-            // [cwfm] 原本 48×28px，長方形，比面板裡其他控制項(大約
-            // 28~32px 高的方塊)明顯寬、比例不協調——改成正方形，跟其他
-            // 控制項的視覺節奏一致。
-            '  width: 32px; height: 32px; border-radius: 4px;',
+            // [cwfm] 拿掉寫死的 height:32px，改用 align-items:stretch
+            // (見下面 .cwfm-color-control-wrap) 讓色塊撐滿跟旁邊 HEX/RGB/
+            // HSV 分頁+數值輸入框疊起來的整體高度，aspect-ratio:1 讓
+            // 寬度自動跟著撐開後的高度走，維持正方形比例，不用另外算
+            // 寫死的寬度數字。
+            '  width: 32px; aspect-ratio: 1; border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
             // [cwfm] 色塊旁邊的數值輸入——不用點開取色器彈窗，直接在這裡
@@ -1426,7 +1428,7 @@
             '  gap: 6px; margin-bottom: 20px;',
             '}',
             '.cwfm-color-row label { padding-top: 0; }',
-            '.cwfm-color-control-wrap { display: flex; align-items: flex-start; gap: 8px; }',
+            '.cwfm-color-control-wrap { display: flex; align-items: stretch; gap: 8px; }',
             '.cwfm-color-input-group {',
             '  display: flex; flex-direction: column; flex: 1;',
             '  border: 1px solid var(--cwfm-border-light); border-radius: 4px; overflow: hidden;',
@@ -1446,7 +1448,7 @@
             '.cwfm-color-value-input {',
             '  border: none; background: var(--cwfm-surface-elevated); color: var(--cwfm-text);',
             '  padding: 5px 8px; font-size: 12px; width: 100%; box-sizing: border-box;',
-            '  font-family: "Courier New", monospace; outline: none;',
+            '  font-family: "Courier New", monospace; outline: none; text-align: center;',
             '}',
             // [cwfm] 聚焦高亮只框輸入框本身，不含上面的分頁選項列——原本
             // 用 :focus-within 放在最外層，連分頁列都被框住，範圍抓太大。
@@ -4541,14 +4543,25 @@
             const availableHeight = window.innerHeight - headerHeight - 36; // 36 是面板自己的上下 padding
             const COLUMN_WIDTH = 300;
             const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
-            const columnCount = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
-            fieldsWrap.style.columnCount = String(columnCount);
+            const maxColumnsByWidth = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
+            // [cwfm] 先量「全部內容擠在單一欄、不限高度時」實際需要多高，
+            // 才能算出「真正需要幾欄才裝得下」，不是「畫面最多塞得下
+            // 幾欄」就直接全部用上——之前的做法只看寬度能塞幾欄，內容
+            // 明明用不到那麼多欄，還是會硬生生撐出一整欄空的，使用者
+            // 已經回報過這個問題。改成兩階段：先量需要幾欄，再拿「需要
+            // 的欄數」跟「畫面塞得下的欄數上限」取比較小的那個。
+            fieldsWrap.style.columnCount = '1';
             fieldsWrap.style.columnFill = 'auto';
+            fieldsWrap.style.width = COLUMN_WIDTH + 'px';
+            fieldsWrap.style.height = 'auto';
+            const totalContentHeight = fieldsWrap.scrollHeight;
+            const neededColumns = Math.max(1, Math.ceil(totalContentHeight / availableHeight));
+            const columnCount = Math.min(neededColumns, maxColumnsByWidth);
+            fieldsWrap.style.columnCount = String(columnCount);
             fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-            // [cwfm] 高度直接給滿可用空間，不是量出內容多高才反推——
-            // column-fill:auto 需要一個明確高度才知道何時換欄，這裡
-            // 直接給「畫面允許的最大高度」，內容自然依序流入、填滿，
-            // 矮的區塊會依序疊起來，不會像之前那樣一個區塊佔一整欄。
+            // [cwfm] 高度給滿可用空間（不是無限高)，column-fill:auto
+            // 才有依據知道何時換欄，內容自然依序流入、填滿，矮的區塊
+            // 會依序疊起來。
             fieldsWrap.style.height = availableHeight + 'px';
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
             panel.style.maxWidth = 'calc(100vw - 40px)';
