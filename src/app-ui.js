@@ -214,6 +214,12 @@
             field_target_content_height: '內容高度',
             field_column_gap: '兩欄之間的間距',
             field_column_control_title: '欄位控制',
+            err_apply_cursor: '[cwfm] 套用自訂游標失敗',
+            group_cursor: '游標控制',
+            field_cursor_override_enabled: '控制/更改原始系統游標',
+            field_cursor_arrow_color: '箭頭游標顏色',
+            field_cursor_hand_color: '手型游標顏色',
+            mode_auto: 'Auto',
         },
         en: {
             group_theme: 'Theme',
@@ -423,6 +429,12 @@
             field_target_content_height: 'Content Height',
             field_column_gap: 'Gap Between Columns',
             field_column_control_title: 'Column Control',
+            err_apply_cursor: '[cwfm] Failed to apply custom cursor',
+            group_cursor: 'Cursor Control',
+            field_cursor_override_enabled: 'Override System Cursor',
+            field_cursor_arrow_color: 'Arrow Cursor Color',
+            field_cursor_hand_color: 'Hand Cursor Color',
+            mode_auto: 'Auto',
         },
     };
 
@@ -474,6 +486,81 @@
     // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
     function t(key) {
         return T[key] !== undefined ? T[key] : key;
+    }
+
+    // [cwfm] 游標 Auto 模式的內部參數——把文字色跟背景色之間切成幾份、
+    // 取第幾份(0起算)。預設 5 份、取正中央那份(index 2，對應 40%~60%
+    // 那個區間的中心點，換算出來剛好是文字色跟背景色正中間 50% 的
+    // 顏色)。使用者要求先寫死在程式碼裡、不開放介面調整，之後靠實測
+    // 微調這兩個數字。
+    const CWFM_CURSOR_AUTO_SEGMENTS = 5;
+    const CWFM_CURSOR_AUTO_SEGMENT_INDEX = Math.floor(CWFM_CURSOR_AUTO_SEGMENTS / 2);
+
+    // [cwfm] 算游標 Auto 模式該用的顏色——取該區間的中心點，不是區間
+    // 下緣，這樣「正中央那份」才會精準對應文字色跟背景色之間正好的
+    // 中點，不是偏向背景色那一端。
+    function cwfmComputeAutoCursorColor(textHex, bgHex) {
+        const t2 = cwfmHexToRgb(textHex);
+        const b2 = cwfmHexToRgb(bgHex);
+        const fraction = (CWFM_CURSOR_AUTO_SEGMENT_INDEX + 0.5) / CWFM_CURSOR_AUTO_SEGMENTS;
+        const r = b2.r + (t2.r - b2.r) * fraction;
+        const g = b2.g + (t2.g - b2.g) * fraction;
+        const bl = b2.b + (t2.b - b2.b) * fraction;
+        return cwfmRgbToHex(Math.round(r), Math.round(g), Math.round(bl));
+    }
+
+    // [cwfm] 游標形狀的 SVG——自己構建的簡單幾何圖形(標準箭頭、手型)，
+    // 不是複製特定圖示庫的圖案，外觀盡量貼近系統原生游標，但不可能
+    // 做到 100% 一致(不同作業系統原生游標長相本來就不一樣)。顏色是
+    // 參數，每次套用時動態填色，不是寫死的圖片。fill 用參數顏色、
+    // stroke 固定用白色細邊，確保在各種背景色底下都看得出輪廓，不會
+    // 「顏色跟背景融在一起、整個看不到游標」。轉成 data URI 後餵給
+    // CSS 的 cursor 屬性。
+    function cwfmBuildCursorSvgDataUri(shape, color) {
+        const encodedColor = encodeURIComponent(color);
+        let svg;
+        if (shape === 'arrow') {
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
+                + `<path fill="${encodedColor}" stroke="white" stroke-width="1.2" stroke-linejoin="round" `
+                + `d="M4 2 L4 19 L8.5 15.2 L11.3 21.5 L14 20.2 L11.2 14 L17 13.5 Z"/></svg>`;
+        } else {
+            // hand/pointer：簡化的手型輪廓（食指伸出、其餘手指收攏的
+            // 常見手型游標剪影），不是精細描摹，只求形狀上一眼認得出
+            // 是手型游標。
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
+                + `<path fill="${encodedColor}" stroke="white" stroke-width="1" stroke-linejoin="round" `
+                + `d="M9 3.5c-.8 0-1.5.7-1.5 1.5v7.6l-1.6-1.4c-.7-.6-1.7-.5-2.2.2-.5.6-.4 1.5.2 2.1l4.6 4.3c.7.6 1.6 1 2.5 1h4c2 0 3.5-1.6 3.5-3.5V9.5c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v-1c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v-1c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5V5c0-.8-.7-1.5-1.5-1.5z"/></svg>`;
+        }
+        return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+    }
+
+    // [cwfm] 套用自訂游標——總開關關閉時，完全不注入任何游標樣式，
+    // 維持系統原生游標。開啟時，箭頭跟手型各自依照設定的模式(手動
+    // 指定顏色，或 auto 自動算)組出對應顏色，轉成 SVG data URI 套用。
+    // cursor 語法一定要寫退回值(auto/pointer)，圖片萬一有問題，瀏覽器
+    // 才會正確退回原生游標，不會整個游標樣式失效。
+    let cwfmCursorStyleEl = null;
+    function cwfmApplyCursorOverride(settings) {
+        if (!cwfmCursorStyleEl) {
+            cwfmCursorStyleEl = document.createElement('style');
+            cwfmCursorStyleEl.id = 'cwfm-cursor-override-style';
+            document.head.appendChild(cwfmCursorStyleEl);
+        }
+        if (!settings.cursorOverrideEnabled) {
+            cwfmCursorStyleEl.textContent = '';
+            return;
+        }
+        const arrowColor = settings.cursorArrowMode === 'auto'
+            ? cwfmComputeAutoCursorColor(settings.customTextColor, settings.customBackgroundColor)
+            : settings.cursorArrowColor;
+        const handColor = settings.cursorHandMode === 'auto'
+            ? cwfmComputeAutoCursorColor(settings.customTextColor, settings.customBackgroundColor)
+            : settings.cursorHandColor;
+        const arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
+        const handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
+        cwfmCursorStyleEl.textContent =
+            `#viewer, #viewer * { cursor: url("${arrowUri}") 2 2, auto !important; }\n`
+            + `.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 8 2, pointer !important; }`;
     }
 
     function gmSet(key, value) {
@@ -1406,6 +1493,7 @@
             '  border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
+            '.cwfm-color-swatch-btn:disabled { opacity: 0.4; cursor: not-allowed; }',
             // [cwfm] 色塊旁邊的數值輸入——不用點開取色器彈窗，直接在這裡
             // 打數值就能改顏色。三欄式：文字說明 → 色塊 → 第三欄再分
             // 上下兩層（上面 HEX/RGB/HSV 三選一分頁、下面對應格式的
@@ -1735,6 +1823,17 @@
         // 內容優先影響。使用者設定的是「每一條欄縫的寬度」，總共要留的
         // 間距空間 = 這個值 × (欄數 − 1)，1 欄時天生是 0。
         columnGapPx: 24,
+        // [cwfm] 游標顏色控制——箭頭、手型分開設定，各自的模式可以是
+        // 'hex'/'rgb'/'hsv'(手動指定顏色)或 'auto'(依文字色跟背景色
+        // 自動算出來，見 CWFM_CURSOR_AUTO_SEGMENTS 那個內部參數)。
+        // cursorOverrideEnabled 是總開關，關閉時完全不套用自訂游標、
+        // 維持系統原生游標，比照「優先套用書籍原始文字樣式」同一套
+        // 開關模式。
+        cursorOverrideEnabled: false,
+        cursorArrowMode: 'auto',
+        cursorArrowColor: '#000000',
+        cursorHandMode: 'auto',
+        cursorHandColor: '#000000',
         maxColumnCount: 2,
         localAutoRemember: true,   // 功能一：本機自動記憶開關
         autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
@@ -2996,6 +3095,7 @@
     function applySettings(settings) {
         cwfmUpdatePanelScheme(settings);
         try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error(t('err_tapzone_apply'), e); }
+        try { cwfmApplyCursorOverride(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error(t('err_apply_font_style'), e); }
@@ -4108,9 +4208,72 @@
                 },
             };
         })();
+        const preferOriginalCheckbox = addCheckboxField(t('field_prefer_original_text_color'), 'preferOriginalTextColor');
         const textColorSwatchBtn = addColorField(t('field_color_text'), 'customTextColor');
         const bgColorSwatchBtn = addColorField(t('field_color_bg'), 'customBackgroundColor');
-        addCheckboxField(t('field_prefer_original_text_color'), 'preferOriginalTextColor');
+        // [cwfm] 「優先套用書籍原始文字樣式」開啟時，自訂文字顏色這整個
+        // 區塊就沒有作用了(書籍自己的顏色會蓋過這裡的設定)——比照面板
+        // 裡其他「目前沒有作用的控制項該真停用」的做法，不只是視覺
+        // 提示。移到自訂文字顏色上方，開關本身也移到這裡，方便一起
+        // 處理停用邏輯。
+        const textColorFieldWrap = textColorSwatchBtn.closest('.cwfm-field');
+        const textColorValueInput = textColorFieldWrap.querySelector('.cwfm-color-value-input');
+        function updatePreferOriginalLock() {
+            const locked = preferOriginalCheckbox.checked;
+            textColorSwatchBtn.disabled = locked;
+            if (textColorValueInput) textColorValueInput.disabled = locked;
+        }
+        preferOriginalCheckbox.addEventListener('change', updatePreferOriginalLock);
+        updatePreferOriginalLock();
+
+        // [cwfm] 游標控制——套用/停用系統游標覆蓋的總開關，比照「優先
+        // 套用書籍原始文字樣式」同一套模式。箭頭、手型各自一個顏色
+        // 欄位，用現成的 addColorField 顯示手動指定的顏色；「Auto」
+        // 做成獨立開關而不是塞進 HEX/RGB/HSV 那組分頁——開啟時直接
+        // 停用底下的手動欄位(套用已經證實過的真停用模式)，不用深度
+        // 改造分頁系統的內部邏輯，風險低很多。
+        beginGroup(t('group_cursor'));
+        const cursorOverrideCheckbox = addCheckboxField(t('field_cursor_override_enabled'), 'cursorOverrideEnabled');
+        const cursorArrowAutoCheckbox = addCheckboxField(t('mode_auto') + ' (' + t('field_cursor_arrow_color') + ')', '__cursorArrowAutoPlaceholder__');
+        const cursorArrowSwatch = addColorField(t('field_cursor_arrow_color'), 'cursorArrowColor');
+        const cursorHandAutoCheckbox = addCheckboxField(t('mode_auto') + ' (' + t('field_cursor_hand_color') + ')', '__cursorHandAutoPlaceholder__');
+        const cursorHandSwatch = addColorField(t('field_cursor_hand_color'), 'cursorHandColor');
+        // [cwfm] 上面兩個「Auto」checkbox 故意傳一個不存在於 settings 裡
+        // 的假 key（addCheckboxField 會自動幫忙讀/存這個 key 對應的值，
+        // 但這裡的勾選狀態要對應到 cursorArrowMode/cursorHandMode 是不是
+        // 等於 'auto'，不是單純一個布林值，不能直接用現成的自動讀寫，
+        // 手動接上 change 事件、手動同步初始狀態。
+        cursorArrowAutoCheckbox.checked = settings.cursorArrowMode === 'auto';
+        cursorHandAutoCheckbox.checked = settings.cursorHandMode === 'auto';
+        function updateCursorFieldLocks() {
+            const overrideOff = !cursorOverrideCheckbox.checked;
+            const arrowAuto = cursorArrowAutoCheckbox.checked;
+            const handAuto = cursorHandAutoCheckbox.checked;
+            cursorArrowAutoCheckbox.disabled = overrideOff;
+            cursorHandAutoCheckbox.disabled = overrideOff;
+            const arrowLocked = overrideOff || arrowAuto;
+            const handLocked = overrideOff || handAuto;
+            cursorArrowSwatch.disabled = arrowLocked;
+            cursorHandSwatch.disabled = handLocked;
+            const arrowValueInput = cursorArrowSwatch.closest('.cwfm-field').querySelector('.cwfm-color-value-input');
+            const handValueInput = cursorHandSwatch.closest('.cwfm-field').querySelector('.cwfm-color-value-input');
+            if (arrowValueInput) arrowValueInput.disabled = arrowLocked;
+            if (handValueInput) handValueInput.disabled = handLocked;
+        }
+        cursorOverrideCheckbox.addEventListener('change', updateCursorFieldLocks);
+        cursorArrowAutoCheckbox.addEventListener('change', () => {
+            settings.cursorArrowMode = cursorArrowAutoCheckbox.checked ? 'auto' : 'hex';
+            saveSettings(settings);
+            applySettings(settings);
+            updateCursorFieldLocks();
+        });
+        cursorHandAutoCheckbox.addEventListener('change', () => {
+            settings.cursorHandMode = cursorHandAutoCheckbox.checked ? 'auto' : 'hex';
+            saveSettings(settings);
+            applySettings(settings);
+            updateCursorFieldLocks();
+        });
+        updateCursorFieldLocks();
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
         // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
