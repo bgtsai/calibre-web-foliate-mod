@@ -24,7 +24,7 @@
             field_flow: '\u7ffb\u9801\u6a21\u5f0f\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\uff0c\u9583\u9801\u5feb\u901f\u9375\u4e0d\u6703\u89f8\u767c\u7ffb\u9801\uff0c\u9581\u5b9a\u53ea\u6709 1 \u6b04\uff09',
             field_top_bottom_padding: '\u4e0a\u4e0b\u7559\u767d',
             field_left_right_padding: '\u5de6\u53f3\u7559\u767d',
-            field_max_column_count: '\u6700\u5927\u6b04\u6578\uff08\u6372\u52d5\u6a21\u5f0f\u4e0b\u5f37\u5236\u9396\u5b9a\u70ba 1 \u6b04\uff0c\u9019\u88e1\u7684\u8a2d\u5b9a\u6703\u7121\u6cd5\u8abf\u6574\uff09',
+            field_max_column_count: '\u6700\u5927\u6b04\u6578',
             field_precise_anchor_align: '\u7ffb\u9801\u7cbe\u6e96\u5b9a\u4f4d\uff1a\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede',
             field_local_auto_remember: '\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09',
             field_auto_sync_enabled: '\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09',
@@ -213,6 +213,7 @@
             field_target_content_width: '內容寬度',
             field_target_content_height: '內容高度',
             field_column_gap: '兩欄之間的間距',
+            field_column_control_title: '欄位控制',
         },
         en: {
             group_theme: 'Theme',
@@ -232,7 +233,7 @@
             field_flow: 'Page Flow (in scroll mode, page-turn shortcuts do not trigger paging; locked to 1 column)',
             field_top_bottom_padding: 'Top/Bottom Margin',
             field_left_right_padding: 'Left/Right Margin',
-            field_max_column_count: 'Max Columns (locked to 1 in scroll mode; this setting becomes unadjustable)',
+            field_max_column_count: 'Max Columns',
             field_precise_anchor_align: 'Precise Page Alignment: try to precisely align the anchor point on resize/restore',
             field_local_auto_remember: 'Remember reading progress locally (saved instantly on this browser; won\'t sync across devices)',
             field_auto_sync_enabled: 'Auto-sync to server after idle (requires a CSRF-token request; readable across devices)',
@@ -421,6 +422,7 @@
             field_target_content_width: 'Content Width',
             field_target_content_height: 'Content Height',
             field_column_gap: 'Gap Between Columns',
+            field_column_control_title: 'Column Control',
         },
     };
 
@@ -4384,10 +4386,17 @@
         );
         // [cwfm] 欄數、欄間距這兩個設定值本質上是一組的(間距只有欄數
         // 大於 1 才有意義)，用跟配色/模式切換同一個 cwfm-color-input-group
-        // 邊框樣式把兩個欄位圈在一起，視覺上看得出來它們是一組。
+        // 邊框樣式把兩個欄位圈在一起，視覺上看得出來它們是一組。加一個
+        // 小標題在框的上面——這個框前面緊接著垂直模式那組框，沒有標題
+        // 的話兩個框貼在一起不好分辨，跟前面「水平模式」「垂直模式」
+        // 那種有標題的做法一致。
+        const columnGroupTitle = document.createElement('label');
+        columnGroupTitle.textContent = t('field_column_control_title');
+        panelTarget.appendChild(columnGroupTitle);
         const columnGroupWrap = document.createElement('div');
         columnGroupWrap.className = 'cwfm-color-input-group';
         columnGroupWrap.style.padding = '8px';
+        columnGroupWrap.style.marginBottom = '14px';
         const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
         const columnGapSlider = addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnGroupField = columnSlider.closest('.cwfm-field');
@@ -4524,7 +4533,12 @@
         // 畫面空間。
         try {
             const headerHeight = header.getBoundingClientRect().height;
-            const availableHeight = window.innerHeight - 88 - headerHeight - 36; // 36 是面板自己的上下 padding
+            // [cwfm] 不再預留 88px 給工具列——面板本身的 z-index 已經比
+            // 工具列高(1000000 > 999999)，CSS 也已經是 top:0;bottom:0
+            // 貼滿全螢幕，之前這裡刻意扣掉 88px 反而讓面板故意縮小、
+            // 底下留一塊完全沒用到的空間。面板直接蓋過工具列，充分利用
+            // 整個畫面高度。
+            const availableHeight = window.innerHeight - headerHeight - 36; // 36 是面板自己的上下 padding
             const COLUMN_WIDTH = 300;
             const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
             const columnCount = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
