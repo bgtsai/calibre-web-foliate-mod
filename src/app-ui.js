@@ -1414,7 +1414,13 @@
             // 線上。兩組顏色欄位(文字顏色/背景顏色)之間也加大一點垂直
             // 間距，不要黏在一起。
             '.cwfm-panel .cwfm-color-row {',
-            '  flex-direction: column; align-items: flex-start; justify-content: flex-start;',
+            // [cwfm] align-items 改成 stretch(或直接不寫，flex 預設值
+            // 就是 stretch)——原本用 flex-start，明確告訴子元素「不要
+            // 撐滿寬度、照自己內容大小顯示就好」，導致底下 .cwfm-color-
+            // control-wrap（連同它裡面 .cwfm-color-input-group 的
+            // flex:1）完全沒有機會撐滿，因為外層容器自己就沒有把可用
+            // 寬度讓出來。這才是配色區塊右側一直缺一塊的真正原因。
+            '  flex-direction: column; align-items: stretch; justify-content: flex-start;',
             '  gap: 6px; margin-bottom: 20px;',
             '}',
             '.cwfm-color-row label { padding-top: 0; }',
@@ -1522,7 +1528,7 @@
             '  width:100%; box-sizing:border-box; padding:5px 8px; font-size:11px;',
             '  border:1px solid var(--cwfm-border-light); border-radius:6px; outline:none;',
             '  font-family:"Courier New",monospace; background:var(--cwfm-surface-elevated); color:var(--cwfm-text);',
-            '  text-align:right;',
+            '  text-align:center;',
             '}',
             '.cwfm-cp .cp-summary:focus { border-color:var(--cwfm-accent); }',
             // [cwfm] 輸入格式辨識不出來時，短暫閃一下紅框，讓使用者知道
@@ -4509,46 +4515,33 @@
 
         document.body.appendChild(panel);
 
-        // [cwfm] 依可用高度自動決定欄數：用 CSS column-count 讓內容自然依序
-        // 流入多欄，不用自己手動分配每個欄位該放哪些項目。套用在
-        // fieldsWrap（不含標題列）上，標題列永遠維持橫跨整個面板寬度。
-        // 迴圈不設欄數上限，量到「當下這個欄數配置」實際排出來的高度，
-        // 還是超過可用高度就再加一欄，直到放得下為止（設一個防呆用的
-        // 安全上限，避免極端情況下無限迴圈，不是刻意設計的欄數上限）。
+        // [cwfm] 改用依可用寬度直接算欄數，取代之前「用高度反推欄數」
+        // 那套已經連續兩輪猜錯、修不好的做法——不再靠 column-fill:auto
+        // 搭配一個算出來的高度去猜測換欄邊界，直接：量出畫面實際可用
+        // 寬度，算出最多能並排幾欄 300px 寬的欄位，一次設定好，讓內容
+        // 自然依序流入這些欄位、填滿整個可用高度，不用迴圈猜、不用
+        // 反覆量測。面板本身撐到可用高度（不再故意縮小），充分利用
+        // 畫面空間。
         try {
             const headerHeight = header.getBoundingClientRect().height;
             const availableHeight = window.innerHeight - 88 - headerHeight - 36; // 36 是面板自己的上下 padding
             const COLUMN_WIDTH = 300;
-            const SAFETY_MAX_COLUMNS = 8;
-            let columnCount = 1;
-            fieldsWrap.style.columnCount = '1';
-            fieldsWrap.style.width = COLUMN_WIDTH + 'px';
-            // [cwfm] column-fill:auto 需要容器本身有明確高度，瀏覽器才
-            // 知道「這一欄裝滿了、該換下一欄」——原本完全沒設高度，靠
-            // 內容自然撐開，auto 模式沒有邊界可以依循，結果變成全部
-            // 內容塞進第一欄、無限往下長，column-count 設定完全失效，
-            // 這才是使用者回報「全螢幕還是卡在一欄」的真正根因（不是
-            // 上一輪以為的寬度上限判斷，那個判斷雖然本身也有 bug，但
-            // 拿掉後問題依然存在，就是因為這裡才是根本原因）。補上這個
-            // 高度，auto 模式才有依據可以正確換欄。
+            const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
+            const columnCount = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
+            fieldsWrap.style.columnCount = String(columnCount);
+            fieldsWrap.style.columnFill = 'auto';
+            fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
+            // [cwfm] 高度直接給滿可用空間，不是量出內容多高才反推——
+            // column-fill:auto 需要一個明確高度才知道何時換欄，這裡
+            // 直接給「畫面允許的最大高度」，內容自然依序流入、填滿，
+            // 矮的區塊會依序疊起來，不會像之前那樣一個區塊佔一整欄。
             fieldsWrap.style.height = availableHeight + 'px';
-            while (fieldsWrap.scrollHeight > availableHeight && columnCount < SAFETY_MAX_COLUMNS) {
-                columnCount += 1;
-                fieldsWrap.style.columnCount = String(columnCount);
-                fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-            }
             panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
-            // [cwfm] 上一輪在這個迴圈裡加了一個「欄數不能超過依寬度算出
-            // 的上限」的判斷，結果那段判斷本身有問題——如果那個上限算出
-            // 來剛好是 1，迴圈條件「欄數(1) < 上限(1)」從一開始就是假，
-            // 迴圈整個不會執行，欄數永遠卡死在 1，不管螢幕多寬、高度多
-            // 不夠都一樣，這才是使用者回報「全螢幕都還是只有一欄」的
-            // 真正原因，已經拿掉。改成不動 JS 的欄數計算邏輯（它原本能
-            // 正常跑出多欄，問題只在「跑出來的寬度可能超出畫面」)，改用
-            // CSS 幫面板的最終呈現寬度設一個絕對不會超出瀏覽器可視範圍
-            // 的上限，兩件事分開處理，不會互相干擾。
             panel.style.maxWidth = 'calc(100vw - 40px)';
             panel.style.overflowX = 'auto';
+            // [cwfm] 內容真的比算出來的可用高度還多(欄數已經到上限、還是
+            // 塞不下)時，才讓面板本身垂直捲動；正常情況下面板高度就是
+            // 撐滿可用高度，不會刻意縮小。
             if (fieldsWrap.scrollHeight > availableHeight) {
                 panel.style.maxHeight = (availableHeight + headerHeight + 36) + 'px';
                 panel.style.overflowY = 'auto';
