@@ -1399,12 +1399,13 @@
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
-            // [cwfm] 拿掉寫死的 height:32px，改用 align-items:stretch
-            // (見下面 .cwfm-color-control-wrap) 讓色塊撐滿跟旁邊 HEX/RGB/
-            // HSV 分頁+數值輸入框疊起來的整體高度，aspect-ratio:1 讓
-            // 寬度自動跟著撐開後的高度走，維持正方形比例，不用另外算
-            // 寫死的寬度數字。
-            '  width: 32px; aspect-ratio: 1; border-radius: 4px;',
+            // [cwfm] 拿掉寫死的 width:32px——aspect-ratio 只有在某一邊
+            // 維持 auto 時才有作用，寬度跟高度同時被寫死/撐開的話，
+            // aspect-ratio 完全沒有可以調整的空間，等於形同虛設(之前
+            // 那次改動就是踩到這個問題，色塊變成瘦高的長方形，不是
+            // 正方形)。改成 width:auto，讓它真正跟著 align-items:stretch
+            // 撐開的高度換算出對應的正方形寬度。
+            '  width: auto; aspect-ratio: 1; border-radius: 4px;',
             '  border: 1px solid var(--cwfm-border-light); cursor: pointer;',
             '}',
             // [cwfm] 色塊旁邊的數值輸入——不用點開取色器彈窗，直接在這裡
@@ -4533,75 +4534,92 @@
         // 自然依序流入這些欄位、填滿整個可用高度，不用迴圈猜、不用
         // 反覆量測。面板本身撐到可用高度（不再故意縮小），充分利用
         // 畫面空間。
-        try {
-            const headerHeight = header.getBoundingClientRect().height;
-            // [cwfm] 不再預留 88px 給工具列——面板本身的 z-index 已經比
-            // 工具列高(1000000 > 999999)，CSS 也已經是 top:0;bottom:0
-            // 貼滿全螢幕，之前這裡刻意扣掉 88px 反而讓面板故意縮小、
-            // 底下留一塊完全沒用到的空間。面板直接蓋過工具列，充分利用
-            // 整個畫面高度。
-            const availableHeight = window.innerHeight - headerHeight - 36; // 36 是面板自己的上下 padding
-            const COLUMN_WIDTH = 300;
-            const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
-            const maxColumnsByWidth = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
-            // [cwfm] 先量「全部內容擠在單一欄、不限高度時」實際需要多高，
-            // 才能算出「真正需要幾欄才裝得下」，不是「畫面最多塞得下
-            // 幾欄」就直接全部用上——之前的做法只看寬度能塞幾欄，內容
-            // 明明用不到那麼多欄，還是會硬生生撐出一整欄空的，使用者
-            // 已經回報過這個問題。改成兩階段：先量需要幾欄，再拿「需要
-            // 的欄數」跟「畫面塞得下的欄數上限」取比較小的那個。
-            fieldsWrap.style.columnCount = '1';
-            fieldsWrap.style.columnFill = 'auto';
-            fieldsWrap.style.width = COLUMN_WIDTH + 'px';
-            fieldsWrap.style.height = 'auto';
-            const totalContentHeight = fieldsWrap.scrollHeight;
-            // [cwfm] 量每個分組(.cwfm-group，fieldsWrap 的直接子元素)
-            // 自己的高度，取最大值——這是「每一欄高度上限」的數學下限：
-            // 不管怎麼分欄，都不可能有一欄比它自己裝的最高分組還矮
-            // (每個分組本身 break-inside:avoid，不能被切開)。這個時間點
-            // 量測，是因為現在還是單欄、高度 auto，量到的是每個分組
-            // 真正、乾淨的高度，不會受多欄樣式影響。
-            const tallestGroupHeight = Array.from(fieldsWrap.children)
-                .reduce((max, el) => Math.max(max, el.offsetHeight), 0);
-            // [cwfm] 找到上一版還漏算的一步：安全係數(1.3倍)把某一欄
-            // 撐得比可視範圍還高時，程式直接讓面板捲動，卻沒有先檢查
-            // 「畫面右邊還有沒有空間可以多開一欄」——多開一欄能讓每欄
-            // 分攤的內容變少、進而讓高度降下來，理論上更常見的情況下
-            // 根本不需要捲動。改成迴圈：從「內容大致需要幾欄」開始試，
-            // 只要算出來的欄高還超出可視範圍、而且畫面寬度還有餘裕可以
-            // 再加一欄，就加一欄重新算，直到高度塞得下、或欄數已經到
-            // 畫面寬度真正的上限為止(這時候才是真的需要捲動)。
-            let columnCount = Math.max(1, Math.min(
-                Math.ceil(totalContentHeight / availableHeight),
-                maxColumnsByWidth
-            ));
-            let perColumnHeight = Math.max(
-                Math.ceil(totalContentHeight / columnCount * 1.3),
-                tallestGroupHeight + 20 // 留一點緩衝，避免壓線裁切
-            );
-            while (perColumnHeight > availableHeight && columnCount < maxColumnsByWidth) {
-                columnCount += 1;
-                perColumnHeight = Math.max(
+        //
+        // [cwfm] 包成獨立、可重複呼叫的函式——原本只在面板建立當下跑
+        // 一次，切換全螢幕/一般模式時視窗尺寸變了，卻不會重新計算，
+        // 面板高度卡在第一次打開時的舊數字，導致切到全螢幕後底下露出
+        // 一段沒用到的空間。掛在 panel 元素自己身上，讓不同作用域的
+        // fullscreenchange 監聽器也能呼叫到，不用額外傳遞參數或共用
+        // 變數。
+        function applyPanelAutoLayout() {
+            try {
+                const headerHeight = header.getBoundingClientRect().height;
+                // [cwfm] 不再預留 88px 給工具列——面板本身的 z-index 已經比
+                // 工具列高(1000000 > 999999)，CSS 也已經是 top:0;bottom:0
+                // 貼滿全螢幕，之前這裡刻意扣掉 88px 反而讓面板故意縮小、
+                // 底下留一塊完全沒用到的空間。面板直接蓋過工具列，充分利用
+                // 整個畫面高度。
+                const availableHeight = window.innerHeight - headerHeight - 36; // 36 是面板自己的上下 padding
+                const COLUMN_WIDTH = 300;
+                const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
+                const maxColumnsByWidth = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
+                // [cwfm] 先量「全部內容擠在單一欄、不限高度時」實際需要多高，
+                // 才能算出「真正需要幾欄才裝得下」，不是「畫面最多塞得下
+                // 幾欄」就直接全部用上——之前的做法只看寬度能塞幾欄，內容
+                // 明明用不到那麼多欄，還是會硬生生撐出一整欄空的，使用者
+                // 已經回報過這個問題。改成兩階段：先量需要幾欄，再拿「需要
+                // 的欄數」跟「畫面塞得下的欄數上限」取比較小的那個。
+                fieldsWrap.style.columnCount = '1';
+                fieldsWrap.style.columnFill = 'auto';
+                fieldsWrap.style.width = COLUMN_WIDTH + 'px';
+                fieldsWrap.style.height = 'auto';
+                const totalContentHeight = fieldsWrap.scrollHeight;
+                // [cwfm] 量每個分組(.cwfm-group，fieldsWrap 的直接子元素)
+                // 自己的高度，取最大值——這是「每一欄高度上限」的數學下限：
+                // 不管怎麼分欄，都不可能有一欄比它自己裝的最高分組還矮
+                // (每個分組本身 break-inside:avoid，不能被切開)。這個時間點
+                // 量測，是因為現在還是單欄、高度 auto，量到的是每個分組
+                // 真正、乾淨的高度，不會受多欄樣式影響。
+                const tallestGroupHeight = Array.from(fieldsWrap.children)
+                    .reduce((max, el) => Math.max(max, el.offsetHeight), 0);
+                // [cwfm] 找到上一版還漏算的一步：安全係數(1.3倍)把某一欄
+                // 撐得比可視範圍還高時，程式直接讓面板捲動，卻沒有先檢查
+                // 「畫面右邊還有沒有空間可以多開一欄」——多開一欄能讓每欄
+                // 分攤的內容變少、進而讓高度降下來，理論上更常見的情況下
+                // 根本不需要捲動。改成迴圈：從「內容大致需要幾欄」開始試，
+                // 只要算出來的欄高還超出可視範圍、而且畫面寬度還有餘裕可以
+                // 再加一欄，就加一欄重新算，直到高度塞得下、或欄數已經到
+                // 畫面寬度真正的上限為止(這時候才是真的需要捲動)。
+                let columnCount = Math.max(1, Math.min(
+                    Math.ceil(totalContentHeight / availableHeight),
+                    maxColumnsByWidth
+                ));
+                let perColumnHeight = Math.max(
                     Math.ceil(totalContentHeight / columnCount * 1.3),
-                    tallestGroupHeight + 20
+                    tallestGroupHeight + 20 // 留一點緩衝，避免壓線裁切
                 );
+                while (perColumnHeight > availableHeight && columnCount < maxColumnsByWidth) {
+                    columnCount += 1;
+                    perColumnHeight = Math.max(
+                        Math.ceil(totalContentHeight / columnCount * 1.3),
+                        tallestGroupHeight + 20
+                    );
+                }
+                fieldsWrap.style.columnCount = String(columnCount);
+                fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
+                fieldsWrap.style.height = Math.max(availableHeight, perColumnHeight) + 'px';
+                panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
+                panel.style.maxWidth = 'calc(100vw - 40px)';
+                panel.style.overflowX = 'auto';
+                // [cwfm] 內容真的比算出來的可用高度還多(欄數已經到上限、還是
+                // 塞不下)時，才讓面板本身垂直捲動；正常情況下面板高度就是
+                // 撐滿可用高度，不會刻意縮小。
+                if (fieldsWrap.scrollHeight > availableHeight) {
+                    panel.style.maxHeight = (availableHeight + headerHeight + 36) + 'px';
+                    panel.style.overflowY = 'auto';
+                } else {
+                    // [cwfm] 切回一般模式(從全螢幕縮小)時，如果之前設過
+                    // maxHeight/overflowY，要記得清掉，不然舊的限制會卡著
+                    // 不放，同一個「沒重新計算」類型的問題換個方向重演。
+                    panel.style.maxHeight = '';
+                    panel.style.overflowY = '';
+                }
+            } catch (e) {
+                console.error(t('err_auto_layout'), e);
             }
-            fieldsWrap.style.columnCount = String(columnCount);
-            fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-            fieldsWrap.style.height = Math.max(availableHeight, perColumnHeight) + 'px';
-            panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
-            panel.style.maxWidth = 'calc(100vw - 40px)';
-            panel.style.overflowX = 'auto';
-            // [cwfm] 內容真的比算出來的可用高度還多(欄數已經到上限、還是
-            // 塞不下)時，才讓面板本身垂直捲動；正常情況下面板高度就是
-            // 撐滿可用高度，不會刻意縮小。
-            if (fieldsWrap.scrollHeight > availableHeight) {
-                panel.style.maxHeight = (availableHeight + headerHeight + 36) + 'px';
-                panel.style.overflowY = 'auto';
-            }
-        } catch (e) {
-            console.error(t('err_auto_layout'), e);
         }
+        applyPanelAutoLayout();
+        panel.cwfmRelayout = applyPanelAutoLayout;
 
         applySettings(settings);
         return panel;
@@ -4874,6 +4892,12 @@
             dlog(t('log_fullscreen_event') + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
             renderFullscreenIcon();
             cwfmWakeBars();
+            // [cwfm] 設定面板的排版計算原本只在建立當下跑一次，切換
+            // 全螢幕/一般模式後視窗尺寸變了卻不會重新算，面板高度卡在
+            // 舊數字，底下會露出一段沒用到的空間——這裡補上重新計算。
+            // settingsPanel 掛在外層作用域，還沒打開過設定面板時會是
+            // undefined，用 ?. 安全跳過，不用另外判斷。
+            settingsPanel?.cwfmRelayout?.();
         });
         bar.appendChild(fullscreenBtn);
 
