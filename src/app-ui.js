@@ -4523,6 +4523,15 @@
             let columnCount = 1;
             fieldsWrap.style.columnCount = '1';
             fieldsWrap.style.width = COLUMN_WIDTH + 'px';
+            // [cwfm] column-fill:auto 需要容器本身有明確高度，瀏覽器才
+            // 知道「這一欄裝滿了、該換下一欄」——原本完全沒設高度，靠
+            // 內容自然撐開，auto 模式沒有邊界可以依循，結果變成全部
+            // 內容塞進第一欄、無限往下長，column-count 設定完全失效，
+            // 這才是使用者回報「全螢幕還是卡在一欄」的真正根因（不是
+            // 上一輪以為的寬度上限判斷，那個判斷雖然本身也有 bug，但
+            // 拿掉後問題依然存在，就是因為這裡才是根本原因）。補上這個
+            // 高度，auto 模式才有依據可以正確換欄。
+            fieldsWrap.style.height = availableHeight + 'px';
             while (fieldsWrap.scrollHeight > availableHeight && columnCount < SAFETY_MAX_COLUMNS) {
                 columnCount += 1;
                 fieldsWrap.style.columnCount = String(columnCount);
