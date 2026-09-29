@@ -537,25 +537,24 @@
                 + `<path fill="${color}" `
                 + `d="M2 2 L2 17 L5.5 13.8 L7.6 19.3 L10 18.3 L7.9 13 L13 12.6 Z"/></svg>`;
         } else {
-            // [cwfm] 不再用手型——查證過手型在游標這種極小尺寸下，細節
-            // (指縫鏤空)實際上很難辨識清楚，改成箭頭本體(座標跟上面
-            // arrow 完全相同，不縮放、不變形)+ 右下角一個簡化地球圖示
-            // 當作「連結」的徽章，跟檔案總管/瀏覽器常見的鏈結圖示概念
-            // 一致。地球圖示只用外框(圓圈+縱向橢圓+一條橫線)，中間鏤空
-            // 不填色，跟箭頭之間留了間距、不會黏在一起——這幾個座標都
-            // 是使用者已經用獨立 HTML 檔案實際比對過箭頭大小一致、確認
-            // 定案的版本。
-            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
-                + `<path fill="${color}" `
-                + `d="M2 2 L2 17 L5.5 13.8 L7.6 19.3 L10 18.3 L7.9 13 L13 12.6 Z"/>`
-                + `<g fill="none" stroke="${color}" stroke-width="1">`
-                + `<circle cx="18.3" cy="19.3" r="4"/>`
-                + `<ellipse cx="18.3" cy="19.3" rx="1.7" ry="4"/>`
-                + `<line x1="14.3" y1="19.3" x2="22.3" y2="19.3"/>`
-                + `</g></svg>`;
+            // [cwfm] 改用使用者已經確認過、貼近截圖參考樣式的手型剪影
+            // (食指往上直伸、右側三個手指關節的微凸輪廓、左側拇指位置)，
+            // 取代之前的箭頭+地球徽章做法。這裡是獨立的手型形狀，不是
+            // 箭頭的延伸。
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 28">`
+                + `<path fill="${color}" d="`
+                + `M10 2 C8.9 2 8 2.9 8 4 L8 13 L7 12.2 `
+                + `C6.2 11.5 5 11.6 4.3 12.4 C3.6 13.2 3.7 14.4 4.5 15.1 `
+                + `L9.5 19.5 C10.3 20.2 11.3 20.5 12.4 20.5 L15.5 20.5 `
+                + `C17.4 20.5 19 18.9 19 17 L19 11 `
+                + `C19 10.2 18.3 9.5 17.5 9.5 C16.9 9.5 16.4 9.9 16.1 10.4 L16.1 9 `
+                + `C16.1 8.2 15.4 7.5 14.6 7.5 C14 7.5 13.5 7.9 13.2 8.4 L13.2 7 `
+                + `C13.2 6.2 12.5 5.5 11.7 5.5 C11.4 5.5 11.1 5.6 10.9 5.8 L10.9 4 `
+                + `C10.9 2.9 10.6 2 10 2 Z"/></svg>`;
         }
         return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
     }
+
 
     // [cwfm] 套用自訂游標——總開關關閉時，完全不注入任何游標樣式，
     // 維持系統原生游標。開啟時，箭頭跟手型各自依照設定的模式(手動
@@ -600,7 +599,7 @@
         let handUri = null, arrowUri = null;
         if (handEnabled) {
             handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
-            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 2 2, pointer !important; }`);
+            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 10 4, pointer !important; }`);
         }
         if (arrowEnabled) {
             arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
@@ -628,7 +627,7 @@
             (doc.head || doc.documentElement).appendChild(styleEl);
         }
         const rules = [];
-        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 2 2, pointer !important; }`);
+        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 10 4, pointer !important; }`);
         if (info.arrowEnabled) rules.push(`body, html, * { cursor: url("${info.arrowUri}") 2 2, auto !important; }`);
         styleEl.textContent = rules.join('\n');
     }
@@ -1265,10 +1264,28 @@
             '  letter-spacing: 0.04em; text-transform: uppercase;',
             '  color: var(--cwfm-text);',
             '}',
+            '.cwfm-group-title-collapsible {',
+            '  cursor: pointer; display: flex; align-items: center; gap: 6px;',
+            '  user-select: none;',
+            '}',
+            '.cwfm-group-collapse-triangle {',
+            // [cwfm] 三角形用文字符號(▾)加 transform 做旋轉動畫，不用
+            // 額外的圖片或 SVG——收合時轉 -90 度變成指向右邊，展開時
+            // 指向下方，是常見的收合圖示互動慣例。
+            '  display: inline-block; font-size: 10px; transition: transform 0.15s ease;',
+            '  flex-shrink: 0;',
+            '}',
+            '.cwfm-group-collapse-triangle.collapsed { transform: rotate(-90deg); }',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
             '.cwfm-field { break-inside: avoid; margin-bottom: 4px; }',
+            // [cwfm] 同一個分組裡，每個 .cwfm-field 都是「同一個設定值
+            // 底下的完整元件組」(標籤+開關/滑桿/輸入框)，用一條淡淡的
+            // 分隔線把相鄰的設定值視覺上分開，不會全部黏成一片看不出
+            // 邊界在哪裡。第一個不用加線(上面就是分組標題，已經有足夠
+            // 的視覺區隔)。',
+            '.cwfm-field + .cwfm-field { border-top: 1px solid var(--cwfm-border-light); padding-top: 10px; margin-top: 6px; }',
             // [cwfm] 翻頁快速鍵錄製欄位（addKeyListField）：每組已錄製的
             // 按鍵組合顯示成一個小圓角標籤（chip），標籤上自帶一個小小的
             // 刪除按鈕；最後面永遠有一個「+ 新增」按鈕，點下去進入錄製
@@ -1914,6 +1931,11 @@
         customTextColorEnabled: true,
         customBackgroundColorEnabled: true,
         cursorArrowColorEnabled: false,
+        // [cwfm] 每個大分組(配色、文字排版...)是否收合，用分組標題當
+        // key。收合狀態要記憶，這裡只是存放的地方，不用預先列出所有
+        // 分組名稱——沒紀錄的分組，預設就是展開(見 beginGroup 裡讀取
+        // 這個值時的預設處理)。
+        groupCollapsedState: {},
         cursorArrowColor: '#000000',
         cursorHandColorEnabled: false,
         cursorHandColor: '#000000',
@@ -3759,12 +3781,43 @@
         function beginGroup(title) {
             const group = document.createElement('div');
             group.className = 'cwfm-group';
+            // [cwfm] 標題列做成可點擊的收合開關——左側一個三角形圖示，
+            // 點擊切換展開/收合，狀態存進 settings.groupCollapsedState
+            // (用分組標題當 key)，面板重建時依這份記錄還原。收合的時候
+            // 只隱藏底下的內容容器(body)，標題列本身永遠看得到；收合/
+            // 展開動作發生後，立刻呼叫 panel.cwfmRelayout() 重新排版——
+            // 這個函式在面板建立完成前還沒被賦值，但這裡是在「點擊當下」
+            // 才呼叫，不是在這裡就執行，等真正點擊時面板早就建好了，
+            // 不會有時機問題。
             const heading = document.createElement('div');
-            heading.className = 'cwfm-group-title';
-            heading.textContent = title;
+            heading.className = 'cwfm-group-title cwfm-group-title-collapsible';
+            const triangle = document.createElement('span');
+            triangle.className = 'cwfm-group-collapse-triangle';
+            triangle.textContent = '▾';
+            const titleText = document.createElement('span');
+            titleText.textContent = title;
+            heading.appendChild(triangle);
+            heading.appendChild(titleText);
+            const body = document.createElement('div');
+            body.className = 'cwfm-group-body';
+            const collapsed = !!(settings.groupCollapsedState && settings.groupCollapsedState[title]);
+            if (collapsed) {
+                body.style.display = 'none';
+                triangle.classList.add('collapsed');
+            }
+            heading.addEventListener('click', () => {
+                const nowCollapsed = body.style.display !== 'none';
+                body.style.display = nowCollapsed ? 'none' : '';
+                triangle.classList.toggle('collapsed', nowCollapsed);
+                if (!settings.groupCollapsedState) settings.groupCollapsedState = {};
+                settings.groupCollapsedState[title] = nowCollapsed;
+                saveSettings(settings);
+                panel.cwfmRelayout?.();
+            });
             group.appendChild(heading);
+            group.appendChild(body);
             fieldsWrap.appendChild(group);
-            panelTarget = group;
+            panelTarget = body;
         }
 
         // [cwfm] 主題功能，先做最陽春堪用的介面（下拉選單 + 三個按鈕），
@@ -3890,6 +3943,47 @@
             field.appendChild(slider);
             panelTarget.appendChild(field);
             return slider;
+        }
+
+        // [cwfm] 純數字輸入框，不含滑桿——滑桿是為了「拖動時能立刻看到
+        // 排版即時變化」這種用途才需要，跟排版無關的數值設定(例如幾秒
+        // 後同步、幾秒後隱藏這類純數字)不需要滑桿，直接打數字更直接。
+        // 大部分結構跟 addRangeField 共用，只是不建立 <input type="range">
+        // 那個元素跟它的事件監聽。
+        function addNumberField(labelText, key, min, max, step, unitSuffix) {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const row = document.createElement('div');
+            row.className = 'cwfm-row';
+            const label = document.createElement('label');
+            label.textContent = labelText;
+            row.appendChild(label);
+            const valueWrap = document.createElement('span');
+            valueWrap.className = 'cwfm-value-input-wrap';
+            const valueInput = document.createElement('input');
+            valueInput.type = 'number';
+            valueInput.className = 'cwfm-value-input';
+            valueInput.min = String(min);
+            valueInput.max = String(max);
+            valueInput.step = String(step);
+            valueInput.value = String(settings[key]);
+            const unitSpan = document.createElement('span');
+            unitSpan.textContent = unitSuffix || '';
+            valueWrap.appendChild(valueInput);
+            valueWrap.appendChild(unitSpan);
+            row.appendChild(valueWrap);
+            field.appendChild(row);
+            valueInput.addEventListener('change', () => {
+                const val = parseFloat(valueInput.value);
+                if (Number.isNaN(val)) { valueInput.value = String(settings[key]); return; }
+                const clamped = Math.min(max, Math.max(min, val));
+                settings[key] = clamped;
+                valueInput.value = String(clamped);
+                saveSettings(settings);
+                applySettings(settings);
+            });
+            panelTarget.appendChild(field);
+            return valueInput;
         }
 
         function addCheckboxField(labelText, key) {
@@ -4774,9 +4868,9 @@
         // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
         addCheckboxField(t('field_local_auto_remember'), 'localAutoRemember');
         addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
-        addRangeField(t('field_auto_sync_delay'), 'autoSyncDelaySeconds', 1, 60, 1, t('unit_seconds'));
+        addNumberField(t('field_auto_sync_delay'), 'autoSyncDelaySeconds', 1, 60, 1, t('unit_seconds'));
         addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
-        addRangeField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
+        addNumberField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
         addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
 
         // [cwfm] 左右翻頁點擊區：功能開關(能不能點擊翻頁)跟顯示開關
@@ -4808,7 +4902,7 @@
         }
         flowSelect.addEventListener('change', updateTapZoneDisabledStates);
         tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneDisabledStates);
-        const tapZoneWidthSlider = addRangeField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
+        const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         updateTapZoneDisabledStates();
 
