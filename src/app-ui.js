@@ -4911,6 +4911,24 @@
                 fieldsWrap.style.columnCount = String(columnCount);
                 fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
                 fieldsWrap.style.height = Math.max(availableHeight, perColumnHeight) + 'px';
+                // [cwfm] 最後用瀏覽器真實渲染結果驗證一次，不是只信我們
+                // 自己的 JS 模擬結果——JS 模擬跟瀏覽器 CSS 多欄引擎實際
+                // 排版之間，理論上可能有微小落差(邊界捨入、間距處理方式
+                // 不完全一樣)，導致 JS 算出「N 欄夠了」，但瀏覽器實際
+                // 排版時某個分組真的塞不進第 N 欄，又被我們寫死的欄數
+                // 上限擋住，內容就這樣不見了(這正是使用者截圖回報「翻頁
+                // 快速鍵整組消失」的疑點)。這裡直接量 fieldsWrap.scrollWidth
+                // (瀏覽器真正需要的總寬度，含任何溢出)，如果比我們設定
+                // 的寬度還寬，代表瀏覽器真的需要更多欄，直接加一欄重新
+                // 設定寬度，用真實量測結果反覆確認，不是只信一次模擬；
+                // 設一個安全上限次數，避免極端情況下無限迴圈。
+                let verifyAttempts = 0;
+                while (fieldsWrap.scrollWidth > fieldsWrap.offsetWidth + 2 && verifyAttempts < 8) {
+                    columnCount += 1;
+                    fieldsWrap.style.columnCount = String(columnCount);
+                    fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
+                    verifyAttempts += 1;
+                }
                 panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
                 panel.style.maxWidth = 'calc(100vw - 40px)';
                 panel.style.overflowX = 'auto';
