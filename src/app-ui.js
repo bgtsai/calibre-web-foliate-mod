@@ -1269,17 +1269,25 @@
             '  user-select: none;',
             '}',
             '.cwfm-group-collapse-triangle {',
-            // [cwfm] 三角形用文字符號(▾)加 transform 做旋轉動畫，不用
-            // 額外的圖片或 SVG——收合時轉 -90 度變成指向右邊，展開時
-            // 指向下方，是常見的收合圖示互動慣例。
-            '  display: inline-block; font-size: 13px; transition: transform 0.15s ease;',
-            '  flex-shrink: 0;',
+            // [cwfm] 改用 CSS border 技巧直接畫實心三角形，不再依賴文字
+            // 符號(▾)——文字符號在字框裡本身不是滿版的，就算調大
+            // font-size，視覺上的實際可視大小還是偏小，這是文字符號
+            // 本身的限制，不是數字沒調對。改用 border 畫的三角形，
+            // 尺寸直接對齊分組標題文字的可視高度(標題文字 11px，這裡
+            // 抓一個視覺上接近、不會太突兀的三角形尺寸)。
+            '  display: inline-block; flex-shrink: 0; transition: transform 0.15s ease;',
+            '  width: 0; height: 0;',
+            '  border-left: 5px solid transparent; border-right: 5px solid transparent;',
+            '  border-top: 7px solid var(--cwfm-text);',
             '}',
             '.cwfm-group-collapse-triangle.collapsed { transform: rotate(-90deg); }',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
             '.cwfm-field { break-inside: avoid; margin-bottom: 4px; padding-bottom: 12px; }',
+            // [cwfm-debug] 除錯用——用紅色外框把「隱形框線」實際畫出來，
+            // 讓使用者確認我認知的範圍對不對，確認完會拿掉這行。
+            '.cwfm-field { outline: 1px dashed red; }',
             // [cwfm] 分隔線要精準置中在「上一個物件」跟「下一個物件」
             // 各自完整外框之間——做法是讓每個 .cwfm-field 底部都留相同
             // 的 padding-bottom(12px)，分隔線出現的那個欄位再用相同的
@@ -1650,6 +1658,9 @@
             // 字級/字距那些滑桿旁邊的數字方塊)統一同一套「方框 + 聚焦
             // 變強調色」互動模式，不是標籤改名那種底線樣式。',
             '.cwfm-color-value-input:focus { box-shadow: inset 0 0 0 1.5px var(--cwfm-accent); }',
+            // [cwfm] Auto 模式的唯讀輸入框不需要聚焦藍框——本來就不能
+            // 編輯，這個視覺提示反而會誤導使用者以為可以打字。
+            '.cwfm-value-input-readonly:focus { box-shadow: none; }',
             '.cwfm-color-input-error { box-shadow: inset 0 0 0 1.5px #e04040 !important; background: rgba(224,64,64,0.15) !important; }',
             // [cwfm] 取色器樣式：移植自 YouTube Channel Memory 的 ysc-cp，
             // 改名為 cwfm-cp。原版是亮色主題、另外用 html[dark] 屬性選擇器
@@ -3812,7 +3823,7 @@
             heading.className = 'cwfm-group-title cwfm-group-title-collapsible';
             const triangle = document.createElement('span');
             triangle.className = 'cwfm-group-collapse-triangle';
-            triangle.textContent = '▾';
+            // triangle 本身不再放文字符號，形狀完全由 CSS border 畫出來
             const titleText = document.createElement('span');
             titleText.textContent = title;
             heading.appendChild(triangle);
@@ -4232,16 +4243,35 @@
                 else valueInput.placeholder = t('hint_hsv_example');
             }
             function refreshValueInput() {
+                // [cwfm] 總開關關閉時——不殘留上次設定的顏色，數值文字
+                // 改顯示「--」，色塊改成統一的灰色，避免使用者誤以為
+                // 這是目前生效的顏色。
+                const toggleOff = toggleKey && !settings[toggleKey];
+                if (toggleOff) {
+                    valueInput.value = '--';
+                    swatchBtn.style.background = 'var(--cwfm-border-light)';
+                    valueInput.readOnly = true;
+                    // [cwfm] 開關關閉時色塊也不給點(反正已經整組真停用)，
+                    // 但這裡的 disabled 是「總開關關閉」這個唯一原因，跟
+                    // Auto 模式分開判斷(見下面)，色塊要不要變暗只由這裡
+                    // 決定，不受 Auto 模式影響。
+                    swatchBtn.disabled = true;
+                    return;
+                }
                 const hex = effectiveHex();
                 valueInput.value = formatForMode(hex);
                 refreshPlaceholder();
                 swatchBtn.style.background = hex;
                 // [cwfm] Auto 分頁——輸入框變唯讀，即時顯示算出來的顏色，
-                // 不能讓使用者打字；色塊也一樣不能點開取色器去手動改，
-                // 因為改了也沒意義，下次重新整理就會被算出來的值蓋掉。
+                // 不能讓使用者打字。色塊本身維持正常顯示、不變暗——
+                // 使用者需要看到準確的實際顏色，變暗會讓顯示的顏色不
+                // 準確；「不能編輯」這件事只靠 click 事件本身擋掉
+                // (mode==='AUTO' 時直接 return，不開取色器)，不用靠
+                // disabled 這種會連動改變外觀的屬性表達。
                 const isAuto = mode === 'AUTO';
                 valueInput.readOnly = isAuto;
-                swatchBtn.disabled = isAuto || (toggleKey && !settings[toggleKey]);
+                valueInput.classList.toggle('cwfm-value-input-readonly', isAuto);
+                swatchBtn.disabled = false;
             }
 
             tabNames.forEach((m) => {
@@ -4373,7 +4403,11 @@
                     const enabled = toggleInput.checked;
                     modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((tabEl) => { tabEl.disabled = !enabled; });
                     valueInput.disabled = !enabled;
-                    swatchBtn.disabled = !enabled || mode === 'AUTO';
+                    // [cwfm] 色塊要不要變暗/顯示灰色，跟數值要不要顯示
+                    // 「--」，都已經在 refreshValueInput() 裡統一處理過
+                    // (只看總開關，不受 Auto 模式影響)，這裡直接呼叫它、
+                    // 不再自己重複一份判斷邏輯。
+                    refreshValueInput();
                 }
                 toggleInput.addEventListener('change', () => {
                     settings[toggleKey] = toggleInput.checked;
