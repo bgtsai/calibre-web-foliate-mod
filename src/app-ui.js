@@ -27,8 +27,8 @@
             field_max_column_count: '\u6700\u5927\u6b04\u6578',
             field_precise_anchor_align: '\u7ffb\u9801\u7cbe\u6e96\u5b9a\u4f4d\uff1a\u7e2e\u653e\u002f\u9084\u539f\u66f8\u7c64\u6642\u5617\u8a66\u7cbe\u6e96\u5c0d\u9f4a\u5b9a\u4f4d\u9ede',
             field_local_auto_remember: '\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09',
-            field_auto_sync_enabled: '\u505c\u7559\u5f8c\u81ea\u52d5\u540c\u6b65\u5230\u4f3a\u670d\u5668\uff08\u9700\u8981 CSRF token \u9001\u8acb\u6c42\uff0c\u8de8\u88dd\u7f6e\u53ef\u8b80\u5230\uff09',
-            field_auto_sync_delay: '\u505c\u7559\u5e7e\u79d2\u5f8c\u540c\u6b65',
+            field_auto_sync_enabled: '停留頁面自動加入書籤（跨裝置可用）',
+            field_auto_sync_delay: '停留幾秒後加入書籤',
             field_auto_hide_toolbar: '\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09',
             field_tap_zone_enabled: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd',
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
@@ -219,6 +219,8 @@
             field_cursor_override_enabled: '控制/更改原始系統游標',
             field_cursor_arrow_color: '箭頭游標顏色',
             field_cursor_hand_color: '連結游標顏色',
+            field_cursor_auto_hide_enabled: '滑鼠閒置自動隱藏游標',
+            field_cursor_auto_hide_delay: '閒置幾秒後隱藏',
             mode_auto: 'Auto',
         },
         en: {
@@ -242,8 +244,8 @@
             field_max_column_count: 'Max Columns',
             field_precise_anchor_align: 'Precise Page Alignment: try to precisely align the anchor point on resize/restore',
             field_local_auto_remember: 'Remember reading progress locally (saved instantly on this browser; won\'t sync across devices)',
-            field_auto_sync_enabled: 'Auto-sync to server after idle (requires a CSRF-token request; readable across devices)',
-            field_auto_sync_delay: 'Sync After Idle (seconds)',
+            field_auto_sync_enabled: 'Auto-bookmark on idle (works across devices)',
+            field_auto_sync_delay: 'Bookmark After Idle (seconds)',
             field_auto_hide_toolbar: 'Auto-hide Toolbar (slides to edge after 3s idle; hover edge or click to wake)',
             field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
@@ -434,6 +436,8 @@
             field_cursor_override_enabled: 'Override System Cursor',
             field_cursor_arrow_color: 'Arrow Cursor Color',
             field_cursor_hand_color: 'Link Cursor Color',
+            field_cursor_auto_hide_enabled: 'Auto-hide Cursor on Idle',
+            field_cursor_auto_hide_delay: 'Hide After Idle (seconds)',
             mode_auto: 'Auto',
         },
     };
@@ -1893,6 +1897,10 @@
         localAutoRemember: true,   // 功能一：本機自動記憶開關
         autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
         autoSyncDelaySeconds: 5,   // 功能三：停留幾秒才觸發同步
+        // [cwfm] 滑鼠閒置自動隱藏游標——只看滑鼠有沒有移動，按鍵盤不算
+        // 動作，跟自動隱藏工具列各自獨立計時，不共用同一個計時器。
+        cursorAutoHideEnabled: false,
+        cursorAutoHideDelaySeconds: 3,
         themeName: 'auto',         // 'auto'／'light'／'dark'／'sepia'／'custom'
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
@@ -2874,6 +2882,14 @@
     // 後面 loadSettings() 真正執行完才會有），會直接出錯。
     view.renderer.addEventListener('load', () => {
         cwfmApplyCursorOverride(window.__cwfm.settings);
+        // [cwfm] 游標自動隱藏在 iframe 內的樣式元素，換章節、iframe 文件
+        // 整個換掉時會跟著消失，需要重新套用——跟上面 cwfmApplyCursorOverride
+        // 同樣的道理。這裡呼叫 updateCursorAutoHide() 也有可能踩到跟
+        // 工具列自動隱藏同一種 let 宣告時機(TDZ)的已知限制(見下方
+        // updateAutoHideEnabled 那段註解)，第一次開書時這個事件如果比
+        // 那段宣告先觸發，這次呼叫會靜靜失敗、不會真的套用，之後每次
+        // 換章節都會再觸發一次，不影響後續正常運作。
+        try { updateCursorAutoHide(window.__cwfm.settings); } catch (e) { /* 見上方註解，已知限制 */ }
     });
     let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
 
@@ -3195,6 +3211,7 @@
         cwfmUpdatePanelScheme(settings);
         try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error(t('err_tapzone_apply'), e); }
         try { cwfmApplyCursorOverride(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
+        try { updateCursorAutoHide(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error(t('err_apply_font_style'), e); }
@@ -4758,6 +4775,8 @@
         addCheckboxField(t('field_local_auto_remember'), 'localAutoRemember');
         addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
         addRangeField(t('field_auto_sync_delay'), 'autoSyncDelaySeconds', 1, 60, 1, t('unit_seconds'));
+        addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
+        addRangeField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
         addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
 
         // [cwfm] 左右翻頁點擊區：功能開關(能不能點擊翻頁)跟顯示開關
@@ -4843,60 +4862,52 @@
                 const COLUMN_WIDTH = 300;
                 const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
                 const maxColumnsByWidth = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
-                // [cwfm] 先量「全部內容擠在單一欄、不限高度時」實際需要多高，
-                // 才能算出「真正需要幾欄才裝得下」，不是「畫面最多塞得下
-                // 幾欄」就直接全部用上——之前的做法只看寬度能塞幾欄，內容
-                // 明明用不到那麼多欄，還是會硬生生撐出一整欄空的，使用者
-                // 已經回報過這個問題。改成兩階段：先量需要幾欄，再拿「需要
-                // 的欄數」跟「畫面塞得下的欄數上限」取比較小的那個。
                 fieldsWrap.style.columnCount = '1';
                 fieldsWrap.style.columnFill = 'auto';
                 fieldsWrap.style.width = COLUMN_WIDTH + 'px';
                 fieldsWrap.style.height = 'auto';
-                const totalContentHeight = fieldsWrap.scrollHeight;
                 // [cwfm] 量每個分組(.cwfm-group，fieldsWrap 的直接子元素)
-                // 自己的高度，取最大值——這是「每一欄高度上限」的數學下限：
-                // 不管怎麼分欄，都不可能有一欄比它自己裝的最高分組還矮
-                // (每個分組本身 break-inside:avoid，不能被切開)。這個時間點
-                // 量測，是因為現在還是單欄、高度 auto，量到的是每個分組
-                // 真正、乾淨的高度，不會受多欄樣式影響。
-                const tallestGroupHeight = Array.from(fieldsWrap.children)
-                    .reduce((max, el) => Math.max(max, el.offsetHeight), 0);
-                // [cwfm] 找到上一版還漏算的一步：安全係數(1.3倍)把某一欄
-                // 撐得比可視範圍還高時，程式直接讓面板捲動，卻沒有先檢查
-                // 「畫面右邊還有沒有空間可以多開一欄」——多開一欄能讓每欄
-                // 分攤的內容變少、進而讓高度降下來，理論上更常見的情況下
-                // 根本不需要捲動。改成迴圈：從「內容大致需要幾欄」開始試，
-                // 只要算出來的欄高還超出可視範圍、而且畫面寬度還有餘裕可以
-                // 再加一欄，就加一欄重新算，直到高度塞得下、或欄數已經到
-                // 畫面寬度真正的上限為止(這時候才是真的需要捲動)。
-                let columnCount = Math.max(1, Math.min(
-                    Math.ceil(totalContentHeight / availableHeight),
-                    maxColumnsByWidth
-                ));
-                let perColumnHeight = Math.max(
-                    Math.ceil(totalContentHeight / columnCount * 1.3),
-                    tallestGroupHeight + 20 // 留一點緩衝，避免壓線裁切
-                );
-                // [cwfm] 找到迴圈的邏輯缺陷：「每欄高度上限」有一個常數
-                // 下限(最高單一分組高度)，欄數再怎麼加，這個下限都不會
-                // 降低——如果最高的那個分組本身就已經超過可視範圍，不管
-                //加幾欄都救不了，但原本的迴圈沒有意識到這件事，還是會
-                // 一路加到寬度上限，加出來的欄根本沒用、只是空的(使用者
-                // 已經回報過這個現象：一般模式下比較容易出現，全螢幕下
-                // 可視範圍變大、問題就消失，正好對應這個成因)。修法：
-                // 加了這一欄之後，如果高度上限完全沒有改善(卡在常數
-                // 下限)，就該停下來、直接讓面板捲動，不要再繼續白加。
-                while (perColumnHeight > availableHeight && columnCount < maxColumnsByWidth) {
-                    const nextColumnCount = columnCount + 1;
-                    const nextPerColumnHeight = Math.max(
-                        Math.ceil(totalContentHeight / nextColumnCount * 1.3),
-                        tallestGroupHeight + 20
-                    );
-                    if (nextPerColumnHeight >= perColumnHeight) break; // 加了也沒改善，停止
-                    columnCount = nextColumnCount;
-                    perColumnHeight = nextPerColumnHeight;
+                // 自己的高度——這個時間點還是單欄、高度 auto，量到的是每個
+                // 分組真正、乾淨的高度，不會受多欄樣式影響。
+                const groupHeights = Array.from(fieldsWrap.children).map((el) => el.offsetHeight);
+                // [cwfm] 找到之前用「平均值 × 1.3」預估欄數這個做法本身的
+                // 問題——瀏覽器實際排版是「依序把分組往下疊、滿了才換下
+                // 一欄」這種離散裝箱邏輯，平均值估計法本質上就不適合模擬
+                // 這種情況(分組大小差異大時尤其容易算錯，使用者已經拿
+                // 真實數字實際手動驗算過、也用 Console 直接跑過這個模擬
+                // 函式確認結果正確)。改成直接模擬這個真實排列過程，不再
+                // 是「猜」，是精準算出來的結果，也因此不再需要 1.3 這種
+                // 大倍數的安全係數去補償猜測的誤差。
+                function simulateColumns(heights, limit) {
+                    const columns = [0]; // 每一欄目前疊到的高度
+                    for (const h of heights) {
+                        const last = columns.length - 1;
+                        if (columns[last] > 0 && columns[last] + h > limit) {
+                            columns.push(h);
+                        } else {
+                            columns[last] += h;
+                        }
+                    }
+                    return columns;
                 }
+                let columnCount = 1;
+                let columns = simulateColumns(groupHeights, availableHeight);
+                // [cwfm] 欄數超過畫面寬度塞得下的上限時，用更高的高度限制
+                // 重新模擬一次，直到欄數壓進上限之內——高度限制每次都用
+                // 「目前這個模擬結果裡最高的那一欄」往上加一點點，不是
+                // 用倍數硬乘，一樣是精算、不是預估。
+                let heightLimit = availableHeight;
+                while (columns.length > maxColumnsByWidth) {
+                    const tallestColumn = Math.max(...columns);
+                    heightLimit = tallestColumn + 1;
+                    columns = simulateColumns(groupHeights, heightLimit);
+                }
+                columnCount = Math.min(columns.length, maxColumnsByWidth);
+                // [cwfm] 最終每欄高度 = 模擬結果裡最高的那一欄，加一點點
+                // 緩衝(20px，理由跟之前一樣：offsetHeight 量測、瀏覽器
+                // 實際排版之間可能有像素等級的微小落差，不是大倍數的
+                // 預估係數)。
+                const perColumnHeight = Math.max(...columns) + 20;
                 fieldsWrap.style.columnCount = String(columnCount);
                 fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
                 fieldsWrap.style.height = Math.max(availableHeight, perColumnHeight) + 'px';
@@ -5269,6 +5280,48 @@
         if (cwfmAutoHideEnabled) cwfmWakeBars();
         else cwfmShowBars();
     }
+
+    // [cwfm] 滑鼠閒置自動隱藏游標——跟上面工具列自動隱藏是各自獨立的
+    // 計時器，不共用同一個，只看 mousemove，不綁鍵盤事件（使用者要求
+    // 「按按鍵不算動作」）。游標隱藏要涵蓋外層文件跟書本內容的 iframe
+    // 兩處，跟之前自訂游標顏色遇到的 Shadow DOM/iframe 隔離是同一個
+    // 問題，透過 getBookIframeDocument() 複用同一套解法。
+    let cwfmCursorHideEnabled = false;
+    let cwfmCursorHideDelayMs = 3000;
+    let cwfmCursorHideTimer = null;
+    const CWFM_CURSOR_AUTOHIDE_STYLE_ID = 'cwfm-cursor-autohide-style';
+    function cwfmSetCursorNone(doc, hidden) {
+        if (!doc) return;
+        let el = doc.getElementById(CWFM_CURSOR_AUTOHIDE_STYLE_ID);
+        if (!el) {
+            el = doc.createElement('style');
+            el.id = CWFM_CURSOR_AUTOHIDE_STYLE_ID;
+            (doc.head || doc.documentElement).appendChild(el);
+        }
+        el.textContent = hidden ? '* { cursor: none !important; }' : '';
+    }
+    function cwfmApplyCursorVisibility(hidden) {
+        cwfmSetCursorNone(document, hidden);
+        cwfmSetCursorNone(getBookIframeDocument(), hidden);
+    }
+    function cwfmScheduleCursorHide() {
+        clearTimeout(cwfmCursorHideTimer);
+        if (!cwfmCursorHideEnabled) return;
+        cwfmCursorHideTimer = setTimeout(() => cwfmApplyCursorVisibility(true), cwfmCursorHideDelayMs);
+    }
+    function cwfmWakeCursor() {
+        if (!cwfmCursorHideEnabled) return;
+        cwfmApplyCursorVisibility(false);
+        cwfmScheduleCursorHide();
+    }
+    function updateCursorAutoHide(settings) {
+        cwfmCursorHideEnabled = !!settings.cursorAutoHideEnabled;
+        cwfmCursorHideDelayMs = Math.max(1, settings.cursorAutoHideDelaySeconds || 3) * 1000;
+        clearTimeout(cwfmCursorHideTimer);
+        if (cwfmCursorHideEnabled) cwfmWakeCursor();
+        else cwfmApplyCursorVisibility(false);
+    }
+    document.addEventListener('mousemove', cwfmWakeCursor);
 
     try { tocPanel = buildTOCPanel(); } catch (e) { console.error(t('err_build_toc'), e); }
     try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
