@@ -951,6 +951,15 @@
         book,
         bookId: BOOK_ID,
         settings: null, // 稍後設定選單初始化時會填入
+        // [cwfm-debug] 排版除錯用——在 Console 打
+        // window.__cwfm.toggleDebugBorders() 就能切換紅色除錯框顯示與否，
+        // 不用改程式碼版本、不用重新整理，狀態只存在記憶體裡，關掉分頁
+        // 就重置。這個功能刻意留著，不會拿掉。
+        toggleDebugBorders() {
+            const on = document.body.classList.toggle('cwfm-debug-borders');
+            dlog('[cwfm] 除錯紅框：' + (on ? '開啟' : '關閉'));
+            return on;
+        },
     });
 
     // ============================================================
@@ -1287,7 +1296,12 @@
             '.cwfm-field { break-inside: avoid; margin-bottom: 0; position: relative; }',
             // [cwfm-debug] 除錯用——用紅色外框把「隱形框線」實際畫出來，
             // 讓使用者確認我認知的範圍對不對，確認完會拿掉這行。
-            '.cwfm-field { outline: 1px dashed red; }',
+            // [cwfm-debug] 除錯用紅框——預設不顯示，只有 body 加上
+            // cwfm-debug-borders 這個 class 才會出現。透過
+            // window.__cwfm.toggleDebugBorders() 在 Console 隨時切換，
+            // 不用改程式碼版本、不用重新整理。這兩條規則刻意留著，
+            // 排版還在調整期間，隨時可能需要再拿出來檢查。
+            '.cwfm-debug-borders .cwfm-field { outline: 1px dashed red; }',
             // [cwfm] 徹底重做，不再靠跨欄位的負值定位去算「上一個欄位
             // 跟下一個欄位之間」的關係(那個做法容易算錯、也很難除錯，
             // 使用者截圖回報分隔線幾乎貼著上一個物件，跟預期的置中
@@ -1308,7 +1322,7 @@
             '}',
             // [cwfm-debug] 除錯用——分隔線本身也給一個紅色外框，方便
             // 確認它實際佔用的範圍跟位置。
-            '.cwfm-field:not(:last-child)::after { outline: 1px dashed red; }',
+            '.cwfm-debug-borders .cwfm-field:not(:last-child)::after { outline: 1px dashed red; }',
             // [cwfm] 已經自帶邊框視覺分組的欄位(例如水平模式/垂直模式
             // 那種用 cwfm-color-input-group 圈起來的區塊)，不需要這條
             // 分隔線——它本身的邊框已經是足夠的視覺區隔。
