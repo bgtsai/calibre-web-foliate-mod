@@ -517,18 +517,23 @@
     // 「顏色跟背景融在一起、整個看不到游標」。轉成 data URI 後餵給
     // CSS 的 cursor 屬性。
     function cwfmBuildCursorSvgDataUri(shape, color) {
-        const encodedColor = encodeURIComponent(color);
+        // [cwfm] 不要在這裡把顏色先編碼——SVG 屬性值是純文字，fill
+        // 直接放 "#ff0000" 這種原始顏色字串就對了，不能塞進
+        // encodeURIComponent() 編碼過的 "%23ff0000"，那不是合法的顏色
+        // 值，SVG 渲染器不會幫忙解碼，會直接當成無法辨識的顏色（這正是
+        // 自訂顏色沒有反映到真實游標上的根因）。只有最後整份 SVG 轉成
+        // data URI 那一步，才需要對整個字串做一次編碼。
         let svg;
         if (shape === 'arrow') {
             svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
-                + `<path fill="${encodedColor}" stroke="white" stroke-width="1.2" stroke-linejoin="round" `
+                + `<path fill="${color}" stroke="white" stroke-width="1.2" stroke-linejoin="round" `
                 + `d="M4 2 L4 19 L8.5 15.2 L11.3 21.5 L14 20.2 L11.2 14 L17 13.5 Z"/></svg>`;
         } else {
             // hand/pointer：簡化的手型輪廓（食指伸出、其餘手指收攏的
             // 常見手型游標剪影），不是精細描摹，只求形狀上一眼認得出
             // 是手型游標。
             svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
-                + `<path fill="${encodedColor}" stroke="white" stroke-width="1" stroke-linejoin="round" `
+                + `<path fill="${color}" stroke="white" stroke-width="1" stroke-linejoin="round" `
                 + `d="M9 3.5c-.8 0-1.5.7-1.5 1.5v7.6l-1.6-1.4c-.7-.6-1.7-.5-2.2.2-.5.6-.4 1.5.2 2.1l4.6 4.3c.7.6 1.6 1 2.5 1h4c2 0 3.5-1.6 3.5-3.5V9.5c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v-1c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v-1c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5V5c0-.8-.7-1.5-1.5-1.5z"/></svg>`;
         }
         return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
