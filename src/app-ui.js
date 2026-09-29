@@ -1272,20 +1272,39 @@
             // [cwfm] 三角形用文字符號(▾)加 transform 做旋轉動畫，不用
             // 額外的圖片或 SVG——收合時轉 -90 度變成指向右邊，展開時
             // 指向下方，是常見的收合圖示互動慣例。
-            '  display: inline-block; font-size: 10px; transition: transform 0.15s ease;',
+            '  display: inline-block; font-size: 13px; transition: transform 0.15s ease;',
             '  flex-shrink: 0;',
             '}',
             '.cwfm-group-collapse-triangle.collapsed { transform: rotate(-90deg); }',
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
-            '.cwfm-field { break-inside: avoid; margin-bottom: 4px; }',
-            // [cwfm] 同一個分組裡，每個 .cwfm-field 都是「同一個設定值
-            // 底下的完整元件組」(標籤+開關/滑桿/輸入框)，用一條淡淡的
-            // 分隔線把相鄰的設定值視覺上分開，不會全部黏成一片看不出
-            // 邊界在哪裡。第一個不用加線(上面就是分組標題，已經有足夠
-            // 的視覺區隔)。',
-            '.cwfm-field + .cwfm-field { border-top: 1px solid var(--cwfm-border-light); padding-top: 10px; margin-top: 6px; }',
+            '.cwfm-field { break-inside: avoid; margin-bottom: 4px; padding-bottom: 12px; }',
+            // [cwfm] 分隔線要精準置中在「上一個物件」跟「下一個物件」
+            // 各自完整外框之間——做法是讓每個 .cwfm-field 底部都留相同
+            // 的 padding-bottom(12px)，分隔線出現的那個欄位再用相同的
+            // margin-top(12px)頂開，兩邊各留 12px，總共 24px 的間距，
+            // 分隔線自然精準落在正中央，不管上一個物件是純開關還是帶
+            // 滑桿(滑桿的圓圈軌道本身也算進它的完整高度裡，因為量的是
+            // 上一個物件的 padding-bottom，不是文字基準線)，都不會因為
+            // 上面物件高度不同而偏掉。左右各內縮 8px(呼應現有「相關
+            // 元件間距 4-8px」的規範，不是另外引入新數字)，不撐滿整行，
+            // 留一點呼吸空間。用虛擬元素畫線，不影響版面的 box model。
+            '.cwfm-field + .cwfm-field { margin-top: 12px; position: relative; }',
+            '.cwfm-field + .cwfm-field::before {',
+            '  content: ""; position: absolute; top: -12px; left: 8px; right: 8px;',
+            '  height: 1px; background: var(--cwfm-border-light);',
+            '}',
+            // [cwfm] 已經自帶邊框視覺分組的欄位(例如水平模式/垂直模式
+            // 那種用 cwfm-color-input-group 圈起來的區塊)，相對於它前後
+            // 的「兄弟欄位」不需要再加這條分隔線——它本身的邊框已經是
+            // 足夠的視覺區隔，兩層邊框疊在一起反而顯得多餘、混亂。用
+            // :not() 排除：只要相鄰兩個欄位裡有任一個屬於這種「自帶框」
+            // 欄位，就不畫分隔線。內部真正屬於同一個框裡的欄位(例如
+            // 留白優先模式底下的欄位，跟框外層本身無關)，不受這條規則
+            // 影響，一樣照原本邏輯處理。
+            '.cwfm-field-boxed + .cwfm-field::before, .cwfm-field + .cwfm-field-boxed::before { display: none; }',
+
             // [cwfm] 翻頁快速鍵錄製欄位（addKeyListField）：每組已錄製的
             // 按鍵組合顯示成一個小圓角標籤（chip），標籤上自帶一個小小的
             // 刪除按鈕；最後面永遠有一個「+ 新增」按鈕，點下去進入錄製
@@ -4709,7 +4728,7 @@
         // 直接搬移，不是複製，不用另外重寫一套滑桿邏輯）。
         function addSizeModeSwitcher(axisLabel, modeKey, buildMarginField, buildContentField) {
             const wrap = document.createElement('div');
-            wrap.className = 'cwfm-field';
+            wrap.className = 'cwfm-field cwfm-field-boxed';
             const label = document.createElement('label');
             label.textContent = axisLabel;
             wrap.appendChild(label);
