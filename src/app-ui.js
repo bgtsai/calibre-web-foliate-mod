@@ -554,35 +554,48 @@
             cwfmCursorStyleEl.id = 'cwfm-cursor-override-style';
             document.head.appendChild(cwfmCursorStyleEl);
         }
-        if (!settings.cursorOverrideEnabled) {
+        // [cwfm] 箭頭、手型各自獨立的開關，取代原本單一總開關卡住兩者——
+        // 任一個開著就要套用對應那部分，不是「兩個都開才生效」。Auto
+        // 模式現在是 colorPickerModeByKey 裡跟 HEX/RGB/HSV 同一組的
+        // 第四個分頁，不是獨立的 cursorArrowMode 設定值。
+        const modeMap = settings.colorPickerModeByKey || {};
+        const arrowEnabled = !!settings.cursorArrowColorEnabled;
+        const handEnabled = !!settings.cursorHandColorEnabled;
+        if (!arrowEnabled && !handEnabled) {
             cwfmCursorStyleEl.textContent = '';
             cwfmApplyCursorToBookIframe(null);
             return;
         }
         const theme = resolveThemeColors(settings);
-        const arrowColor = settings.cursorArrowMode === 'auto'
+        const arrowColor = modeMap.cursorArrowColor === 'AUTO'
             ? cwfmComputeAutoCursorColor(theme.text, theme.background)
             : settings.cursorArrowColor;
-        const handColor = settings.cursorHandMode === 'auto'
+        const handColor = modeMap.cursorHandColor === 'AUTO'
             ? cwfmComputeAutoCursorColor(theme.text, theme.background)
             : settings.cursorHandColor;
-        const arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
-        const handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
-        cwfmCursorStyleEl.textContent =
-            `.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 8 2, pointer !important; }\n`
-            + `body, html { cursor: url("${arrowUri}") 2 2, auto !important; }`;
-        cwfmApplyCursorToBookIframe({ arrowUri, handUri });
+        const rules = [];
+        let handUri = null, arrowUri = null;
+        if (handEnabled) {
+            handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
+            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 8 2, pointer !important; }`);
+        }
+        if (arrowEnabled) {
+            arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
+            rules.push(`body, html { cursor: url("${arrowUri}") 2 2, auto !important; }`);
+        }
+        cwfmCursorStyleEl.textContent = rules.join('\n');
+        cwfmApplyCursorToBookIframe(arrowEnabled || handEnabled ? { arrowUri, handUri, arrowEnabled, handEnabled } : null);
     }
 
     // [cwfm] 實際把游標樣式插進書本內容的 iframe 文件——傳 null 代表
-    // 要清掉(總開關關閉的情況)。每次呼叫都重新找一次 iframe 文件，
+    // 要清掉(兩個開關都關閉的情況)。每次呼叫都重新找一次 iframe 文件，
     // 不快取參照：章節切換時 iframe 的文件會整個換掉，舊的文件物件
     // 參照會失效，快取只會拿到過期、已經不在畫面上的文件。
-    function cwfmApplyCursorToBookIframe(uris) {
+    function cwfmApplyCursorToBookIframe(info) {
         const doc = getBookIframeDocument();
         if (!doc) return;
         let styleEl = doc.getElementById('cwfm-cursor-override-style');
-        if (!uris) {
+        if (!info) {
             if (styleEl) styleEl.textContent = '';
             return;
         }
@@ -591,9 +604,10 @@
             styleEl.id = 'cwfm-cursor-override-style';
             (doc.head || doc.documentElement).appendChild(styleEl);
         }
-        styleEl.textContent =
-            `a, a *, button, [role="button"] { cursor: url("${uris.handUri}") 8 2, pointer !important; }\n`
-            + `body, html, * { cursor: url("${uris.arrowUri}") 2 2, auto !important; }`;
+        const rules = [];
+        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 8 2, pointer !important; }`);
+        if (info.arrowEnabled) rules.push(`body, html, * { cursor: url("${info.arrowUri}") 2 2, auto !important; }`);
+        styleEl.textContent = rules.join('\n');
     }
 
     function gmSet(key, value) {
@@ -1856,17 +1870,6 @@
         // 內容優先影響。使用者設定的是「每一條欄縫的寬度」，總共要留的
         // 間距空間 = 這個值 × (欄數 − 1)，1 欄時天生是 0。
         columnGapPx: 24,
-        // [cwfm] 游標顏色控制——箭頭、手型分開設定，各自的模式可以是
-        // 'hex'/'rgb'/'hsv'(手動指定顏色)或 'auto'(依文字色跟背景色
-        // 自動算出來，見 CWFM_CURSOR_AUTO_SEGMENTS 那個內部參數)。
-        // cursorOverrideEnabled 是總開關，關閉時完全不套用自訂游標、
-        // 維持系統原生游標，比照「優先套用書籍原始文字樣式」同一套
-        // 開關模式。
-        cursorOverrideEnabled: false,
-        cursorArrowMode: 'auto',
-        cursorArrowColor: '#000000',
-        cursorHandMode: 'auto',
-        cursorHandColor: '#000000',
         maxColumnCount: 2,
         localAutoRemember: true,   // 功能一：本機自動記憶開關
         autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
@@ -1874,7 +1877,19 @@
         themeName: 'auto',         // 'auto'／'light'／'dark'／'sepia'／'custom'
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
-        preferOriginalTextColor: false, // 勾選後不強制覆蓋文字顏色，讓書本自己的排版樣式顯示出來
+        // [cwfm] 四個顏色欄位(文字、背景、箭頭游標、手型游標)統一同一套
+        // 「開關決定要不要套用」模式，取代原本各自獨立的
+        // preferOriginalTextColor(語意相反：開＝不套用)、
+        // cursorOverrideEnabled(單一總開關卡住兩個游標欄位)這兩種各自
+        // 不一致的做法。文字/背景維持原本行為預設開啟(套用)，游標維持
+        // 原本 cursorOverrideEnabled 的預設關閉(不套用，保留系統原生
+        // 游標，不會讓既有使用者一升級就意外看到游標變了)。
+        customTextColorEnabled: true,
+        customBackgroundColorEnabled: true,
+        cursorArrowColorEnabled: false,
+        cursorArrowColor: '#000000',
+        cursorHandColorEnabled: false,
+        cursorHandColor: '#000000',
         // [cwfm] 每個顏色欄位各自獨立記住自己上次用的分頁（HEX／RGB／
         // HSV），不共用同一個值——文字顏色跟背景顏色是兩個獨立的欄位，
         // 用 key（customTextColor／customBackgroundColor）當索引分開存，
@@ -2403,7 +2418,7 @@
         'fontFamily', 'fontSize', 'letterSpacing', 'lineSpacing', 'justify',
         'hyphenate', 'disableLigatures', 'flow', 'topBottomPadding',
         'leftRightPadding', 'maxColumnCount', 'themeName', 'customTextColor',
-        'customBackgroundColor', 'preferOriginalTextColor',
+        'customBackgroundColor', 'customTextColorEnabled', 'customBackgroundColorEnabled',
     ];
     function cwfmSaveCurrentAsTheme(settings, name) {
         const values = {};
@@ -2535,18 +2550,20 @@
         // 選擇器一份），不能因為某本書這次沒事就假設每本書都不會撞到
         // 書本自己 CSS 的優先權衝突。
         //
-        // preferOriginalTextColor：使用者可以選擇「優先套用書籍本身的
-        // 文字樣式」，勾選後即使選了主題/自訂顏色，也不強制覆蓋文字
-        // 顏色（背景色不受這個選項影響，仍然套用，因為背景色關係到
-        // 「看不看得清楚」這個更基本的可用性問題，跟文字顏色的「排版
-        // 美感選擇」性質不同）。
-        const themeRule = theme
+        // [cwfm] 文字顏色、背景顏色各自獨立的開關(customTextColorEnabled／
+        // customBackgroundColorEnabled)取代原本的 preferOriginalTextColor——
+        // 只有「佈景主題選的是自訂」(themeName==='custom')時，這兩個開關
+        // 才有意義去決定要不要套用；選固定主題(light/dark/sepia/auto)時，
+        // 主題本身的顏色一律套用，開關不影響固定主題。
+        const applyTextColor = theme && !(settings.themeName === 'custom' && !settings.customTextColorEnabled);
+        const applyBgColor = theme && !(settings.themeName === 'custom' && !settings.customBackgroundColorEnabled);
+        const themeRule = applyBgColor
             ? 'html, body { background-color: ' + theme.background + ' !important; }'
             : '';
-        const universalColorRule = theme
+        const universalColorRule = (applyTextColor || applyBgColor)
             ? '* {\n' +
-              (settings.preferOriginalTextColor ? '' : '  color: ' + theme.text + ' !important;\n') +
-              '  background-color: ' + theme.background + ' !important;\n' +
+              (applyTextColor ? '  color: ' + theme.text + ' !important;\n' : '') +
+              (applyBgColor ? '  background-color: ' + theme.background + ' !important;\n' : '') +
               '}'
             : '';
 
@@ -3980,17 +3997,41 @@
             return select;
         }
 
-        function addColorField(labelText, key) {
+        function addColorField(labelText, key, options) {
+            options = options || {};
+            const toggleKey = options.toggleKey || null;
+            const computeAutoValue = options.computeAutoValue || null; // function() => hex，null 代表不支援 Auto 分頁
             const field = document.createElement('div');
             field.className = 'cwfm-field';
             const row = document.createElement('div');
             row.className = 'cwfm-row cwfm-color-row';
+            const labelRow = document.createElement('div');
+            labelRow.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px;';
             const label = document.createElement('label');
             label.textContent = labelText;
-            row.appendChild(label);
+            labelRow.appendChild(label);
+            // [cwfm] 每個顏色欄位自己帶一個獨立開關，決定「要不要套用
+            // 這個顏色」——文字顏色、背景顏色、箭頭游標、手型游標，
+            // 四個欄位統一同一套模式，不再用「優先套用書籍原始文字
+            // 樣式」那種獨立一行、語意方向相反的做法（這裡是「開＝
+            // 套用」，不是「開＝不套用、用原始樣式」）。
+            let toggleInput = null;
+            if (toggleKey) {
+                const switchWrap = document.createElement('label');
+                switchWrap.className = 'cwfm-switch';
+                toggleInput = document.createElement('input');
+                toggleInput.type = 'checkbox';
+                toggleInput.checked = !!settings[toggleKey];
+                const switchTrack = document.createElement('span');
+                switchTrack.className = 'cwfm-switch-track';
+                switchWrap.appendChild(toggleInput);
+                switchWrap.appendChild(switchTrack);
+                labelRow.appendChild(switchWrap);
+            }
+            row.appendChild(labelRow);
 
             // [cwfm] 三欄式：文字說明 → 色塊 → 第三欄再分上下兩層（上面
-            // HEX/RGB/HSV 三選一分頁、下面對應格式的輸入框）。已經用
+            // HEX/RGB/HSV(/Auto) 分頁、下面對應格式的輸入框）。已經用
             // 獨立預覽頁面跟使用者確認過排版、配色才寫進來。
             const controlWrap = document.createElement('div');
             controlWrap.className = 'cwfm-color-control-wrap';
@@ -4012,12 +4053,24 @@
 
             // [cwfm] 這個輸入框目前是哪個模式——用 key 當索引，跟彈出
             // 取色器共用同一份 colorPickerModeByKey，但不同顏色欄位各自
-            // 獨立記憶，不會互相連動。
+            // 獨立記憶，不會互相連動。有 Auto 分頁的欄位，這裡也可能是
+            // 'AUTO'。
             let mode = (settings.colorPickerModeByKey || {})[key] || 'RGB';
+            const tabNames = computeAutoValue ? ['HEX', 'RGB', 'HSV', 'AUTO'] : ['HEX', 'RGB', 'HSV'];
+
+            function effectiveHex() {
+                // [cwfm] Auto 分頁時，實際生效的顏色是即時算出來的，不是
+                // settings[key] 存的那個手動指定值——但還是要把算出來的
+                // 結果寫回 settings[key]，這樣 applySettings() 其他地方
+                // 讀到的才是正確的值，不用整份程式碼都知道「這個欄位
+                // 可能在 Auto 模式」這件事。
+                if (mode === 'AUTO' && computeAutoValue) return computeAutoValue();
+                return settings[key];
+            }
 
             function formatForMode(hex) {
                 const rgb = cwfmHexToRgb(hex);
-                if (mode === 'HEX') return hex.toUpperCase();
+                if (mode === 'HEX' || mode === 'AUTO') return hex.toUpperCase();
                 if (mode === 'RGB') return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
                 const hsv = cwfmRgbToHsv(rgb.r, rgb.g, rgb.b);
                 return `${Math.round(hsv.h)}, ${Math.round(hsv.s * 100)}, ${Math.round(hsv.v * 100)}`;
@@ -4025,21 +4078,33 @@
             // [cwfm] 清空時的提示文字，格式比照彈出取色器裡數值輸入框
             // 已經有的做法（「例如：xxx」），不是另外設計一套。
             function refreshPlaceholder() {
-                if (mode === 'HEX') valueInput.placeholder = t('hint_hex_example');
+                if (mode === 'HEX' || mode === 'AUTO') valueInput.placeholder = t('hint_hex_example');
                 else if (mode === 'RGB') valueInput.placeholder = t('hint_rgb_example');
                 else valueInput.placeholder = t('hint_hsv_example');
             }
-            function refreshValueInput() { valueInput.value = formatForMode(settings[key]); refreshPlaceholder(); }
+            function refreshValueInput() {
+                const hex = effectiveHex();
+                valueInput.value = formatForMode(hex);
+                refreshPlaceholder();
+                swatchBtn.style.background = hex;
+                // [cwfm] Auto 分頁——輸入框變唯讀，即時顯示算出來的顏色，
+                // 不能讓使用者打字；色塊也一樣不能點開取色器去手動改，
+                // 因為改了也沒意義，下次重新整理就會被算出來的值蓋掉。
+                const isAuto = mode === 'AUTO';
+                valueInput.readOnly = isAuto;
+                swatchBtn.disabled = isAuto || (toggleKey && !settings[toggleKey]);
+            }
 
-            ['HEX', 'RGB', 'HSV'].forEach((m) => {
+            tabNames.forEach((m) => {
                 const tab = document.createElement('button');
                 tab.type = 'button';
                 tab.className = 'cwfm-color-mode-tab' + (m === mode ? ' active' : '');
-                tab.textContent = m;
+                tab.textContent = m === 'AUTO' ? t('mode_auto') : m;
                 tab.addEventListener('click', () => {
                     mode = m;
                     modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((t) => t.classList.remove('active'));
                     tab.classList.add('active');
+                    if (mode === 'AUTO') { settings[key] = effectiveHex(); saveSettings(settings); applySettings(settings); }
                     refreshValueInput();
                     // [cwfm] 用 key（customTextColor／customBackgroundColor）
                     // 當索引分開存，不同顏色欄位各自獨立記憶自己的分頁，
@@ -4054,6 +4119,7 @@
             });
 
             function commitValueInput() {
+                if (mode === 'AUTO') return; // 唯讀，不會真的觸發輸入
                 const raw = valueInput.value.trim();
                 // [cwfm] 空值——不儲存、不覆蓋、不當成錯誤，維持原本的顏色，
                 // 只是把顯示還原成目前實際生效的值，不留著一片空白。
@@ -4082,9 +4148,8 @@
                     return;
                 }
                 settings[key] = hex;
-                swatchBtn.style.background = hex;
                 refreshValueInput();
-                if (settings.themeName !== 'custom') {
+                if (!toggleKey && settings.themeName !== 'custom') {
                     settings.themeName = 'custom';
                     colorSchemeState.setValue('custom');
                 }
@@ -4097,6 +4162,7 @@
             refreshValueInput();
 
             swatchBtn.addEventListener('click', () => {
+                if (mode === 'AUTO') return;
                 // [cwfm] onPreview：拖動當下呼叫，只更新畫面（色塊本身、
                 // 書本內容即時套用），不動到真正的 settings 物件——如果
                 // 直接改真正的 settings 做預覽，使用者如果不是透過取消/
@@ -4109,7 +4175,7 @@
                     swatchBtn.style.background = hex;
                     settings[key] = hex;
                     refreshValueInput();
-                    const previewSettings = Object.assign({}, settings, { [key]: hex, themeName: 'custom' });
+                    const previewSettings = Object.assign({}, settings, { [key]: hex, themeName: toggleKey ? settings.themeName : 'custom' });
                     applySettings(previewSettings);
                     window.__cwfm.settings = settings;
                     // [cwfm] applySettings() 內部一開始就會呼叫
@@ -4125,12 +4191,12 @@
                 }
                 openColorPicker(settings[key], (hex) => {
                     settings[key] = hex;
-                    swatchBtn.style.background = hex;
                     refreshValueInput();
                     // 理由同前：自訂顏色欄位跟「佈景主題」下拉選單是分開的
                     // 兩個 UI 元件，只有選「自訂」時這兩個顏色才會真正套用，
-                    // 選色時自動把 themeName 也一併切成 custom。
-                    if (settings.themeName !== 'custom') {
+                    // 選色時自動把 themeName 也一併切成 custom。游標欄位
+                    // (toggleKey 有值)不受佈景主題連動影響，跳過這段。
+                    if (!toggleKey && settings.themeName !== 'custom') {
                         settings.themeName = 'custom';
                         colorSchemeState.setValue('custom');
                     }
@@ -4150,6 +4216,24 @@
             // 就立刻量測，但這個時間點面板整體欄寬還沒真正排定，旁邊
             // HEX/RGB/HSV 那組元件的高度還是暫時狀態，量到的數字後來
             // 對不上最終畫面(使用者截圖回報過色塊變形)。
+
+            // [cwfm] 開關真停用底下所有控制項(分頁、色塊、輸入框)，
+            // 不管開關是開是關，欄位本身都看得到，只是停用/變淡。
+            if (toggleInput) {
+                function updateToggleLock() {
+                    const enabled = toggleInput.checked;
+                    modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((tabEl) => { tabEl.disabled = !enabled; });
+                    valueInput.disabled = !enabled;
+                    swatchBtn.disabled = !enabled || mode === 'AUTO';
+                }
+                toggleInput.addEventListener('change', () => {
+                    settings[toggleKey] = toggleInput.checked;
+                    saveSettings(settings);
+                    applySettings(settings);
+                    updateToggleLock();
+                });
+                updateToggleLock();
+            }
             return swatchBtn;
         }
 
@@ -4271,72 +4355,30 @@
                 },
             };
         })();
-        const preferOriginalCheckbox = addCheckboxField(t('field_prefer_original_text_color'), 'preferOriginalTextColor');
-        const textColorSwatchBtn = addColorField(t('field_color_text'), 'customTextColor');
-        const bgColorSwatchBtn = addColorField(t('field_color_bg'), 'customBackgroundColor');
-        // [cwfm] 「優先套用書籍原始文字樣式」開啟時，自訂文字顏色這整個
-        // 區塊就沒有作用了(書籍自己的顏色會蓋過這裡的設定)——比照面板
-        // 裡其他「目前沒有作用的控制項該真停用」的做法，不只是視覺
-        // 提示。移到自訂文字顏色上方，開關本身也移到這裡，方便一起
-        // 處理停用邏輯。
-        const textColorFieldWrap = textColorSwatchBtn.closest('.cwfm-field');
-        const textColorValueInput = textColorFieldWrap.querySelector('.cwfm-color-value-input');
-        function updatePreferOriginalLock() {
-            const locked = preferOriginalCheckbox.checked;
-            textColorSwatchBtn.disabled = locked;
-            if (textColorValueInput) textColorValueInput.disabled = locked;
-        }
-        preferOriginalCheckbox.addEventListener('change', updatePreferOriginalLock);
-        updatePreferOriginalLock();
-
-        // [cwfm] 游標控制——套用/停用系統游標覆蓋的總開關，比照「優先
-        // 套用書籍原始文字樣式」同一套模式。箭頭、手型各自一個顏色
-        // 欄位，用現成的 addColorField 顯示手動指定的顏色；「Auto」
-        // 做成獨立開關而不是塞進 HEX/RGB/HSV 那組分頁——開啟時直接
-        // 停用底下的手動欄位(套用已經證實過的真停用模式)，不用深度
-        // 改造分頁系統的內部邏輯，風險低很多。
-        beginGroup(t('group_cursor'));
-        const cursorOverrideCheckbox = addCheckboxField(t('field_cursor_override_enabled'), 'cursorOverrideEnabled');
-        const cursorArrowAutoCheckbox = addCheckboxField(t('mode_auto') + ' (' + t('field_cursor_arrow_color') + ')', '__cursorArrowAutoPlaceholder__');
-        const cursorArrowSwatch = addColorField(t('field_cursor_arrow_color'), 'cursorArrowColor');
-        const cursorHandAutoCheckbox = addCheckboxField(t('mode_auto') + ' (' + t('field_cursor_hand_color') + ')', '__cursorHandAutoPlaceholder__');
-        const cursorHandSwatch = addColorField(t('field_cursor_hand_color'), 'cursorHandColor');
-        // [cwfm] 上面兩個「Auto」checkbox 故意傳一個不存在於 settings 裡
-        // 的假 key（addCheckboxField 會自動幫忙讀/存這個 key 對應的值，
-        // 但這裡的勾選狀態要對應到 cursorArrowMode/cursorHandMode 是不是
-        // 等於 'auto'，不是單純一個布林值，不能直接用現成的自動讀寫，
-        // 手動接上 change 事件、手動同步初始狀態。
-        cursorArrowAutoCheckbox.checked = settings.cursorArrowMode === 'auto';
-        cursorHandAutoCheckbox.checked = settings.cursorHandMode === 'auto';
-        function updateCursorFieldLocks() {
-            const overrideOff = !cursorOverrideCheckbox.checked;
-            const arrowAuto = cursorArrowAutoCheckbox.checked;
-            const handAuto = cursorHandAutoCheckbox.checked;
-            cursorArrowAutoCheckbox.disabled = overrideOff;
-            cursorHandAutoCheckbox.disabled = overrideOff;
-            const arrowLocked = overrideOff || arrowAuto;
-            const handLocked = overrideOff || handAuto;
-            cursorArrowSwatch.disabled = arrowLocked;
-            cursorHandSwatch.disabled = handLocked;
-            const arrowValueInput = cursorArrowSwatch.closest('.cwfm-field').querySelector('.cwfm-color-value-input');
-            const handValueInput = cursorHandSwatch.closest('.cwfm-field').querySelector('.cwfm-color-value-input');
-            if (arrowValueInput) arrowValueInput.disabled = arrowLocked;
-            if (handValueInput) handValueInput.disabled = handLocked;
-        }
-        cursorOverrideCheckbox.addEventListener('change', updateCursorFieldLocks);
-        cursorArrowAutoCheckbox.addEventListener('change', () => {
-            settings.cursorArrowMode = cursorArrowAutoCheckbox.checked ? 'auto' : 'hex';
-            saveSettings(settings);
-            applySettings(settings);
-            updateCursorFieldLocks();
+        // [cwfm] 四個顏色欄位統一同一套樣式：文字、背景、箭頭游標、
+        // 手型游標，全部用同一個 addColorField，各自帶一個獨立開關
+        // (toggleKey)決定要不要套用。原本獨立一行的「優先套用書籍
+        // 原始文字樣式」跟游標的獨立總開關都拿掉，功能併入各自欄位
+        // 的開關——語意方向：開＝套用這個顏色，不是開＝用原始樣式。
+        // 游標兩個欄位額外帶 computeAutoValue，支援 HEX/RGB/HSV/Auto
+        // 四個分頁；文字/背景維持原本三個分頁，不支援 Auto。全部都
+        // 留在「配色」這個分組內部，不獨立分組。
+        addColorField(t('field_color_text'), 'customTextColor', { toggleKey: 'customTextColorEnabled' });
+        addColorField(t('field_color_bg'), 'customBackgroundColor', { toggleKey: 'customBackgroundColorEnabled' });
+        addColorField(t('field_cursor_arrow_color'), 'cursorArrowColor', {
+            toggleKey: 'cursorArrowColorEnabled',
+            computeAutoValue: () => {
+                const theme = resolveThemeColors(settings);
+                return cwfmComputeAutoCursorColor(theme.text, theme.background);
+            },
         });
-        cursorHandAutoCheckbox.addEventListener('change', () => {
-            settings.cursorHandMode = cursorHandAutoCheckbox.checked ? 'auto' : 'hex';
-            saveSettings(settings);
-            applySettings(settings);
-            updateCursorFieldLocks();
+        addColorField(t('field_cursor_hand_color'), 'cursorHandColor', {
+            toggleKey: 'cursorHandColorEnabled',
+            computeAutoValue: () => {
+                const theme = resolveThemeColors(settings);
+                return cwfmComputeAutoCursorColor(theme.text, theme.background);
+            },
         });
-        updateCursorFieldLocks();
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
         // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
