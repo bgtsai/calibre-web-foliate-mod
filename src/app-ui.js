@@ -1302,6 +1302,13 @@
             // 不用改程式碼版本、不用重新整理。這兩條規則刻意留著，
             // 排版還在調整期間，隨時可能需要再拿出來檢查。
             '.cwfm-debug-borders .cwfm-field { outline: 1px dashed red; }',
+            // [cwfm-debug] 群組層級也一併加上虛線框，不同層級用不同顏色，
+            // 方便一眼分辨是哪一層的空間出問題——紅色=欄位本身
+            // (.cwfm-field)、橘色=分組整體(.cwfm-group，含標題+內容)、
+            // 綠色=分組內容容器(.cwfm-group-body，收合時會被隱藏的那塊)、
+            // 藍色=分隔線本身(::after)。
+            '.cwfm-debug-borders .cwfm-group { outline: 1px dashed orange; }',
+            '.cwfm-debug-borders .cwfm-group-body { outline: 1px dashed limegreen; }',
             // [cwfm] 徹底重做，不再靠跨欄位的負值定位去算「上一個欄位
             // 跟下一個欄位之間」的關係(那個做法容易算錯、也很難除錯，
             // 使用者截圖回報分隔線幾乎貼著上一個物件，跟預期的置中
@@ -1322,7 +1329,7 @@
             '}',
             // [cwfm-debug] 除錯用——分隔線本身也給一個紅色外框，方便
             // 確認它實際佔用的範圍跟位置。
-            '.cwfm-debug-borders .cwfm-field:not(:last-child)::after { outline: 1px dashed red; }',
+            '.cwfm-debug-borders .cwfm-field:not(:last-child)::after { outline: 1px dashed blue; }',
             // [cwfm] 已經自帶邊框視覺分組的欄位(例如水平模式/垂直模式
             // 那種用 cwfm-color-input-group 圈起來的區塊)，不需要這條
             // 分隔線——它本身的邊框已經是足夠的視覺區隔。
