@@ -539,6 +539,14 @@
     // 指定顏色，或 auto 自動算)組出對應顏色，轉成 SVG data URI 套用。
     // cursor 語法一定要寫退回值(auto/pointer)，圖片萬一有問題，瀏覽器
     // 才會正確退回原生游標，不會整個游標樣式失效。
+    //
+    // [cwfm] 分兩部分套用：外層文件(工具列、左右翻頁點擊區這些我們
+    // 自己控制的區域)用一般的 <style> 插進 document.head 就夠；書本
+    // 內容本身在 Shadow DOM 裡面又隔了一層 iframe，外層 CSS 天生穿不
+    // 進去，改成透過 getBookIframeDocument() 拿到真正的文件物件，
+    // 直接對這份文件插入 <style>——因為是直接對文件本身動手、不是
+    // 透過外部串接，不會被 Shadow DOM/iframe 邊界擋下來(已實測確認
+    // 拿得到真正的文件物件)。
     let cwfmCursorStyleEl = null;
     function cwfmApplyCursorOverride(settings) {
         if (!cwfmCursorStyleEl) {
@@ -548,19 +556,44 @@
         }
         if (!settings.cursorOverrideEnabled) {
             cwfmCursorStyleEl.textContent = '';
+            cwfmApplyCursorToBookIframe(null);
             return;
         }
+        const theme = resolveThemeColors(settings);
         const arrowColor = settings.cursorArrowMode === 'auto'
-            ? cwfmComputeAutoCursorColor(settings.customTextColor, settings.customBackgroundColor)
+            ? cwfmComputeAutoCursorColor(theme.text, theme.background)
             : settings.cursorArrowColor;
         const handColor = settings.cursorHandMode === 'auto'
-            ? cwfmComputeAutoCursorColor(settings.customTextColor, settings.customBackgroundColor)
+            ? cwfmComputeAutoCursorColor(theme.text, theme.background)
             : settings.cursorHandColor;
         const arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
         const handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
         cwfmCursorStyleEl.textContent =
-            `#viewer, #viewer * { cursor: url("${arrowUri}") 2 2, auto !important; }\n`
-            + `.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 8 2, pointer !important; }`;
+            `.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 8 2, pointer !important; }\n`
+            + `body, html { cursor: url("${arrowUri}") 2 2, auto !important; }`;
+        cwfmApplyCursorToBookIframe({ arrowUri, handUri });
+    }
+
+    // [cwfm] 實際把游標樣式插進書本內容的 iframe 文件——傳 null 代表
+    // 要清掉(總開關關閉的情況)。每次呼叫都重新找一次 iframe 文件，
+    // 不快取參照：章節切換時 iframe 的文件會整個換掉，舊的文件物件
+    // 參照會失效，快取只會拿到過期、已經不在畫面上的文件。
+    function cwfmApplyCursorToBookIframe(uris) {
+        const doc = getBookIframeDocument();
+        if (!doc) return;
+        let styleEl = doc.getElementById('cwfm-cursor-override-style');
+        if (!uris) {
+            if (styleEl) styleEl.textContent = '';
+            return;
+        }
+        if (!styleEl) {
+            styleEl = doc.createElement('style');
+            styleEl.id = 'cwfm-cursor-override-style';
+            (doc.head || doc.documentElement).appendChild(styleEl);
+        }
+        styleEl.textContent =
+            `a, a *, button, [role="button"] { cursor: url("${uris.handUri}") 8 2, pointer !important; }\n`
+            + `body, html, * { cursor: url("${uris.arrowUri}") 2 2, auto !important; }`;
     }
 
     function gmSet(key, value) {
@@ -2607,6 +2640,27 @@
         } catch (e) { return null; }
     }
 
+    // [cwfm] 書本內容真正渲染的地方——foliate-paginator 自己的 Shadow
+    // Root 裡面還有一層 <iframe>，書本文字是這個 iframe 自己的文件，
+    // 外層 CSS 天生穿不進去（跟前面 Shadow DOM 隔離是同一類問題，多
+    // 了一層 iframe 邊界）。查證過 sandbox="allow-same-origin"，跨域
+    // 限制不會擋在這裡，直接用 querySelector 找到 iframe 元素本身
+    // （元素在 DOM 上是真實存在的，只是 JS 裡指向它的變數是私有欄位，
+    // 私有的是變數、不是元素本身），再讀它公開的 contentDocument 屬性，
+    // 完全不用碰任何私有欄位。已經實測確認這條路拿得到真正的文件
+    // 物件（能讀到 body.innerHTML）。
+    function getBookIframeDocument() {
+        try {
+            const map = window.__cwfm?.shadowMap;
+            const host = document.querySelector('foliate-view');
+            const outerRoot = map?.get(host);
+            const paginator = outerRoot?.querySelector('foliate-paginator, foliate-fxl');
+            const innerRoot = map?.get(paginator);
+            const iframe = innerRoot?.querySelector('iframe');
+            return iframe?.contentDocument || null;
+        } catch (e) { return null; }
+    }
+
     // [cwfm] 探測元素當備援——只有在 getInnerScrollContainer() 拿不到
     // 內部容器的極早期時機點才會用到（例如 foliate-paginator 子元件
     // 還沒建立完成），正常情況下優先用內部容器量測。
@@ -2775,6 +2829,15 @@
     // 這個欄位轉傳出來，只有排版引擎自己原始的事件才有。
     view.renderer.addEventListener('relocate', (e) => {
         dlog(t('log_relocate') + e.detail?.reason + ' t=' + performance.now().toFixed(1));
+    });
+    // [cwfm] 游標樣式要套進書本內容的 iframe 文件——章節切換時這份
+    // 文件會整個換掉，掛 load 事件確保每次換章節都重新套用一次。
+    // 不用在這裡額外補套用一次：applySettings() 本身已經有呼叫
+    // cwfmApplyCursorOverride()，初始化流程本來就會跑到，這裡如果
+    // 重複呼叫，window.__cwfm.settings 在這個時間點還沒被賦值（要到
+    // 後面 loadSettings() 真正執行完才會有），會直接出錯。
+    view.renderer.addEventListener('load', () => {
+        cwfmApplyCursorOverride(window.__cwfm.settings);
     });
     let cwfmAnchorStash = null; // { originalChain, fragment, sectionIndex } 或 null——搬走、還沒接回去的內容
 
