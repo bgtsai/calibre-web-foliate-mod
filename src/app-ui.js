@@ -218,7 +218,7 @@
             group_cursor: '游標控制',
             field_cursor_override_enabled: '控制/更改原始系統游標',
             field_cursor_arrow_color: '箭頭游標顏色',
-            field_cursor_hand_color: '手型游標顏色',
+            field_cursor_hand_color: '連結游標顏色',
             mode_auto: 'Auto',
         },
         en: {
@@ -433,7 +433,7 @@
             group_cursor: 'Cursor Control',
             field_cursor_override_enabled: 'Override System Cursor',
             field_cursor_arrow_color: 'Arrow Cursor Color',
-            field_cursor_hand_color: 'Hand Cursor Color',
+            field_cursor_hand_color: 'Link Cursor Color',
             mode_auto: 'Auto',
         },
     };
@@ -523,18 +523,32 @@
         // 值，SVG 渲染器不會幫忙解碼，會直接當成無法辨識的顏色（這正是
         // 自訂顏色沒有反映到真實游標上的根因）。只有最後整份 SVG 轉成
         // data URI 那一步，才需要對整個字串做一次編碼。
+        //
+        // [cwfm] 拿掉白色外框——查證需求後確認要單色、低視覺刺激，不要
+        // 原本那種高反差外框。箭頭座標也換成使用者已經用獨立 HTML 檔案
+        // 實際看過、確認過的版本，跟之前部署的舊座標不一樣。
         let svg;
         if (shape === 'arrow') {
             svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
-                + `<path fill="${color}" stroke="white" stroke-width="1.2" stroke-linejoin="round" `
-                + `d="M4 2 L4 19 L8.5 15.2 L11.3 21.5 L14 20.2 L11.2 14 L17 13.5 Z"/></svg>`;
+                + `<path fill="${color}" `
+                + `d="M2 2 L2 17 L5.5 13.8 L7.6 19.3 L10 18.3 L7.9 13 L13 12.6 Z"/></svg>`;
         } else {
-            // hand/pointer：簡化的手型輪廓（食指伸出、其餘手指收攏的
-            // 常見手型游標剪影），不是精細描摹，只求形狀上一眼認得出
-            // 是手型游標。
+            // [cwfm] 不再用手型——查證過手型在游標這種極小尺寸下，細節
+            // (指縫鏤空)實際上很難辨識清楚，改成箭頭本體(座標跟上面
+            // arrow 完全相同，不縮放、不變形)+ 右下角一個簡化地球圖示
+            // 當作「連結」的徽章，跟檔案總管/瀏覽器常見的鏈結圖示概念
+            // 一致。地球圖示只用外框(圓圈+縱向橢圓+一條橫線)，中間鏤空
+            // 不填色，跟箭頭之間留了間距、不會黏在一起——這幾個座標都
+            // 是使用者已經用獨立 HTML 檔案實際比對過箭頭大小一致、確認
+            // 定案的版本。
             svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
-                + `<path fill="${color}" stroke="white" stroke-width="1" stroke-linejoin="round" `
-                + `d="M9 3.5c-.8 0-1.5.7-1.5 1.5v7.6l-1.6-1.4c-.7-.6-1.7-.5-2.2.2-.5.6-.4 1.5.2 2.1l4.6 4.3c.7.6 1.6 1 2.5 1h4c2 0 3.5-1.6 3.5-3.5V9.5c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v-1c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v-1c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5V5c0-.8-.7-1.5-1.5-1.5z"/></svg>`;
+                + `<path fill="${color}" `
+                + `d="M2 2 L2 17 L5.5 13.8 L7.6 19.3 L10 18.3 L7.9 13 L13 12.6 Z"/>`
+                + `<g fill="none" stroke="${color}" stroke-width="1">`
+                + `<circle cx="18.3" cy="19.3" r="4"/>`
+                + `<ellipse cx="18.3" cy="19.3" rx="1.7" ry="4"/>`
+                + `<line x1="14.3" y1="19.3" x2="22.3" y2="19.3"/>`
+                + `</g></svg>`;
         }
         return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
     }
@@ -582,7 +596,7 @@
         let handUri = null, arrowUri = null;
         if (handEnabled) {
             handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
-            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 8 2, pointer !important; }`);
+            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 2 2, pointer !important; }`);
         }
         if (arrowEnabled) {
             arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
@@ -610,7 +624,7 @@
             (doc.head || doc.documentElement).appendChild(styleEl);
         }
         const rules = [];
-        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 8 2, pointer !important; }`);
+        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 2 2, pointer !important; }`);
         if (info.arrowEnabled) rules.push(`body, html, * { cursor: url("${info.arrowUri}") 2 2, auto !important; }`);
         styleEl.textContent = rules.join('\n');
     }
@@ -4061,7 +4075,7 @@
             // 獨立記憶，不會互相連動。有 Auto 分頁的欄位，這裡也可能是
             // 'AUTO'。
             let mode = (settings.colorPickerModeByKey || {})[key] || 'RGB';
-            const tabNames = computeAutoValue ? ['HEX', 'RGB', 'HSV', 'AUTO'] : ['HEX', 'RGB', 'HSV'];
+            const tabNames = computeAutoValue ? ['AUTO', 'HEX', 'RGB', 'HSV'] : ['HEX', 'RGB', 'HSV'];
 
             function effectiveHex() {
                 // [cwfm] Auto 分頁時，實際生效的顏色是即時算出來的，不是
@@ -4864,12 +4878,24 @@
                     Math.ceil(totalContentHeight / columnCount * 1.3),
                     tallestGroupHeight + 20 // 留一點緩衝，避免壓線裁切
                 );
+                // [cwfm] 找到迴圈的邏輯缺陷：「每欄高度上限」有一個常數
+                // 下限(最高單一分組高度)，欄數再怎麼加，這個下限都不會
+                // 降低——如果最高的那個分組本身就已經超過可視範圍，不管
+                //加幾欄都救不了，但原本的迴圈沒有意識到這件事，還是會
+                // 一路加到寬度上限，加出來的欄根本沒用、只是空的(使用者
+                // 已經回報過這個現象：一般模式下比較容易出現，全螢幕下
+                // 可視範圍變大、問題就消失，正好對應這個成因)。修法：
+                // 加了這一欄之後，如果高度上限完全沒有改善(卡在常數
+                // 下限)，就該停下來、直接讓面板捲動，不要再繼續白加。
                 while (perColumnHeight > availableHeight && columnCount < maxColumnsByWidth) {
-                    columnCount += 1;
-                    perColumnHeight = Math.max(
-                        Math.ceil(totalContentHeight / columnCount * 1.3),
+                    const nextColumnCount = columnCount + 1;
+                    const nextPerColumnHeight = Math.max(
+                        Math.ceil(totalContentHeight / nextColumnCount * 1.3),
                         tallestGroupHeight + 20
                     );
+                    if (nextPerColumnHeight >= perColumnHeight) break; // 加了也沒改善，停止
+                    columnCount = nextColumnCount;
+                    perColumnHeight = nextPerColumnHeight;
                 }
                 fieldsWrap.style.columnCount = String(columnCount);
                 fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
