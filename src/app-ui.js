@@ -1654,7 +1654,11 @@
             // flex:1）完全沒有機會撐滿，因為外層容器自己就沒有把可用
             // 寬度讓出來。這才是配色區塊右側一直缺一塊的真正原因。
             '  flex-direction: column; align-items: stretch; justify-content: flex-start;',
-            '  gap: 6px; margin-bottom: 20px;',
+            // [cwfm] margin-bottom 拿掉——這是更早之前的殘留樣式，在
+            // 重做分隔線系統(每個 .cwfm-field 自己統一負責 24px 間距)
+            // 之前就存在，疊加造成配色分組底部間距特別大，欄位之間的
+            // 間距現在統一交給 .cwfm-field 那層處理，這裡不用重複設定。
+            '  gap: 6px;',
             '}',
             '.cwfm-color-row label { padding-top: 0; }',
             '.cwfm-color-control-wrap { display: flex; align-items: stretch; gap: 8px; }',
@@ -4613,13 +4617,20 @@
             const wrap = document.createElement('div');
             wrap.className = 'cwfm-keylist';
             field.appendChild(wrap);
-            panelTarget.appendChild(field);
 
             const uploadInput = document.createElement('input');
             uploadInput.type = 'file';
             uploadInput.accept = '.ttf,.otf,.woff';
             uploadInput.style.display = 'none';
-            panelTarget.appendChild(uploadInput);
+            // [cwfm] 改成塞進 field 裡面，不再另外單獨掛到 panelTarget——
+            // 這個輸入框本身看不到(display:none)，但它之前排在 field
+            // 後面，讓瀏覽器認為 field 不是「真正最後一個子元素」，
+            // 導致字型清單這個看得到的欄位被誤判成還有後續、多套了一層
+            // 不需要的分隔線(已查證確認是字型分組底部多一條線的根因)。
+            // 塞進 field 內部後，field 本身才會正確成為 panelTarget 的
+            // 最後一個子元素。
+            field.appendChild(uploadInput);
+            panelTarget.appendChild(field);
 
             function selectFont(name) {
                 settings.fontFamily = name;
@@ -4879,24 +4890,31 @@
         );
         // [cwfm] 欄數、欄間距這兩個設定值本質上是一組的(間距只有欄數
         // 大於 1 才有意義)，用跟配色/模式切換同一個 cwfm-color-input-group
-        // 邊框樣式把兩個欄位圈在一起，視覺上看得出來它們是一組。加一個
-        // 小標題在框的上面——這個框前面緊接著垂直模式那組框，沒有標題
-        // 的話兩個框貼在一起不好分辨，跟前面「水平模式」「垂直模式」
-        // 那種有標題的做法一致。
+        // 邊框樣式把兩個欄位圈在一起，視覺上看得出來它們是一組。
+        //
+        // [cwfm] 改用跟「水平模式」「垂直模式」統一的 .cwfm-field
+        // .cwfm-field-boxed 包法——之前這裡直接把 <label> 跟邊框 div
+        // 各自單獨掛到 panelTarget，沒有包進 .cwfm-field，導致沒有紅色
+        // 除錯框、也沒有正確參與分隔線/間距系統，而且自己另外設定了
+        // margin-bottom(14px)，疊加在分組本身的間距上，造成版面配置
+        // 分組底部空間過大(已查證確認)。統一寫法後，間距統一交給
+        // .cwfm-field 那層處理，不用自己另外設 margin。
+        const columnFieldWrap = document.createElement('div');
+        columnFieldWrap.className = 'cwfm-field cwfm-field-boxed';
         const columnGroupTitle = document.createElement('label');
         columnGroupTitle.textContent = t('field_column_control_title');
-        panelTarget.appendChild(columnGroupTitle);
+        columnFieldWrap.appendChild(columnGroupTitle);
         const columnGroupWrap = document.createElement('div');
         columnGroupWrap.className = 'cwfm-color-input-group';
         columnGroupWrap.style.padding = '8px';
-        columnGroupWrap.style.marginBottom = '14px';
         const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
         const columnGapSlider = addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnGroupField = columnSlider.closest('.cwfm-field');
         const columnGapField = columnGapSlider.closest('.cwfm-field');
         columnGroupWrap.appendChild(columnGroupField);
         columnGroupWrap.appendChild(columnGapField);
-        panelTarget.appendChild(columnGroupWrap);
+        columnFieldWrap.appendChild(columnGroupWrap);
+        panelTarget.appendChild(columnFieldWrap);
         // [cwfm] 捲動模式下，最大欄數這個欄位改成真正鎖住（滑桿跟旁邊的
         // 數字輸入框都停用），不是只有文字說明——使用者要求「捲動模式
         // 只接受 1 欄，這個欄位就不該讓人調」，切換翻頁模式的當下同步
