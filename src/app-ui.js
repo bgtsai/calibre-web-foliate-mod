@@ -1284,34 +1284,41 @@
             // [cwfm] 多欄排版時，避免單一欄位（label + 對應的輸入元件）被
             // 欄與欄之間的斷點硬生生切成兩半。每個 addXxxField() 現在都會
             // 把自己的內容包進一個 .cwfm-field 容器，這裡統一套用。
-            '.cwfm-field { break-inside: avoid; margin-bottom: 4px; padding-bottom: 12px; }',
+            '.cwfm-field { break-inside: avoid; margin-bottom: 0; position: relative; }',
             // [cwfm-debug] 除錯用——用紅色外框把「隱形框線」實際畫出來，
             // 讓使用者確認我認知的範圍對不對，確認完會拿掉這行。
             '.cwfm-field { outline: 1px dashed red; }',
-            // [cwfm] 分隔線要精準置中在「上一個物件」跟「下一個物件」
-            // 各自完整外框之間——做法是讓每個 .cwfm-field 底部都留相同
-            // 的 padding-bottom(12px)，分隔線出現的那個欄位再用相同的
-            // margin-top(12px)頂開，兩邊各留 12px，總共 24px 的間距，
-            // 分隔線自然精準落在正中央，不管上一個物件是純開關還是帶
-            // 滑桿(滑桿的圓圈軌道本身也算進它的完整高度裡，因為量的是
-            // 上一個物件的 padding-bottom，不是文字基準線)，都不會因為
-            // 上面物件高度不同而偏掉。左右各內縮 8px(呼應現有「相關
-            // 元件間距 4-8px」的規範，不是另外引入新數字)，不撐滿整行，
-            // 留一點呼吸空間。用虛擬元素畫線，不影響版面的 box model。
-            '.cwfm-field + .cwfm-field { margin-top: 12px; position: relative; }',
-            '.cwfm-field + .cwfm-field::before {',
-            '  content: ""; position: absolute; top: -12px; left: 8px; right: 8px;',
+            // [cwfm] 徹底重做，不再靠跨欄位的負值定位去算「上一個欄位
+            // 跟下一個欄位之間」的關係(那個做法容易算錯、也很難除錯，
+            // 使用者截圖回報分隔線幾乎貼著上一個物件，跟預期的置中
+            // 落差很大)。改成每個欄位「自己」負責自己下方的間距——
+            // margin-bottom 24px 是這個欄位自己的地盤，分隔線用
+            // ::after 畫在這塊地盤的正中央(bottom: -12px，從這個欄位
+            // 自己的框開始算，不牽涉任何「上一個欄位」的資訊)，不管
+            // 上一個/下一個欄位長什麼樣子，這個欄位自己的間距跟分隔線
+            // 位置永遠正確、不會因為鄰居的高度而跑掉。紅框現在應該會
+            // 精準貼齊每個欄位可視內容的下緣(拿掉了原本多餘的
+            // padding-bottom)，margin-bottom 是框外面的間距，不在框
+            // 裡面。左右各內縮 8px(呼應既有「相關元件間距 4-8px」的
+            // 規範)。',
+            '.cwfm-field:not(:last-child) { margin-bottom: 24px; }',
+            '.cwfm-field:not(:last-child)::after {',
+            '  content: ""; position: absolute; bottom: -12px; left: 8px; right: 8px;',
             '  height: 1px; background: var(--cwfm-border-light);',
             '}',
+            // [cwfm-debug] 除錯用——分隔線本身也給一個紅色外框，方便
+            // 確認它實際佔用的範圍跟位置。
+            '.cwfm-field:not(:last-child)::after { outline: 1px dashed red; }',
             // [cwfm] 已經自帶邊框視覺分組的欄位(例如水平模式/垂直模式
-            // 那種用 cwfm-color-input-group 圈起來的區塊)，相對於它前後
-            // 的「兄弟欄位」不需要再加這條分隔線——它本身的邊框已經是
-            // 足夠的視覺區隔，兩層邊框疊在一起反而顯得多餘、混亂。用
-            // :not() 排除：只要相鄰兩個欄位裡有任一個屬於這種「自帶框」
-            // 欄位，就不畫分隔線。內部真正屬於同一個框裡的欄位(例如
-            // 留白優先模式底下的欄位，跟框外層本身無關)，不受這條規則
-            // 影響，一樣照原本邏輯處理。
-            '.cwfm-field-boxed + .cwfm-field::before, .cwfm-field + .cwfm-field-boxed::before { display: none; }',
+            // 那種用 cwfm-color-input-group 圈起來的區塊)，不需要這條
+            // 分隔線——它本身的邊框已經是足夠的視覺區隔。
+            '.cwfm-field-boxed::after, .cwfm-field-boxed + .cwfm-field::after { display: none; }',
+            // [cwfm-debug] 前一個規則用 :not(:last-child) 讓最後一個欄位
+            // 不畫線；但如果「自帶框」的欄位緊接在別的欄位後面，需要把
+            // 「前一個欄位」的線也關掉，上面那行只關了自己的跟下一個
+            // 的，這裡額外處理「自帶框欄位前面那個欄位」的線。
+            '.cwfm-field:has(+ .cwfm-field-boxed)::after { display: none; }',
+
 
             // [cwfm] 翻頁快速鍵錄製欄位（addKeyListField）：每組已錄製的
             // 按鍵組合顯示成一個小圓角標籤（chip），標籤上自帶一個小小的
