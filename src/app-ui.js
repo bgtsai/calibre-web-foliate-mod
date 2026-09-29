@@ -3858,15 +3858,23 @@
             heading.appendChild(titleText);
             const body = document.createElement('div');
             body.className = 'cwfm-group-body';
-            const collapsed = !!(settings.groupCollapsedState && settings.groupCollapsedState[title]);
-            if (collapsed) {
-                body.style.display = 'none';
-                triangle.classList.add('collapsed');
+            // [cwfm] 收合時，標題天生帶的 margin-bottom(10px，本來是留給
+            // 標題跟底下內容之間的間距)沒有東西可以吃掉這段距離，會
+            // 疊加在分組本身的 padding-bottom(14px)上，變成收合時下緣
+            // (10+14=24px)比上緣(14px)還大——查證過使用者截圖回報的
+            // 現象，這裡是確認過的根因。收合時額外把這個 margin 歸零，
+            // 只留分組本身上下對稱的 padding，展開時交還給 CSS 原本的
+            // 10px。
+            function applyCollapsedVisual(isCollapsed) {
+                body.style.display = isCollapsed ? 'none' : '';
+                triangle.classList.toggle('collapsed', isCollapsed);
+                heading.style.marginBottom = isCollapsed ? '0' : '';
             }
+            const collapsed = !!(settings.groupCollapsedState && settings.groupCollapsedState[title]);
+            applyCollapsedVisual(collapsed);
             heading.addEventListener('click', () => {
                 const nowCollapsed = body.style.display !== 'none';
-                body.style.display = nowCollapsed ? 'none' : '';
-                triangle.classList.toggle('collapsed', nowCollapsed);
+                applyCollapsedVisual(nowCollapsed);
                 if (!settings.groupCollapsedState) settings.groupCollapsedState = {};
                 settings.groupCollapsedState[title] = nowCollapsed;
                 saveSettings(settings);
