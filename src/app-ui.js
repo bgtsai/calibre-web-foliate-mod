@@ -221,6 +221,7 @@
             field_cursor_hand_color: '連結游標顏色',
             field_cursor_auto_hide_enabled: '滑鼠閒置自動隱藏游標',
             field_cursor_auto_hide_delay: '閒置幾秒後隱藏',
+            field_page_flip_debounce: '翻頁防彈跳（這段時間內防止重複觸發）',
             mode_auto: 'Auto',
         },
         en: {
@@ -438,6 +439,7 @@
             field_cursor_hand_color: 'Link Cursor Color',
             field_cursor_auto_hide_enabled: 'Auto-hide Cursor on Idle',
             field_cursor_auto_hide_delay: 'Hide After Idle (seconds)',
+            field_page_flip_debounce: 'Page-Flip Debounce (prevents repeated triggers within this window)',
             mode_auto: 'Auto',
         },
     };
@@ -917,6 +919,10 @@
         parts.push(e.key);
         return parts.join('+');
     }
+    // [cwfm] 翻頁防彈跳——記錄上次真正觸發翻頁的時間戳，同一個模組作用
+    // 域共用（跟 handleKeydown 同一層），不用掛在 settings 上，純粹是
+    // 執行期的暫時狀態。
+    let cwfmLastPageFlipTime = 0;
     function handleKeydown(e) {
         try {
             const combo = formatKeyCombo(e);
@@ -928,8 +934,19 @@
             // 當下最新的設定，還沒套用完成前退回預設值，不會整個失效。
             const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
                 || DEFAULT_SETTINGS.pagingKeys;
-            if (pagingKeys.prev.includes(combo)) cwfmGoLeft();
-            else if (pagingKeys.next.includes(combo)) cwfmGoRight();
+            const isPrev = pagingKeys.prev.includes(combo);
+            const isNext = !isPrev && pagingKeys.next.includes(combo);
+            if (!isPrev && !isNext) return;
+            // [cwfm] 防彈跳——觸發翻頁後，這段時間內忽略其他重複訊號，
+            // 避免裝置過於敏感造成連續誤翻頁。0 代表使用者關閉這個功能
+            // (不限制)。
+            const debounceMs = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pageFlipDebounceMs)
+                ?? DEFAULT_SETTINGS.pageFlipDebounceMs;
+            const now = performance.now();
+            if (debounceMs > 0 && now - cwfmLastPageFlipTime < debounceMs) return;
+            cwfmLastPageFlipTime = now;
+            if (isPrev) cwfmGoLeft();
+            else cwfmGoRight();
         } catch (err) {
             console.error(t('err_keydown2'), err);
         }
@@ -1334,6 +1351,9 @@
             // 那種用 cwfm-color-input-group 圈起來的區塊)，不需要這條
             // 分隔線——它本身的邊框已經是足夠的視覺區隔。
             '.cwfm-field-boxed::after, .cwfm-field-boxed + .cwfm-field::after { display: none; }',
+            // [cwfm] 開關+底下緊接著的秒數/數值欄位算同一組設定，組內
+            // 不要分隔線——只有真正不同的設定之間才該有分隔線。
+            '.cwfm-field-no-divider::after { display: none; }',
             // [cwfm-debug] 前一個規則用 :not(:last-child) 讓最後一個欄位
             // 不畫線；但如果「自帶框」的欄位緊接在別的欄位後面，需要把
             // 「前一個欄位」的線也關掉，上面那行只關了自己的跟下一個
@@ -1980,6 +2000,10 @@
         // 動作，跟自動隱藏工具列各自獨立計時，不共用同一個計時器。
         cursorAutoHideEnabled: false,
         cursorAutoHideDelaySeconds: 3,
+        // [cwfm] 翻頁防彈跳——觸發翻頁快速鍵後，這段時間內忽略其他
+        // 重複訊號，避免裝置過於敏感造成連續誤翻頁。500ms 預設值：
+        // 正常人閱讀速度不可能半秒內翻過一頁。
+        pageFlipDebounceMs: 500,
         themeName: 'auto',         // 'auto'／'light'／'dark'／'sepia'／'custom'
         customTextColor: '#333333',
         customBackgroundColor: '#f5f0e6',
@@ -4962,6 +4986,7 @@
         beginGroup(t('group_keybindings'));
         addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, settings.pagingKeys.next);
         addKeyListField(t('field_key_next'), settings.pagingKeys.next, settings.pagingKeys.prev);
+        addNumberField(t('field_page_flip_debounce'), 'pageFlipDebounceMs', 0, 3000, 50, 'ms');
 
         beginGroup(t('group_reading_behavior'));
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
@@ -4974,10 +4999,16 @@
         // 開關；功能二（手動同步）不需要開關，是工具列上的按鈕，使用者
         // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
         addCheckboxField(t('field_local_auto_remember'), 'localAutoRemember');
-        addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
+        const autoSyncCheckbox = addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
         addNumberField(t('field_auto_sync_delay'), 'autoSyncDelaySeconds', 1, 60, 1, t('unit_seconds'));
-        addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
+        // [cwfm] 開關+底下緊接著的秒數欄位算同一組設定(開關決定要不要
+        // 啟用，秒數只有開關打開時才有意義)，組內不要分隔線——加一個
+        // class 標記「這個開關欄位後面不顯示分隔線」，跟現有
+        // .cwfm-field-boxed 的排除機制同一種做法。
+        autoSyncCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
+        const cursorAutoHideCheckbox = addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
         addNumberField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
+        cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
         addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
 
         // [cwfm] 左右翻頁點擊區：功能開關(能不能點擊翻頁)跟顯示開關
