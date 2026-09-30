@@ -1313,8 +1313,8 @@
             // 跟下一個欄位之間」的關係(那個做法容易算錯、也很難除錯，
             // 使用者截圖回報分隔線幾乎貼著上一個物件，跟預期的置中
             // 落差很大)。改成每個欄位「自己」負責自己下方的間距——
-            // margin-bottom 24px 是這個欄位自己的地盤，分隔線用
-            // ::after 畫在這塊地盤的正中央(bottom: -12px，從這個欄位
+            // margin-bottom 28px 是這個欄位自己的地盤，分隔線用
+            // ::after 畫在這塊地盤的正中央(bottom: -14px，從這個欄位
             // 自己的框開始算，不牽涉任何「上一個欄位」的資訊)，不管
             // 上一個/下一個欄位長什麼樣子，這個欄位自己的間距跟分隔線
             // 位置永遠正確、不會因為鄰居的高度而跑掉。紅框現在應該會
@@ -1322,9 +1322,9 @@
             // padding-bottom)，margin-bottom 是框外面的間距，不在框
             // 裡面。左右各內縮 8px(呼應既有「相關元件間距 4-8px」的
             // 規範)。',
-            '.cwfm-field:not(:last-child) { margin-bottom: 24px; }',
+            '.cwfm-field:not(:last-child) { margin-bottom: 28px; }',
             '.cwfm-field:not(:last-child)::after {',
-            '  content: ""; position: absolute; bottom: -12px; left: 8px; right: 8px;',
+            '  content: ""; position: absolute; bottom: -14px; left: 8px; right: 8px;',
             '  height: 1px; background: var(--cwfm-border-light);',
             '}',
             // [cwfm-debug] 除錯用——分隔線本身也給一個紅色外框，方便
@@ -1655,7 +1655,7 @@
             // 寬度讓出來。這才是配色區塊右側一直缺一塊的真正原因。
             '  flex-direction: column; align-items: stretch; justify-content: flex-start;',
             // [cwfm] margin-bottom 拿掉——這是更早之前的殘留樣式，在
-            // 重做分隔線系統(每個 .cwfm-field 自己統一負責 24px 間距)
+            // 重做分隔線系統(每個 .cwfm-field 自己統一負責 28px 間距)
             // 之前就存在，疊加造成配色分組底部間距特別大，欄位之間的
             // 間距現在統一交給 .cwfm-field 那層處理，這裡不用重複設定。
             '  gap: 6px;',
