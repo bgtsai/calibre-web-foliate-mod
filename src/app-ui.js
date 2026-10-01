@@ -1209,12 +1209,12 @@
             '.cwfm-tap-chevron { width: 22px; height: 22px; color: var(--cwfm-text-secondary); opacity: 0; transition: opacity 0.15s ease; }',
             '.cwfm-tap-zone.cwfm-tap-visible .cwfm-tap-chevron { opacity: 0.35; }',
             '.cwfm-tap-zone.cwfm-tap-visible:hover .cwfm-tap-chevron { opacity: 0.8; color: var(--cwfm-text); }',
-            // [cwfm] 翻頁動畫 overlay：固定定位、pointer-events:none、z-index
-            // 高於 tap zone（10）但不遮設定面板（100）。SVG 在這個容器裡。
+            // [cwfm] 翻頁動畫 overlay：Canvas 版本，fixed 定位覆蓋全畫面，
+            // pointer-events:none 不攔截點擊，z-index 高於 tap zone（10）
+            // 但不遮設定面板（100）。
             '.cwfm-page-anim {',
-            '  position: fixed; top: 0; left: 0; width: 100%; height: 100%;',
+            '  position: fixed; top: 0; left: 0;',
             '  pointer-events: none; z-index: 50;',
-            '  overflow: visible;',
             '}',
             '.cwfm-toolbar button {',
             '  background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text);',
@@ -5746,7 +5746,10 @@
     const CWFM_PAGE_ANIM_SIZE = 22;  // px，對齊 .cwfm-tap-chevron 22px
 
     // ── 狀態 ──
-    let cwfmPageAnimSvg   = null;
+    let cwfmPageAnimCanvas = null;  // <canvas> element
+    let cwfmPageAnimCtx    = null;  // 2D context
+    let cwfmPageAnimCX     = 0;     // 動畫中心點 X（視窗座標）
+    let cwfmPageAnimCY     = 0;     // 動畫中心點 Y（視窗座標）
     let cwfmPageAnimRafId = null;
     // 整體狀態機：'idle' | 'fadein' | 'visible' | 'fadeout'
     let cwfmPageAnimGlobalState = 'idle';
@@ -5777,12 +5780,21 @@
     // 透明度 easing：CubicBezier(t, 0.20, 0, 0.60, 1)
     function cwfmAnimEaseAlpha(t) { return cwfmCubicBezier(t, 0.20, 0, 0.60, 1); }
 
-    function cwfmBuildPageAnimSvg() {
-        if (cwfmPageAnimSvg) return;
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('class', 'cwfm-page-anim');
-        document.body.appendChild(svg);
-        cwfmPageAnimSvg = svg;
+    function cwfmBuildPageAnimCanvas() {
+        if (cwfmPageAnimCanvas) return;
+        const canvas = document.createElement('canvas');
+        canvas.className = 'cwfm-page-anim';
+        // 實際像素尺寸 = 視窗大小 × devicePixelRatio（高 DPI 清晰）
+        // CSS 尺寸固定為視窗大小，ctx.scale(dpr, dpr) 補正
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width  = Math.round(window.innerWidth  * dpr);
+        canvas.height = Math.round(window.innerHeight * dpr);
+        canvas.style.width  = window.innerWidth  + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        document.body.appendChild(canvas);
+        cwfmPageAnimCanvas = canvas;
+        cwfmPageAnimCtx    = canvas.getContext('2d');
+        cwfmPageAnimCtx.scale(dpr, dpr);
     }
 
     function cwfmTriggerPageAnim(dir) {
@@ -5804,7 +5816,7 @@
                 cy = window.innerHeight / 2;
             }
 
-            cwfmBuildPageAnimSvg();
+            cwfmBuildPageAnimCanvas();
             // 方向切換時清空 queue，重置狀態
             if (dir !== cwfmPageAnimDir && cwfmPageAnimGlobalState !== 'idle') {
                 cwfmPageAnimQueue = [];
@@ -5812,9 +5824,9 @@
                 cwfmPageAnimGlobalState = 'idle';
             }
             cwfmPageAnimDir = dir;
-            // 儲存最新中心點（顯示位置跟著最新翻頁方向的 tapZone）
-            cwfmPageAnimSvg.dataset.cx = cx;
-            cwfmPageAnimSvg.dataset.cy = cy;
+            // 更新中心點
+            cwfmPageAnimCX = cx;
+            cwfmPageAnimCY = cy;
 
             // 推 item 進 queue
             const isPers = (cwfmPageAnimQueue.length === 0);
@@ -5846,8 +5858,8 @@
 
     function cwfmPageAnimFrame(now) {
         cwfmPageAnimRafId = null;
-        if (!cwfmPageAnimSvg || cwfmPageAnimGlobalState === 'idle') {
-            if (cwfmPageAnimSvg) cwfmPageAnimSvg.innerHTML = '';
+        if (!cwfmPageAnimCanvas || cwfmPageAnimGlobalState === 'idle') {
+            if (cwfmPageAnimCtx) cwfmPageAnimCtx.clearRect(0, 0, cwfmPageAnimCanvas.width, cwfmPageAnimCanvas.height);
             return;
         }
 
@@ -5872,7 +5884,7 @@
                 cwfmPageAnimGlobalAlpha = 0;
                 cwfmPageAnimGlobalState = 'idle';
                 cwfmPageAnimQueue = [];
-                cwfmPageAnimSvg.innerHTML = '';
+                cwfmPageAnimCtx.clearRect(0, 0, cwfmPageAnimCanvas.width, cwfmPageAnimCanvas.height);
                 return;
             }
         }
@@ -5894,15 +5906,20 @@
         const bmpH     = Math.round(svgH_px + 2 * capPadY);
         const p1frac   = CANIM_P1_MS / (CANIM_P1_MS + CANIM_P2_MS);
 
-        const cx = parseFloat(cwfmPageAnimSvg.dataset.cx || 0);
-        const cy = parseFloat(cwfmPageAnimSvg.dataset.cy || 0);
+        const cx = cwfmPageAnimCX;
+        const cy = cwfmPageAnimCY;
         const isRight = cwfmPageAnimDir === 'right';
         const strokeW = svgH_px * (CANIM_STROKE_W / 24);
         const globalOpacity = cwfmPageAnimGlobalAlpha / 255;
         const color = window.__cwfm?.settings?.pageFlipAnimColor || '#ffffff';
 
-        // ── 3. 畫每個 item，更新 done 狀態 ──
-        let polylines = '';
+        // ── 3. 清畫布，畫每個 item，更新 done 狀態 ──
+        const ctx = cwfmPageAnimCtx;
+        ctx.clearRect(0, 0, cwfmPageAnimCanvas.width, cwfmPageAnimCanvas.height);
+        ctx.lineCap  = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = strokeW;
+
         const toRemove = [];
         for (let idx = 0; idx < cwfmPageAnimQueue.length; idx++) {
             const item = cwfmPageAnimQueue[idx];
@@ -5951,8 +5968,7 @@
                 }
             }
 
-            // 座標換算：整個 bmpW×bmpH 畫布中心對齊 (cx, cy)，
-            // 箭頭在畫布內移動，和 .cwfm-tap-chevron 視覺重疊。
+            // 座標換算：bmpW×bmpH 畫布中心對齊 (cx, cy)
             const ox = cx - bmpW / 2;
             const oy = cy - bmpH / 2;
             const addOff = CANIM_ADD_Y_OFFSET * scale;
@@ -5965,15 +5981,23 @@
             const cy_ = oy + bmpH / 2 + svgH_px / 2 + (!item.isPers ? addOff : 0);
 
             const opacity = (blitAlpha / 255) * globalOpacity;
-            polylines += `<polyline points="${ax.toFixed(2)},${ay.toFixed(2)} ${bx.toFixed(2)},${by_.toFixed(2)} ${cx_.toFixed(2)},${cy_.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${strokeW.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity.toFixed(4)}"/>`;
+            // Canvas: strokeStyle 帶 alpha，globalAlpha 設 1 避免雙重乘算
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substring(0,2), 16);
+            const g = parseInt(hex.substring(2,4), 16);
+            const b = parseInt(hex.substring(4,6), 16);
+            ctx.strokeStyle = `rgba(${r},${g},${b},${opacity.toFixed(4)})`;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by_);
+            ctx.lineTo(cx_, cy_);
+            ctx.stroke();
         }
 
         // 清除已完成的 additional
         for (let i = toRemove.length - 1; i >= 0; i--) {
             cwfmPageAnimQueue.splice(toRemove[i], 1);
         }
-
-        cwfmPageAnimSvg.innerHTML = polylines;
 
         // ── 4. 判斷是否進入整體淡出 ──
         // persistent P2 跑完 && 沒有未完成的 additional → 開始整體 fadeout
