@@ -5127,7 +5127,7 @@
         const _tapCapPad   = Math.max(2, Math.round(_tapHalfSW)) + 2;
         const _tapBmpW     = 2 * _tapCapPad + 52 * (CWFM_PAGE_ANIM_SIZE / 27.5);
         const _tapZoneMinW = Math.ceil((_tapBmpW * 2) / 2) * 2;  // 取偶數
-        const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', _tapZoneMinW, 300, 5, 'px');
+        const tapZoneWidthSlider = addRangeField(t('field_tap_zone_width'), 'tapZoneWidthPx', _tapZoneMinW, 300, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         const tapZoneVisibleCheckbox = addCheckboxField(t('field_tap_zone_visible'), 'tapZoneVisible');
 
