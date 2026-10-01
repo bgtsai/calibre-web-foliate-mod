@@ -33,8 +33,7 @@
             field_tap_zone_enabled: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd',
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
             field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
-            field_page_flip_anim_enabled: '\u7ffb\u9801\u52d5\u756b\u6548\u679c',
-            field_page_flip_anim_color: '\u7ffb\u9801\u52d5\u756b\u984f\u8272',
+            field_page_flip_anim: '\u7ffb\u9801\u52d5\u756b\u6548\u679c\uff08\u50c5\u65bc\u95dc\u9589\u7ffb\u9801\u9ede\u9078\u5340\u8996\u89ba\u63d0\u793a\u6642\u751f\u6548\uff09',
             unit_seconds: '\u79d2',
             dlg_cancel: '\u53d6\u6d88',
             dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
@@ -253,8 +252,7 @@
             field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
             field_tap_zone_width: 'Left/Right Tap Zone Width',
-            field_page_flip_anim_enabled: 'Page-turn Animation',
-            field_page_flip_anim_color: 'Page-turn Animation Color',
+            field_page_flip_anim: 'Page-turn Animation (active only when tap-zone visual hint is off)',
             unit_seconds: 'sec',
             dlg_cancel: 'Cancel',
             dlg_confirm_delete: 'Confirm Delete',
@@ -5096,58 +5094,50 @@
         cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
         addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
 
-        // [cwfm] 左右翻頁點擊區：功能開關(能不能點擊翻頁)跟顯示開關
-        // (看不看得到視覺提示)分開，可以只開功能不顯示視覺，區域照樣
-        // 有作用；寬度可調(5~45%，避免設太窄點不到、或設太寬蓋掉太多
-        // 閱讀內容)。
+        // [cwfm] 左右翻頁點擊區：功能開關 → 寬度 → 顯示開關（順序調整：
+        // 顯示開關移到寬度後面，因為「顯示視覺提示」開啟時會 disable 下方
+        // 翻頁動畫整區，邏輯上靠近翻頁動畫比靠近寬度更合理）。
         const tapZoneEnabledCheckbox = addCheckboxField(t('field_tap_zone_enabled'), 'tapZoneEnabled');
+        tapZoneEnabledCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
+        const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
+        const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         const tapZoneVisibleCheckbox = addCheckboxField(t('field_tap_zone_visible'), 'tapZoneVisible');
-        // [cwfm] 兩個開關的「視覺上看起來已停用」狀態——設定本身依然可以
-        // 改（不用 input.disabled，那樣會連點擊都擋掉），只是外觀變淡，
-        // 讓使用者一眼看出目前調了也不會有效果，不是介面壞掉沒反應。
-        // 「顯示」這個開關：只要「功能」關掉，或目前是捲動模式，就該
-        // 變淡（不管是哪一種，這個開關現在都不會有實際效果）。「功能」
-        // 這個開關：只有捲動模式本身會讓它變淡（跟使用者自己開關無關，
-        // 捲動模式下這個功能整個被系統強制關閉）。
+
+        // [cwfm] 翻頁動畫：和配色區同一套模式——標題列右側是開關（toggleKey），
+        // 下面直接是取色器，不另開一行。無 Auto 分頁。
+        // 「顯示視覺提示」開啟時，動畫整區 disable（取色器也一起停用）。
+        const pageFlipAnimColorField = addColorField(t('field_page_flip_anim'), 'pageFlipAnimColor', {
+            toggleKey: 'pageFlipAnimEnabled',
+        });
+
+        function updatePageFlipAnimDisabledState() {
+            const scrolledMode = flowSelect.value === 'scrolled';
+            // 視覺提示「實際上開著」= 自己沒被 disable 且打勾
+            const tapVisibleOn = !tapZoneVisibleCheckbox.disabled && tapZoneVisibleCheckbox.checked;
+            const animDisabled = scrolledMode || tapVisibleOn;
+            const toggleInput = pageFlipAnimColorField.querySelector('input[type="checkbox"]');
+            const swatchBtn   = pageFlipAnimColorField.querySelector('.cwfm-color-swatch-btn');
+            const textInput   = pageFlipAnimColorField.querySelector('.cwfm-color-value-input');
+            const modeTabs    = pageFlipAnimColorField.querySelectorAll('.cwfm-color-mode-tab');
+            if (toggleInput) toggleInput.disabled = animDisabled;
+            if (swatchBtn)   swatchBtn.disabled   = animDisabled;
+            if (textInput)   textInput.disabled   = animDisabled;
+            modeTabs.forEach(tab => { tab.disabled = animDisabled; });
+        }
         function updateTapZoneDisabledStates() {
             const scrolledMode = flowSelect.value === 'scrolled';
             const enabledOn = tapZoneEnabledCheckbox.checked;
-            // [cwfm] 改成真停用(.disabled = true)，不再只是視覺變淡——
-            // 查了業界慣例(SAP Fiori 等)：一個控制項目前完全沒有作用時，
-            // 標準做法是連互動能力都拿掉，不是維持可以操作、只是外觀
-            // 變淡。三個控制項(功能開關、顯示開關、寬度滑桿含旁邊的
-            // 數字輸入框)統一在這裡處理，確保停用時機完全同步。
             tapZoneEnabledCheckbox.disabled = scrolledMode;
             tapZoneVisibleCheckbox.disabled = scrolledMode || !enabledOn;
             const widthDisabled = scrolledMode || !enabledOn;
             tapZoneWidthSlider.disabled = widthDisabled;
             tapZoneWidthValueInput.disabled = widthDisabled;
+            updatePageFlipAnimDisabledState();
         }
         flowSelect.addEventListener('change', updateTapZoneDisabledStates);
         tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneDisabledStates);
-        const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
-        const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
+        tapZoneVisibleCheckbox.addEventListener('change', updatePageFlipAnimDisabledState);
         updateTapZoneDisabledStates();
-
-        // [cwfm] 翻頁動畫：開關 + 顏色取色器。
-        // 大小參數寫死在程式碼內部（CWFM_PAGE_ANIM_SIZE），不開放給使用者調整。
-        // 無 Auto 分頁（不像游標顏色有「跟隨主題」的需求）。
-        const pageFlipAnimCheckbox = addCheckboxField(t('field_page_flip_anim_enabled'), 'pageFlipAnimEnabled');
-        pageFlipAnimCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
-        addColorField(t('field_page_flip_anim_color'), 'pageFlipAnimColor', null);
-        function updatePageFlipAnimDisabledState() {
-            const colorField = pageFlipAnimCheckbox.closest('.cwfm-field').nextElementSibling;
-            if (colorField) {
-                const scrolledMode = flowSelect.value === 'scrolled';
-                const disabled = scrolledMode || !pageFlipAnimCheckbox.checked;
-                pageFlipAnimCheckbox.disabled = scrolledMode;
-                const colorInput = colorField.querySelector('input, button, [tabindex]');
-                if (colorInput) colorInput.disabled = disabled;
-            }
-        }
-        flowSelect.addEventListener('change', updatePageFlipAnimDisabledState);
-        pageFlipAnimCheckbox.addEventListener('change', updatePageFlipAnimDisabledState);
-        updatePageFlipAnimDisabledState();
 
         // [cwfm] 語言分組移到最後——查過業界慣例(Matomo 自己 GitHub 上的
         // 討論)：語言這種使用者最多只改一次、改完就不會再碰的設定，
