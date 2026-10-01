@@ -2123,7 +2123,7 @@
         tapZoneVisible: true,
         tapZoneWidthPx: 80,   // 每側感應區固定寬度(px)
         pageFlipAnimEnabled: true,
-        pageFlipAnimColor: '#ffffff',
+        pageFlipAnimColor: 'AUTO',
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
@@ -2637,6 +2637,9 @@
         'hyphenate', 'disableLigatures', 'flow', 'topBottomPadding',
         'leftRightPadding', 'maxColumnCount', 'themeName', 'customTextColor',
         'customBackgroundColor', 'customTextColorEnabled', 'customBackgroundColorEnabled',
+        'cursorArrowColor', 'cursorArrowColorEnabled',
+        'cursorHandColor',  'cursorHandColorEnabled',
+        'pageFlipAnimColor', 'pageFlipAnimEnabled',
     ];
     function cwfmSaveCurrentAsTheme(settings, name) {
         const values = {};
@@ -2675,7 +2678,11 @@
     // 得到要使用者自己看畫面判斷。
     function cwfmApplyTheme(settings, theme) {
         const fontName = theme.values.fontFamily;
-        CWFM_THEME_FIELD_KEYS.forEach((key) => { settings[key] = theme.values[key]; });
+        CWFM_THEME_FIELD_KEYS.forEach((key) => {
+            // [cwfm] 舊主題可能沒有新加的 key（如游標顏色、翻頁動畫），
+            // undefined 不覆蓋，保留使用者目前的設定值。
+            if (theme.values[key] !== undefined) settings[key] = theme.values[key];
+        });
         if (theme.fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
             settings.fontFamily = '';
             cwfmAlertDialog(t('alert_uploaded_font_deleted'), t('txt_theme_font_deleted_pre') + fontName + t('txt_theme_font_deleted_post'));
@@ -4701,17 +4708,11 @@
         addColorField(t('field_color_bg'), 'customBackgroundColor', { toggleKey: 'customBackgroundColorEnabled' });
         addColorField(t('field_cursor_arrow_color'), 'cursorArrowColor', {
             toggleKey: 'cursorArrowColorEnabled',
-            computeAutoValue: () => {
-                const theme = resolveThemeColors(settings);
-                return cwfmComputeAutoCursorColor(theme.text, theme.background);
-            },
+            computeAutoValue: () => resolveThemeColors(settings).text,
         });
         addColorField(t('field_cursor_hand_color'), 'cursorHandColor', {
             toggleKey: 'cursorHandColorEnabled',
-            computeAutoValue: () => {
-                const theme = resolveThemeColors(settings);
-                return cwfmComputeAutoCursorColor(theme.text, theme.background);
-            },
+            computeAutoValue: () => resolveThemeColors(settings).text,
         });
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
@@ -5112,6 +5113,7 @@
         // 「顯示視覺提示」開啟時，動畫整區 disable（取色器也一起停用）。
         const pageFlipAnimSwatchBtn = addColorField(t('field_page_flip_anim'), 'pageFlipAnimColor', {
             toggleKey: 'pageFlipAnimEnabled',
+            computeAutoValue: () => resolveThemeColors(settings).text,
         });
         const pageFlipAnimField = pageFlipAnimSwatchBtn.closest('.cwfm-field');
 
@@ -5120,14 +5122,21 @@
             // 視覺提示「實際上開著」= 自己沒被 disable 且打勾
             const tapVisibleOn = !tapZoneVisibleCheckbox.disabled && tapZoneVisibleCheckbox.checked;
             const animDisabled = scrolledMode || tapVisibleOn;
+
+            // 膠囊開關：真 disabled（讓 CSS opacity:0.4 自動生效）
             const toggleInput = pageFlipAnimField.querySelector('input[type="checkbox"]');
-            const swatchBtn   = pageFlipAnimField.querySelector('.cwfm-color-swatch-btn');
-            const textInput   = pageFlipAnimField.querySelector('.cwfm-color-value-input');
-            const modeTabs    = pageFlipAnimField.querySelectorAll('.cwfm-color-mode-tab');
             if (toggleInput) toggleInput.disabled = animDisabled;
-            if (swatchBtn)   swatchBtn.disabled   = animDisabled;
-            if (textInput)   textInput.disabled   = animDisabled;
-            modeTabs.forEach(tab => { tab.disabled = animDisabled; });
+
+            // 標題文字：外部 disable 時變灰
+            const label = pageFlipAnimField.querySelector('label');
+            if (label) label.style.opacity = animDisabled ? '0.4' : '';
+
+            // 取色器整區：opacity + pointer-events（保留數值，不觸發 -- 邏輯）
+            const controlWrap = pageFlipAnimField.querySelector('.cwfm-color-control-wrap');
+            if (controlWrap) {
+                controlWrap.style.opacity       = animDisabled ? '0.4' : '';
+                controlWrap.style.pointerEvents = animDisabled ? 'none' : '';
+            }
         }
         function updateTapZoneDisabledStates() {
             const scrolledMode = flowSelect.value === 'scrolled';
@@ -5646,9 +5655,12 @@
         if (!el) {
             el = doc.createElement('style');
             el.id = CWFM_CURSOR_AUTOHIDE_STYLE_ID;
-            (doc.head || doc.documentElement).appendChild(el);
         }
-        el.textContent = hidden ? '* { cursor: none !important; }' : '';
+        // [cwfm] `:root *` specificity (0,1,0) 和 `.cwfm-tap-zone` 相同，
+        // re-append 到 head 最後面確保它是最後注入的同優先級規則，
+        // 蓋過自訂游標（cursor override）和 tap zone 的 cursor:pointer。
+        (doc.head || doc.documentElement).appendChild(el);
+        el.textContent = hidden ? ':root * { cursor: none !important; }' : '';
     }
     function cwfmApplyCursorVisibility(hidden) {
         cwfmSetCursorNone(document, hidden);
@@ -5831,7 +5843,6 @@
             // 更新中心點
             cwfmPageAnimCX = cx;
             cwfmPageAnimCY = cy;
-
             // 推 item 進 queue
             const isPers = (cwfmPageAnimQueue.length === 0);
             while (cwfmPageAnimQueue.length >= CANIM_MAX) {
@@ -5915,7 +5926,11 @@
         const isRight = cwfmPageAnimDir === 'right';
         const strokeW = svgH_px * (CANIM_STROKE_W / 24);
         const globalOpacity = cwfmPageAnimGlobalAlpha / 255;
-        const color = window.__cwfm?.settings?.pageFlipAnimColor || '#ffffff';
+        const _settings = window.__cwfm?.settings;
+        const _rawColor = _settings?.pageFlipAnimColor;
+        const color = (!_rawColor || _rawColor === 'AUTO')
+            ? (resolveThemeColors(_settings || {}).text || '#000000')
+            : _rawColor;
 
         // ── 3. 清畫布，畫每個 item，更新 done 狀態 ──
         const ctx = cwfmPageAnimCtx;
