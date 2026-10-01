@@ -5951,23 +5951,18 @@
                 }
             }
 
-            // 座標換算（對應 DrawChevronMorph）
-            // bmpH 的垂直中心 = cy（含 capPadY），半高 = svgH_px/2
-            const bmpCY = bmpH / 2;
-            const aHY   = svgH_px / 2;
-            // 繪製原點：讓 chevron 中心對齊 (cx, cy)
-            // isRight: topX/botX 在左，midX 在右
-            // isLeft:  翻轉 bmpW - x
-            const ox = isRight ? (cx - tipTgt - capPad)    : (cx - (bmpW - lineX0 - capPad));
-            const oy = cy - bmpCY;
+            // 座標換算：整個 bmpW×bmpH 畫布中心對齊 (cx, cy)，
+            // 箭頭在畫布內移動，和 .cwfm-tap-chevron 視覺重疊。
+            const ox = cx - bmpW / 2;
+            const oy = cy - bmpH / 2;
             const addOff = CANIM_ADD_Y_OFFSET * scale;
 
             const ax  = isRight ? ox + topX  : ox + (bmpW - topX);
-            const ay  = oy + bmpCY - aHY + (item.isPers ? addOff : 0);
+            const ay  = oy + bmpH / 2 - svgH_px / 2 + (!item.isPers ? addOff : 0);
             const bx  = isRight ? ox + midX  : ox + (bmpW - midX);
-            const by_ = oy + bmpCY           + (item.isPers ? addOff : 0);
+            const by_ = oy + bmpH / 2                + (!item.isPers ? addOff : 0);
             const cx_ = isRight ? ox + botX  : ox + (bmpW - botX);
-            const cy_ = oy + bmpCY + aHY     + (item.isPers ? addOff : 0);
+            const cy_ = oy + bmpH / 2 + svgH_px / 2 + (!item.isPers ? addOff : 0);
 
             const opacity = (blitAlpha / 255) * globalOpacity;
             polylines += `<polyline points="${ax.toFixed(2)},${ay.toFixed(2)} ${bx.toFixed(2)},${by_.toFixed(2)} ${cx_.toFixed(2)},${cy_.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${strokeW.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity.toFixed(4)}"/>`;
