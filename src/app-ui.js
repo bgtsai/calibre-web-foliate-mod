@@ -6097,15 +6097,20 @@
                 ctx.lineWidth    = _strokeW;
                 ctx.lineCap      = 'round';
                 ctx.lineJoin     = 'round';
+                // [cwfm] 箭頭視覺中心對齊 canvas 中心，讓 flex 置中後
+                // 箭頭正好在 tap zone 正中央。
+                // 視覺中心 X = (_backTgt + _tipTgt) / 2，偏移讓它對齊 _bmpW/2。
+                const _visCenter = (_backTgt + _tipTgt) / 2;
+                const _xOffset   = _bmpW / 2 - _visCenter;
                 ctx.beginPath();
                 if (isRight) {
-                    ctx.moveTo(_backTgt, _topY);
-                    ctx.lineTo(_tipTgt,  _midY);
-                    ctx.lineTo(_backTgt, _botY);
+                    ctx.moveTo(_backTgt + _xOffset, _topY);
+                    ctx.lineTo(_tipTgt  + _xOffset, _midY);
+                    ctx.lineTo(_backTgt + _xOffset, _botY);
                 } else {
-                    ctx.moveTo(_bmpW - _backTgt, _topY);
-                    ctx.lineTo(_bmpW - _tipTgt,  _midY);
-                    ctx.lineTo(_bmpW - _backTgt, _botY);
+                    ctx.moveTo(_bmpW - _backTgt + _xOffset, _topY);
+                    ctx.lineTo(_bmpW - _tipTgt  + _xOffset, _midY);
+                    ctx.lineTo(_bmpW - _backTgt + _xOffset, _botY);
                 }
                 ctx.stroke();
             }
