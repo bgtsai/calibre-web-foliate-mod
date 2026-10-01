@@ -3926,6 +3926,14 @@
         cpRender();
     }
 
+    // [cwfm] 箭頭大小：視窗短邊的 2.14%，無條件進到最近偶數。
+    // 旋轉螢幕前後短邊數值不變，大小自動一致。
+    // tap zone canvas 尺寸、動畫畫布、設定面板最小寬度都連動這個值。
+    // 必須在 buildSettingsPanel 之前宣告（設定面板會用到）。
+    const CWFM_PAGE_ANIM_SCALE = 0.0214;
+    const _animRaw = Math.min(window.innerWidth, window.innerHeight) * CWFM_PAGE_ANIM_SCALE;
+    const CWFM_PAGE_ANIM_SIZE = Math.ceil(_animRaw / 2) * 2;
+
     function buildSettingsPanel() {
         const settings = loadSettings();
 
@@ -5769,12 +5777,7 @@
     // ── 容器淡出（FADEOUT_MS=120）──
     const CANIM_FADEOUT_MS = 120;
 
-    // [cwfm] 箭頭大小：視窗短邊的 2.14%，無條件進到最近偶數。
-    // 旋轉螢幕前後短邊數值不變，大小自動一致。
-    // tap zone canvas 尺寸和動畫畫布都連動這個值。
-    const CWFM_PAGE_ANIM_SCALE = 0.0214;
-    const _animRaw = Math.min(window.innerWidth, window.innerHeight) * CWFM_PAGE_ANIM_SCALE;
-    const CWFM_PAGE_ANIM_SIZE = Math.ceil(_animRaw / 2) * 2;
+    // ── 大小：最終 chevron 高度 = CWFM_PAGE_ANIM_SIZE px（在上方已宣告）──
 
     // ── 狀態 ──
     let cwfmPageAnimCanvas = null;  // <canvas> element
