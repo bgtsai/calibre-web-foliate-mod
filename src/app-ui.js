@@ -5118,11 +5118,15 @@
         tapZoneEnabledCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
         // [cwfm] tap zone 最小寬度 = bmpW × 2（箭頭寬度 + 左右各 50% 邊距），
         // 連動 CWFM_PAGE_ANIM_SIZE，確保箭頭放得進去且有呼吸空間。
-        const _tapMinScale  = CWFM_PAGE_ANIM_SIZE / CANIM_SVG_H;
-        const _tapHalfSW    = CWFM_PAGE_ANIM_SIZE * (CANIM_STROKE_W / 24) / 2;
-        const _tapCapPad    = Math.max(2, Math.round(_tapHalfSW)) + 2;
-        const _tapBmpW      = 2 * _tapCapPad + CANIM_P1_SLIDE * _tapMinScale + CANIM_P2_TIP * _tapMinScale;
-        const _tapZoneMinW  = Math.ceil((_tapBmpW * 2) / 2) * 2;  // 取偶數
+        // CANIM_* 常數在後面才宣告，這裡直接用等效數值計算。
+        // scale = CWFM_PAGE_ANIM_SIZE / 27.5, strokeW_ratio = 6/24
+        // halfSW = CWFM_PAGE_ANIM_SIZE * (6/24) / 2
+        // capPad = max(2, round(halfSW)) + 2
+        // bmpW = 2*capPad + (20 + 32) * scale
+        const _tapHalfSW   = CWFM_PAGE_ANIM_SIZE * (6 / 24) / 2;
+        const _tapCapPad   = Math.max(2, Math.round(_tapHalfSW)) + 2;
+        const _tapBmpW     = 2 * _tapCapPad + 52 * (CWFM_PAGE_ANIM_SIZE / 27.5);
+        const _tapZoneMinW = Math.ceil((_tapBmpW * 2) / 2) * 2;  // 取偶數
         const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', _tapZoneMinW, 300, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         const tapZoneVisibleCheckbox = addCheckboxField(t('field_tap_zone_visible'), 'tapZoneVisible');
