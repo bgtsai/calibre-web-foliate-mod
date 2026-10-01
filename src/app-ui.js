@@ -5127,7 +5127,8 @@
         const _tapCapPad   = Math.max(2, Math.round(_tapHalfSW)) + 2;
         const _tapBmpW     = 2 * _tapCapPad + 52 * (CWFM_PAGE_ANIM_SIZE / 27.5);
         const _tapZoneMinW = Math.ceil((_tapBmpW * 2) / 2) * 2;  // 取偶數
-        const tapZoneWidthSlider = addRangeField(t('field_tap_zone_width'), 'tapZoneWidthPx', _tapZoneMinW, 300, 5, 'px');
+        const _tapZoneMaxW  = Math.floor(window.innerWidth / 2);
+        const tapZoneWidthSlider = addRangeField(t('field_tap_zone_width'), 'tapZoneWidthPx', _tapZoneMinW, _tapZoneMaxW, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         const tapZoneVisibleCheckbox = addCheckboxField(t('field_tap_zone_visible'), 'tapZoneVisible');
 
@@ -6157,7 +6158,8 @@
         // 合法值可以是 0，但 0 || 80 這種寫法會把 0 誤判成「沒有值」，
         // 結果變成 80，不是真的 0。
         const rawWidth = typeof settings.tapZoneWidthPx === 'number' ? settings.tapZoneWidthPx : 80;
-        const widthPx = Math.max(0, Math.min(300, rawWidth));
+        const maxWidth = Math.floor(window.innerWidth / 2);
+        const widthPx = Math.max(0, Math.min(maxWidth, rawWidth));
         [cwfmTapZoneLeft, cwfmTapZoneRight].forEach((zone) => {
             // [cwfm] 用 dataset 存功能開關的狀態，不是直接加/拿掉 click
             // 監聽器——監聽器本身固定掛著，觸發時才檢查這個旗標，這樣
