@@ -955,6 +955,59 @@
     view.addEventListener('load', ({ detail }) => {
         detail.doc.addEventListener('keydown', handleKeydown);
     });
+    // [cwfm] 滾輪翻頁——分頁模式限定（捲動模式下條件 1 擋掉）。
+    // 面板開啟時不觸發（條件 2），滑鼠在底部 bar 上時不觸發（條件 3）。
+    // iframe 內的 wheel 事件不會冒泡到外層 document，所以外層和 iframe
+    // 兩邊都要掛；iframe 那邊的座標要加上 iframe 元素的 getBoundingClientRect
+    // 偏移，才能跟外層視口的 bar rect 正確比對。
+    function getBookIframeElement() {
+        try {
+            const map = window.__cwfm?.shadowMap;
+            const host = document.querySelector('foliate-view');
+            const outerRoot = map?.get(host);
+            const paginator = outerRoot?.querySelector('foliate-paginator, foliate-fxl');
+            const innerRoot = map?.get(paginator);
+            return innerRoot?.querySelector('iframe') || null;
+        } catch (e) { return null; }
+    }
+    function handleWheel(e) {
+        try {
+            if (!e.deltaY) return;
+            const settings = window.__cwfm?.settings;
+            if (!settings || settings.flow === 'scrolled') return;
+            if (document.querySelector('.cwfm-panel.cwfm-open')) return;
+            // 換算座標：若事件來自 iframe 內，clientX/Y 是相對 iframe 視口，
+            // 需加上 iframe 元素在外層視口中的偏移，才能跟 bar rect 比對。
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            if (e.target?.ownerDocument !== document) {
+                const iframeEl = getBookIframeElement();
+                if (iframeEl) {
+                    const r = iframeEl.getBoundingClientRect();
+                    clientX += r.left;
+                    clientY += r.top;
+                }
+            }
+            const bar = document.querySelector('.cwfm-toolbar');
+            if (bar) {
+                const r = bar.getBoundingClientRect();
+                if (clientX >= r.left && clientX <= r.right &&
+                    clientY >= r.top  && clientY <= r.bottom) return;
+            }
+            const debounceMs = settings.pageFlipDebounceMs ?? DEFAULT_SETTINGS.pageFlipDebounceMs;
+            const now = performance.now();
+            if (debounceMs > 0 && now - cwfmLastPageFlipTime < debounceMs) return;
+            cwfmLastPageFlipTime = now;
+            if (e.deltaY > 0) cwfmGoRight();
+            else cwfmGoLeft();
+        } catch (err) {
+            console.error('[cwfm] handleWheel error', err);
+        }
+    }
+    document.addEventListener('wheel', handleWheel, { passive: true });
+    view.addEventListener('load', ({ detail }) => {
+        detail.doc.addEventListener('wheel', handleWheel, { passive: true });
+    });
 
     // ============================================================
     // 除錯用的全域物件：Console 打 __cwfm 就能查目前狀態
@@ -5564,14 +5617,32 @@
         cwfmApplyCursorVisibility(false);
         cwfmScheduleCursorHide();
     }
+    // [cwfm] iframe 內的 mousemove 不會冒泡到外層 document，所以光掛
+    // document.addEventListener('mousemove', cwfmWakeCursor) 不夠——
+    // 使用者在書本內移動滑鼠時，計時器不會重新排程，游標隱藏一次之後
+    // 就再也不會自動恢復。這裡補掛一個到 iframe 內部的文件，每次章節
+    // 切換（load 事件）也要重新掛，因為 iframe 的 document 是全新物件。
+    function cwfmAttachIframeMouseListener() {
+        const doc = getBookIframeDocument();
+        if (!doc) return;
+        doc.removeEventListener('mousemove', cwfmWakeCursor);
+        doc.addEventListener('mousemove', cwfmWakeCursor);
+    }
     function updateCursorAutoHide(settings) {
         cwfmCursorHideEnabled = !!settings.cursorAutoHideEnabled;
         cwfmCursorHideDelayMs = Math.max(1, settings.cursorAutoHideDelaySeconds || 3) * 1000;
         clearTimeout(cwfmCursorHideTimer);
-        if (cwfmCursorHideEnabled) cwfmWakeCursor();
-        else cwfmApplyCursorVisibility(false);
+        if (cwfmCursorHideEnabled) {
+            cwfmWakeCursor();
+            cwfmAttachIframeMouseListener();
+        } else {
+            cwfmApplyCursorVisibility(false);
+        }
     }
     document.addEventListener('mousemove', cwfmWakeCursor);
+    view.addEventListener('relocate', () => {
+        if (cwfmCursorHideEnabled) cwfmAttachIframeMouseListener();
+    });
 
     try { tocPanel = buildTOCPanel(); } catch (e) { console.error(t('err_build_toc'), e); }
     try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
