@@ -1206,7 +1206,9 @@
             // 到（呼應「功能開關/顯示開關分開」這個設計，關閉顯示的時候
             // 連圖示都不該露出來），淡淡的顏色，不搶眼，滑鼠移過去才
             // 稍微加深，給一點互動回饋。
-            '.cwfm-tap-chevron { width: 22px; height: 22px; color: var(--cwfm-text-secondary); opacity: 0; transition: opacity 0.15s ease; }',
+            // [cwfm] cwfm-tap-chevron 尺寸由 JS Canvas 動態設定（連動 CWFM_PAGE_ANIM_SIZE），
+            // 不在 CSS 寫死 width/height。
+            '.cwfm-tap-chevron { color: var(--cwfm-text-secondary); opacity: 0; transition: opacity 0.15s ease; display: block; }',
             '.cwfm-tap-zone.cwfm-tap-visible .cwfm-tap-chevron { opacity: 0.35; }',
             '.cwfm-tap-zone.cwfm-tap-visible:hover .cwfm-tap-chevron { opacity: 0.8; color: var(--cwfm-text); }',
             // [cwfm] 翻頁動畫 overlay：Canvas 版本，fixed 定位覆蓋全畫面，
@@ -6017,24 +6019,87 @@
     }
 
     function cwfmBuildTapZones() {
+        // [cwfm] 幾何計算：和動畫完全相同的算法，CWFM_PAGE_ANIM_SIZE 改了就自動連動。
+        const _scale   = CWFM_PAGE_ANIM_SIZE / CANIM_SVG_H;
+        const _svgH_px = CWFM_PAGE_ANIM_SIZE;
+        const _halfSW  = _svgH_px * (CANIM_STROKE_W / 24) / 2;
+        const _capPad  = Math.max(2, Math.round(_halfSW)) + 2;
+        const _capPadY = Math.max(1, Math.round(_halfSW)) + 1;
+        const _P1slide = CANIM_P1_SLIDE * _scale;
+        const _P2back  = CANIM_P2_BACK  * _scale;
+        const _P2tip   = CANIM_P2_TIP   * _scale;
+        const _lineX1  = _capPad + _P1slide;
+        const _backTgt = _lineX1 + _P2back;
+        const _tipTgt  = _lineX1 + _P2tip;
+        const _bmpW    = 2 * _capPad + _P1slide + _P2tip;
+        const _bmpH    = _svgH_px + 2 * _capPadY;
+        const _midY    = _bmpH / 2;
+        const _topY    = _midY - _svgH_px / 2;
+        const _botY    = _midY + _svgH_px / 2;
+        const _strokeW = _svgH_px * (CANIM_STROKE_W / 24);
+        const dpr      = window.devicePixelRatio || 1;
+
+        // 建立 canvas chevron，讀 CSS variable 取顏色
+        function cwfmMakeTapChevronCanvas(isRight) {
+            const canvas = document.createElement('canvas');
+            canvas.className = 'cwfm-tap-chevron';
+            canvas.width  = Math.round(_bmpW * dpr);
+            canvas.height = Math.round(_bmpH * dpr);
+            canvas.style.width  = _bmpW + 'px';
+            canvas.style.height = _bmpH + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            function draw(hovered) {
+                ctx.clearRect(0, 0, _bmpW, _bmpH);
+                const style = getComputedStyle(document.documentElement);
+                const color = hovered
+                    ? (style.getPropertyValue('--cwfm-text').trim() || '#ffffff')
+                    : (style.getPropertyValue('--cwfm-text-secondary').trim() || '#898989');
+                ctx.strokeStyle  = color;
+                ctx.lineWidth    = _strokeW;
+                ctx.lineCap      = 'round';
+                ctx.lineJoin     = 'round';
+                ctx.beginPath();
+                if (isRight) {
+                    ctx.moveTo(_backTgt, _topY);
+                    ctx.lineTo(_tipTgt,  _midY);
+                    ctx.lineTo(_backTgt, _botY);
+                } else {
+                    ctx.moveTo(_bmpW - _backTgt, _topY);
+                    ctx.lineTo(_bmpW - _tipTgt,  _midY);
+                    ctx.lineTo(_bmpW - _backTgt, _botY);
+                }
+                ctx.stroke();
+            }
+
+            // 初始繪製在 append 後才能讀到 CSS variable
+            return { canvas, draw };
+        }
+
         cwfmTapZoneLeft = document.createElement('div');
         cwfmTapZoneLeft.className = 'cwfm-tap-zone cwfm-tap-left';
         cwfmTapZoneLeft.dataset.cwfmOwned = 'true';
-        // [cwfm] 中央的小箭頭圖示——參考 Material Design 圖示庫的
-        // chevron（角括號箭頭）樣式，不是自己編的符號，淡淡的、不搶眼，
-        // 只是給一個「這裡可以點」的視覺提示。
-        // [cwfm] 箭頭形狀改成和翻頁動畫最終形態完全一致的 polyline，
-        // 讓動畫停止時位置與形狀無縫接軌。
-        // viewBox 對應動畫的 bmpW×bmpH（52×30），strokeW=5.5，linecap=round。
-        cwfmTapZoneLeft.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 52 30" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,4 5.4,15 15,26"/></svg>';
+        const leftChevron = cwfmMakeTapChevronCanvas(false);
+        cwfmTapZoneLeft.appendChild(leftChevron.canvas);
         cwfmTapZoneLeft.addEventListener('click', () => { if (cwfmTapZoneLeft.dataset.cwfmTapEnabled === 'true') cwfmGoLeft(); });
+        cwfmTapZoneLeft.addEventListener('mouseenter', () => leftChevron.draw(true));
+        cwfmTapZoneLeft.addEventListener('mouseleave', () => leftChevron.draw(false));
+
         cwfmTapZoneRight = document.createElement('div');
         cwfmTapZoneRight.className = 'cwfm-tap-zone cwfm-tap-right';
         cwfmTapZoneRight.dataset.cwfmOwned = 'true';
-        cwfmTapZoneRight.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 52 30" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="37,4 46.6,15 37,26"/></svg>';
+        const rightChevron = cwfmMakeTapChevronCanvas(true);
+        cwfmTapZoneRight.appendChild(rightChevron.canvas);
         cwfmTapZoneRight.addEventListener('click', () => { if (cwfmTapZoneRight.dataset.cwfmTapEnabled === 'true') cwfmGoRight(); });
+        cwfmTapZoneRight.addEventListener('mouseenter', () => rightChevron.draw(true));
+        cwfmTapZoneRight.addEventListener('mouseleave', () => rightChevron.draw(false));
+
         document.body.appendChild(cwfmTapZoneLeft);
         document.body.appendChild(cwfmTapZoneRight);
+        // append 後才能讀到繼承的 CSS variable，這裡做初始繪製
+        leftChevron.draw(false);
+        rightChevron.draw(false);
     }
     function cwfmApplyTapZoneSettings(settings) {
         if (!cwfmTapZoneLeft || !cwfmTapZoneRight) return;
