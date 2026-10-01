@@ -216,11 +216,7 @@
             field_target_content_height: '內容高度',
             field_column_gap: '兩欄之間的間距',
             field_column_control_title: '欄位控制',
-            err_apply_cursor: '[cwfm] 套用自訂游標失敗',
-            group_cursor: '游標控制',
-            field_cursor_override_enabled: '控制/更改原始系統游標',
-            field_cursor_arrow_color: '箭頭游標顏色',
-            field_cursor_hand_color: '連結游標顏色',
+            err_apply_cursor: '[cwfm] 游標設定套用失敗',
             field_cursor_auto_hide_enabled: '滑鼠閒置自動隱藏游標',
             field_cursor_auto_hide_delay: '閒置幾秒後隱藏',
             field_page_flip_debounce: '翻頁防彈跳（這段時間內防止重複觸發）',
@@ -436,11 +432,7 @@
             field_target_content_height: 'Content Height',
             field_column_gap: 'Gap Between Columns',
             field_column_control_title: 'Column Control',
-            err_apply_cursor: '[cwfm] Failed to apply custom cursor',
-            group_cursor: 'Cursor Control',
-            field_cursor_override_enabled: 'Override System Cursor',
-            field_cursor_arrow_color: 'Arrow Cursor Color',
-            field_cursor_hand_color: 'Link Cursor Color',
+            err_apply_cursor: '[cwfm] Failed to apply cursor settings',
             field_cursor_auto_hide_enabled: 'Auto-hide Cursor on Idle',
             field_cursor_auto_hide_delay: 'Hide After Idle (seconds)',
             field_page_flip_debounce: 'Page-Flip Debounce (prevents repeated triggers within this window)',
@@ -509,116 +501,6 @@
     // [cwfm] 算游標 Auto 模式該用的顏色——取該區間的中心點，不是區間
     // 下緣，這樣「正中央那份」才會精準對應文字色跟背景色之間正好的
     // 中點，不是偏向背景色那一端。
-    function cwfmComputeAutoCursorColor(textHex, bgHex) {
-        const t2 = cwfmHexToRgb(textHex);
-        const b2 = cwfmHexToRgb(bgHex);
-        const fraction = (CWFM_CURSOR_AUTO_SEGMENT_INDEX + 0.5) / CWFM_CURSOR_AUTO_SEGMENTS;
-        const r = b2.r + (t2.r - b2.r) * fraction;
-        const g = b2.g + (t2.g - b2.g) * fraction;
-        const bl = b2.b + (t2.b - b2.b) * fraction;
-        return cwfmRgbToHex(Math.round(r), Math.round(g), Math.round(bl));
-    }
-
-    // [cwfm] 游標形狀的 SVG——自己構建的簡單幾何圖形(標準箭頭、手型)，
-    // 不是複製特定圖示庫的圖案，外觀盡量貼近系統原生游標，但不可能
-    // 做到 100% 一致(不同作業系統原生游標長相本來就不一樣)。顏色是
-    // 參數，每次套用時動態填色，不是寫死的圖片。fill 用參數顏色、
-    // stroke 固定用白色細邊，確保在各種背景色底下都看得出輪廓，不會
-    // 「顏色跟背景融在一起、整個看不到游標」。轉成 data URI 後餵給
-    // CSS 的 cursor 屬性。
-    function cwfmBuildCursorSvgDataUri(shape, color) {
-        // [cwfm] 游標 SVG 來自使用者上傳的 arr.svg / hand.svg，
-        // 去掉空白 <g> 框，fill 改成 color 參數，尺寸用作業系統標準 32px。
-        // 熱點：箭頭 (3, 4)（尖端），手型 (9, 1)（食指尖）。
-        let svg;
-        if (shape === 'arrow') {
-            // arr.svg，viewBox 0 0 70 95，縮放到 height=32
-            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 112 152">`
-                + `<path fill="${color}" d="M 8.89 13.92 C 9.21 13.65 9.84 13.11 10.16 12.84 C 10.54 12.97 11.30 13.22 11.69 13.35 C 27.44 29.33 43.25 45.25 59.03 61.20 C 60.24 62.02 60.21 64.26 58.67 64.69 C 52.44 64.66 46.23 63.95 40.01 63.73 C 42.53 69.81 46.02 75.62 47.89 81.90 C 47.67 82.17 47.23 82.73 47.01 83.01 C 43.52 84.46 40.05 85.98 36.60 87.52 C 35.48 88.03 34.30 87.55 33.87 86.40 C 31.00 79.99 27.80 73.73 25.02 67.29 C 20.26 72.12 15.77 77.25 10.87 81.91 C 9.96 82.98 8.94 81.72 8.17 81.22 C 8.39 58.79 8.26 36.29 8.89 13.92 Z"/></svg>`;
-        } else {
-            // hand.svg，viewBox 0 0 204 248，縮放到 height=32，width≈26
-            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 326 397">`
-                + `<path fill="${color}" d="M 56.89 21.87 C 57.16 13.00 64.99 4.99 73.97 5.13 C 83.37 4.42 91.66 12.89 92.22 22.00 C 92.47 43.18 91.93 64.37 92.51 85.54 C 93.16 76.89 101.38 69.90 109.97 70.21 C 118.70 70.04 126.68 77.32 127.39 86.00 C 127.64 90.30 127.29 94.61 127.74 98.90 C 128.36 89.89 137.12 82.85 146.00 83.51 C 154.28 83.88 161.37 91.01 162.52 99.06 C 162.79 102.44 162.50 105.83 162.85 109.20 C 163.85 101.63 170.28 95.11 177.93 94.36 C 187.72 92.66 197.92 100.95 197.79 110.97 C 197.84 136.66 197.81 162.35 197.81 188.04 C 197.96 201.44 192.45 214.61 183.49 224.46 C 173.70 235.21 159.53 241.89 144.98 242.43 C 130.33 242.48 115.68 242.42 101.03 242.45 C 86.26 242.64 71.61 236.27 61.50 225.53 C 44.93 206.97 29.55 187.39 13.95 168.02 C 10.76 163.92 6.74 160.11 5.57 154.85 C 4.72 150.30 4.93 145.31 7.32 141.22 C 10.64 134.89 17.80 130.71 24.98 131.28 C 31.16 131.21 36.52 135.03 40.34 139.59 C 45.70 145.47 51.18 151.25 56.75 156.93 C 56.98 111.91 56.72 66.89 56.89 21.87 Z"/></svg>`;
-        }
-        return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
-    }
-
-
-    // [cwfm] 套用自訂游標——總開關關閉時，完全不注入任何游標樣式，
-    // 維持系統原生游標。開啟時，箭頭跟手型各自依照設定的模式(手動
-    // 指定顏色，或 auto 自動算)組出對應顏色，轉成 SVG data URI 套用。
-    // cursor 語法一定要寫退回值(auto/pointer)，圖片萬一有問題，瀏覽器
-    // 才會正確退回原生游標，不會整個游標樣式失效。
-    //
-    // [cwfm] 分兩部分套用：外層文件(工具列、左右翻頁點擊區這些我們
-    // 自己控制的區域)用一般的 <style> 插進 document.head 就夠；書本
-    // 內容本身在 Shadow DOM 裡面又隔了一層 iframe，外層 CSS 天生穿不
-    // 進去，改成透過 getBookIframeDocument() 拿到真正的文件物件，
-    // 直接對這份文件插入 <style>——因為是直接對文件本身動手、不是
-    // 透過外部串接，不會被 Shadow DOM/iframe 邊界擋下來(已實測確認
-    // 拿得到真正的文件物件)。
-    let cwfmCursorStyleEl = null;
-    function cwfmApplyCursorOverride(settings) {
-        if (!cwfmCursorStyleEl) {
-            cwfmCursorStyleEl = document.createElement('style');
-            cwfmCursorStyleEl.id = 'cwfm-cursor-override-style';
-            document.head.appendChild(cwfmCursorStyleEl);
-        }
-        // [cwfm] 箭頭、手型各自獨立的開關，取代原本單一總開關卡住兩者——
-        // 任一個開著就要套用對應那部分，不是「兩個都開才生效」。Auto
-        // 模式現在是 colorPickerModeByKey 裡跟 HEX/RGB/HSV 同一組的
-        // 第四個分頁，不是獨立的 cursorArrowMode 設定值。
-        const modeMap = settings.colorPickerModeByKey || {};
-        const arrowEnabled = !!settings.cursorArrowColorEnabled;
-        const handEnabled = !!settings.cursorHandColorEnabled;
-        if (!arrowEnabled && !handEnabled) {
-            cwfmCursorStyleEl.textContent = '';
-            cwfmApplyCursorToBookIframe(null);
-            return;
-        }
-        const theme = resolveThemeColors(settings);
-        const arrowColor = modeMap.cursorArrowColor === 'AUTO'
-            ? cwfmComputeAutoCursorColor(theme.text, theme.background)
-            : settings.cursorArrowColor;
-        const handColor = modeMap.cursorHandColor === 'AUTO'
-            ? cwfmComputeAutoCursorColor(theme.text, theme.background)
-            : settings.cursorHandColor;
-        const rules = [];
-        let handUri = null, arrowUri = null;
-        if (handEnabled) {
-            handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
-            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 6 1, pointer !important; }`);
-        }
-        if (arrowEnabled) {
-            arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
-            rules.push(`body, html { cursor: url("${arrowUri}") 2 3, auto !important; }`);
-        }
-        cwfmCursorStyleEl.textContent = rules.join('\n');
-        cwfmApplyCursorToBookIframe(arrowEnabled || handEnabled ? { arrowUri, handUri, arrowEnabled, handEnabled } : null);
-    }
-
-    // [cwfm] 實際把游標樣式插進書本內容的 iframe 文件——傳 null 代表
-    // 要清掉(兩個開關都關閉的情況)。每次呼叫都重新找一次 iframe 文件，
-    // 不快取參照：章節切換時 iframe 的文件會整個換掉，舊的文件物件
-    // 參照會失效，快取只會拿到過期、已經不在畫面上的文件。
-    function cwfmApplyCursorToBookIframe(info) {
-        const doc = getBookIframeDocument();
-        if (!doc) return;
-        let styleEl = doc.getElementById('cwfm-cursor-override-style');
-        if (!info) {
-            if (styleEl) styleEl.textContent = '';
-            return;
-        }
-        if (!styleEl) {
-            styleEl = doc.createElement('style');
-            styleEl.id = 'cwfm-cursor-override-style';
-            (doc.head || doc.documentElement).appendChild(styleEl);
-        }
-        const rules = [];
-        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 6 1, pointer !important; }`);
-        if (info.arrowEnabled) rules.push(`body, html, * { cursor: url("${info.arrowUri}") 2 3, auto !important; }`);
-        styleEl.textContent = rules.join('\n');
-    }
 
     function gmSet(key, value) {
         document.dispatchEvent(new CustomEvent('cwfm:gm-set', { detail: { key, value } }));
@@ -2081,15 +1963,11 @@
         // 游標，不會讓既有使用者一升級就意外看到游標變了)。
         customTextColorEnabled: true,
         customBackgroundColorEnabled: true,
-        cursorArrowColorEnabled: false,
         // [cwfm] 每個大分組(配色、文字排版...)是否收合，用分組標題當
         // key。收合狀態要記憶，這裡只是存放的地方，不用預先列出所有
         // 分組名稱——沒紀錄的分組，預設就是展開(見 beginGroup 裡讀取
         // 這個值時的預設處理)。
         groupCollapsedState: {},
-        cursorArrowColor: '#000000',
-        cursorHandColorEnabled: false,
-        cursorHandColor: '#000000',
         // [cwfm] 每個顏色欄位各自獨立記住自己上次用的分頁（HEX／RGB／
         // HSV），不共用同一個值——文字顏色跟背景顏色是兩個獨立的欄位，
         // 用 key（customTextColor／customBackgroundColor）當索引分開存，
@@ -2622,8 +2500,6 @@
         'hyphenate', 'disableLigatures', 'flow', 'topBottomPadding',
         'leftRightPadding', 'maxColumnCount', 'themeName', 'customTextColor',
         'customBackgroundColor', 'customTextColorEnabled', 'customBackgroundColorEnabled',
-        'cursorArrowColor', 'cursorArrowColorEnabled',
-        'cursorHandColor',  'cursorHandColorEnabled',
         'pageFlipAnimColor', 'pageFlipAnimEnabled',
     ];
     function cwfmSaveCurrentAsTheme(settings, name) {
@@ -3060,14 +2936,9 @@
     // [cwfm] 游標樣式要套進書本內容的 iframe 文件——章節切換時這份
     // 文件會整個換掉，掛 load 事件確保每次換章節都重新套用一次。
     // 不用在這裡額外補套用一次：applySettings() 本身已經有呼叫
-    // cwfmApplyCursorOverride()，初始化流程本來就會跑到，這裡如果
-    // 重複呼叫，window.__cwfm.settings 在這個時間點還沒被賦值（要到
-    // 後面 loadSettings() 真正執行完才會有），會直接出錯。
     view.renderer.addEventListener('load', () => {
-        cwfmApplyCursorOverride(window.__cwfm.settings);
         // [cwfm] 游標自動隱藏在 iframe 內的樣式元素，換章節、iframe 文件
-        // 整個換掉時會跟著消失，需要重新套用——跟上面 cwfmApplyCursorOverride
-        // 同樣的道理。這裡呼叫 updateCursorAutoHide() 也有可能踩到跟
+        // 整個換掉時會跟著消失，需要重新套用。這裡呼叫 updateCursorAutoHide()
         // 工具列自動隱藏同一種 let 宣告時機(TDZ)的已知限制(見下方
         // updateAutoHideEnabled 那段註解)，第一次開書時這個事件如果比
         // 那段宣告先觸發，這次呼叫會靜靜失敗、不會真的套用，之後每次
@@ -3395,7 +3266,6 @@
     function applySettings(settings) {
         cwfmUpdatePanelScheme(settings);
         try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error(t('err_tapzone_apply'), e); }
-        try { cwfmApplyCursorOverride(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
         try { updateCursorAutoHide(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
@@ -4700,14 +4570,6 @@
         // 留在「配色」這個分組內部，不獨立分組。
         addColorField(t('field_color_text'), 'customTextColor', { toggleKey: 'customTextColorEnabled' });
         addColorField(t('field_color_bg'), 'customBackgroundColor', { toggleKey: 'customBackgroundColorEnabled' });
-        addColorField(t('field_cursor_arrow_color'), 'cursorArrowColor', {
-            toggleKey: 'cursorArrowColorEnabled',
-            computeAutoValue: () => resolveThemeColors(settings).text,
-        });
-        addColorField(t('field_cursor_hand_color'), 'cursorHandColor', {
-            toggleKey: 'cursorHandColorEnabled',
-            computeAutoValue: () => resolveThemeColors(settings).text,
-        });
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
         // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
