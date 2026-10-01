@@ -33,6 +33,8 @@
             field_tap_zone_enabled: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd',
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
             field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
+            field_page_flip_anim_enabled: '\u7ffb\u9801\u52d5\u756b\u6548\u679c',
+            field_page_flip_anim_color: '\u7ffb\u9801\u52d5\u756b\u984f\u8272',
             unit_seconds: '\u79d2',
             dlg_cancel: '\u53d6\u6d88',
             dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
@@ -251,6 +253,8 @@
             field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
             field_tap_zone_width: 'Left/Right Tap Zone Width',
+            field_page_flip_anim_enabled: 'Page-turn Animation',
+            field_page_flip_anim_color: 'Page-turn Animation Color',
             unit_seconds: 'sec',
             dlg_cancel: 'Cancel',
             dlg_confirm_delete: 'Confirm Delete',
@@ -1207,6 +1211,13 @@
             '.cwfm-tap-chevron { width: 22px; height: 22px; color: var(--cwfm-text-secondary); opacity: 0; transition: opacity 0.15s ease; }',
             '.cwfm-tap-zone.cwfm-tap-visible .cwfm-tap-chevron { opacity: 0.35; }',
             '.cwfm-tap-zone.cwfm-tap-visible:hover .cwfm-tap-chevron { opacity: 0.8; color: var(--cwfm-text); }',
+            // [cwfm] 翻頁動畫 overlay：固定定位、pointer-events:none、z-index
+            // 高於 tap zone（10）但不遮設定面板（100）。SVG 在這個容器裡。
+            '.cwfm-page-anim {',
+            '  position: fixed; top: 0; left: 0; width: 100%; height: 100%;',
+            '  pointer-events: none; z-index: 50;',
+            '  overflow: visible;',
+            '}',
             '.cwfm-toolbar button {',
             '  background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text);',
             '  border-radius: 4px; padding: 5px 12px; cursor: pointer;',
@@ -2111,6 +2122,8 @@
         tapZoneEnabled: true,
         tapZoneVisible: true,
         tapZoneWidthPx: 80,   // 每側感應區固定寬度(px)
+        pageFlipAnimEnabled: true,
+        pageFlipAnimColor: '#ffffff',
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
@@ -3344,6 +3357,7 @@
     // 如果暫存還沒接回去，relocate 算出來的 cfi 是對著殘缺的樹算的，
     // 之後拿去解析會撞到 Range 邊界超出範圍的例外）。
     async function cwfmGoLeft() {
+        cwfmTriggerPageAnim('left');
         // [cwfm] 對齊操作（含連鎖反應偵測+最後校正）進行中的這一小段
         // 空檔，先等它結束，避免翻頁跟校正動作前後重疊、其中一個結果
         // 被另一個蓋掉。等待有次數上限，不會真的卡死。
@@ -3371,6 +3385,7 @@
         await view.goLeft();
     }
     async function cwfmGoRight() {
+        cwfmTriggerPageAnim('right');
         for (let i = 0; i < 60 && cwfmAligningAnchor; i++) {
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
@@ -5114,6 +5129,26 @@
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         updateTapZoneDisabledStates();
 
+        // [cwfm] 翻頁動畫：開關 + 顏色取色器。
+        // 大小參數寫死在程式碼內部（CWFM_PAGE_ANIM_SIZE），不開放給使用者調整。
+        // 無 Auto 分頁（不像游標顏色有「跟隨主題」的需求）。
+        const pageFlipAnimCheckbox = addCheckboxField(t('field_page_flip_anim_enabled'), 'pageFlipAnimEnabled');
+        pageFlipAnimCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
+        addColorField(t('field_page_flip_anim_color'), 'pageFlipAnimColor', null);
+        function updatePageFlipAnimDisabledState() {
+            const colorField = pageFlipAnimCheckbox.closest('.cwfm-field').nextElementSibling;
+            if (colorField) {
+                const scrolledMode = flowSelect.value === 'scrolled';
+                const disabled = scrolledMode || !pageFlipAnimCheckbox.checked;
+                pageFlipAnimCheckbox.disabled = scrolledMode;
+                const colorInput = colorField.querySelector('input, button, [tabindex]');
+                if (colorInput) colorInput.disabled = disabled;
+            }
+        }
+        flowSelect.addEventListener('change', updatePageFlipAnimDisabledState);
+        pageFlipAnimCheckbox.addEventListener('change', updatePageFlipAnimDisabledState);
+        updatePageFlipAnimDisabledState();
+
         // [cwfm] 語言分組移到最後——查過業界慣例(Matomo 自己 GitHub 上的
         // 討論)：語言這種使用者最多只改一次、改完就不會再碰的設定，
         // 應該放在使用者最少注意到的位置，不該是第一個接觸到的控制項。
@@ -5665,6 +5700,144 @@
     // 同步這兩個開關跟寬度設定。
     let cwfmTapZoneLeft = null;
     let cwfmTapZoneRight = null;
+
+    // ============================================================
+    // [cwfm] 翻頁動畫（K16Pro chevron 風格移植）
+    // 動畫流程：P1(120ms) 豎線滑入→P2(300ms) 展開成箭頭→FO(120ms) 淡出
+    // 動畫 chevron 最終停止位置與 .cwfm-tap-chevron 完全重疊。
+    // ============================================================
+    // 內部尺寸常數（SVG 單位，和 K16Pro 同一套比例）
+    const CWFM_ANIM_P1_MS       = 120;   // 豎線平移時長
+    const CWFM_ANIM_P2_MS       = 300;   // 展開時長
+    const CWFM_ANIM_FO_MS       = 120;   // 淡出時長
+    const CWFM_ANIM_P1_SLIDE_PX = 0.4;  // 豎線滑入距離（相對於 chevron 大小的比例）
+    // 大小：和 tap zone 箭頭連動，調這個數值兩者同步縮放
+    const CWFM_PAGE_ANIM_SIZE   = 22;    // px（和 .cwfm-tap-chevron 預設 22px 對齊）
+
+    let cwfmPageAnimSvg = null;   // 全域共用 SVG element（fixed 在 body）
+    let cwfmPageAnimRafId = null;
+    let cwfmPageAnimState = null; // { dir, startT, color, cx, cy }
+
+    function cwfmBuildPageAnimSvg() {
+        if (cwfmPageAnimSvg) return;
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'cwfm-page-anim');
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        document.body.appendChild(svg);
+        cwfmPageAnimSvg = svg;
+    }
+
+    function cwfmPageAnimEasing(t) {
+        // cubicBezier(0.4, 0, 0.2, 1) — Material standard easing，近似計算
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function cwfmTriggerPageAnim(dir) {
+        try {
+            const settings = window.__cwfm?.settings;
+            if (!settings?.pageFlipAnimEnabled) return;
+            if (settings.flow === 'scrolled') return;
+            // tap zone 箭頭顯示中時不觸發
+            const tapZone = dir === 'left' ? cwfmTapZoneLeft : cwfmTapZoneRight;
+            if (tapZone?.classList.contains('cwfm-tap-visible')) return;
+
+            // 取得動畫中心點（對齊 tap zone 箭頭的中心）
+            let cx, cy;
+            if (tapZone) {
+                const r = tapZone.getBoundingClientRect();
+                cx = r.left + r.width / 2;
+                cy = r.top  + r.height / 2;
+            } else {
+                // tap zone 不存在時，落在畫面左/右 1/6 處，垂直置中
+                cx = dir === 'left'
+                    ? window.innerWidth / 6
+                    : window.innerWidth * 5 / 6;
+                cy = window.innerHeight / 2;
+            }
+
+            cwfmBuildPageAnimSvg();
+            const color = settings.pageFlipAnimColor || '#ffffff';
+            cwfmPageAnimState = { dir, startT: performance.now(), color, cx, cy };
+            if (!cwfmPageAnimRafId) {
+                cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimTick);
+            }
+        } catch (e) {
+            console.error('[cwfm] cwfmTriggerPageAnim error', e);
+        }
+    }
+
+    function cwfmPageAnimTick(now) {
+        cwfmPageAnimRafId = null;
+        if (!cwfmPageAnimState || !cwfmPageAnimSvg) return;
+        const { dir, startT, color, cx, cy } = cwfmPageAnimState;
+        const elapsed = now - startT;
+        const total   = CWFM_ANIM_P1_MS + CWFM_ANIM_P2_MS + CWFM_ANIM_FO_MS;
+        if (elapsed >= total) {
+            cwfmPageAnimSvg.innerHTML = '';
+            cwfmPageAnimState = null;
+            return;
+        }
+
+        const sz      = CWFM_PAGE_ANIM_SIZE;
+        const isRight = dir === 'right';
+        // chevron 三節點（正規化到 sz×sz 畫布，尖端朝右）
+        // 最終形態：top=(0,0), tip=(sz,sz/2), bot=(0,sz)
+        // 初始形態（豎線）：top=(sz*0.45,0), tip=(sz*0.45,sz/2), bot=(sz*0.45,sz)
+        const TIP_X_FINAL = sz;
+        const BACK_X_FINAL = 0;
+        const TIP_X_INIT  = sz * 0.45;
+        const BACK_X_INIT = sz * 0.45;
+
+        let topX, tipX, botX, opacity;
+        const slideDir = isRight ? 1 : -1;
+
+        if (elapsed < CWFM_ANIM_P1_MS) {
+            // P1：豎線從外側滑入
+            const tp = elapsed / CWFM_ANIM_P1_MS;
+            const ease = cwfmPageAnimEasing(tp);
+            const slide = CWFM_ANIM_P1_SLIDE_PX * sz * (1 - ease);
+            topX = BACK_X_INIT - slide * slideDir;
+            tipX = TIP_X_INIT  - slide * slideDir;
+            botX = BACK_X_INIT - slide * slideDir;
+            opacity = 0.2 * ease;
+        } else if (elapsed < CWFM_ANIM_P1_MS + CWFM_ANIM_P2_MS) {
+            // P2：節點展開成箭頭
+            const tp = (elapsed - CWFM_ANIM_P1_MS) / CWFM_ANIM_P2_MS;
+            const ease = cwfmPageAnimEasing(tp);
+            topX = BACK_X_INIT + (BACK_X_FINAL - BACK_X_INIT) * ease;
+            tipX = TIP_X_INIT  + (TIP_X_FINAL  - TIP_X_INIT)  * ease;
+            botX = BACK_X_INIT + (BACK_X_FINAL - BACK_X_INIT) * ease;
+            opacity = 0.2 + 0.7 * ease;
+        } else {
+            // FO：淡出
+            const tp = (elapsed - CWFM_ANIM_P1_MS - CWFM_ANIM_P2_MS) / CWFM_ANIM_FO_MS;
+            topX = BACK_X_FINAL;
+            tipX = TIP_X_FINAL;
+            botX = BACK_X_FINAL;
+            opacity = 0.9 * (1 - cwfmPageAnimEasing(tp));
+        }
+
+        // 鏡像：向左翻時翻轉 X
+        const flip = isRight ? 1 : -1;
+        const ox   = cx - sz / 2;  // chevron 繪製原點（左上角）
+        const oy   = cy - sz / 2;
+        const ax   = isRight ? ox + topX  : ox + sz - topX;
+        const ay   = oy;
+        const bx   = isRight ? ox + tipX  : ox + sz - tipX;
+        const by   = oy + sz / 2;
+        const ccx  = isRight ? ox + botX  : ox + sz - botX;
+        const ccy  = oy + sz;
+
+        const strokeW = Math.max(1.5, sz * 0.18);
+        cwfmPageAnimSvg.innerHTML =
+            `<polyline points="${ax},${ay} ${bx},${by} ${ccx},${ccy}"` +
+            ` fill="none" stroke="${color}"` +
+            ` stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round"` +
+            ` opacity="${opacity.toFixed(3)}"/>`;
+
+        cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimTick);
+    }
+
     function cwfmBuildTapZones() {
         cwfmTapZoneLeft = document.createElement('div');
         cwfmTapZoneLeft.className = 'cwfm-tap-zone cwfm-tap-left';
