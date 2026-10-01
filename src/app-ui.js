@@ -5106,19 +5106,20 @@
         // [cwfm] 翻頁動畫：和配色區同一套模式——標題列右側是開關（toggleKey），
         // 下面直接是取色器，不另開一行。無 Auto 分頁。
         // 「顯示視覺提示」開啟時，動畫整區 disable（取色器也一起停用）。
-        const pageFlipAnimColorField = addColorField(t('field_page_flip_anim'), 'pageFlipAnimColor', {
+        const pageFlipAnimSwatchBtn = addColorField(t('field_page_flip_anim'), 'pageFlipAnimColor', {
             toggleKey: 'pageFlipAnimEnabled',
         });
+        const pageFlipAnimField = pageFlipAnimSwatchBtn.closest('.cwfm-field');
 
         function updatePageFlipAnimDisabledState() {
             const scrolledMode = flowSelect.value === 'scrolled';
             // 視覺提示「實際上開著」= 自己沒被 disable 且打勾
             const tapVisibleOn = !tapZoneVisibleCheckbox.disabled && tapZoneVisibleCheckbox.checked;
             const animDisabled = scrolledMode || tapVisibleOn;
-            const toggleInput = pageFlipAnimColorField.querySelector('input[type="checkbox"]');
-            const swatchBtn   = pageFlipAnimColorField.querySelector('.cwfm-color-swatch-btn');
-            const textInput   = pageFlipAnimColorField.querySelector('.cwfm-color-value-input');
-            const modeTabs    = pageFlipAnimColorField.querySelectorAll('.cwfm-color-mode-tab');
+            const toggleInput = pageFlipAnimField.querySelector('input[type="checkbox"]');
+            const swatchBtn   = pageFlipAnimField.querySelector('.cwfm-color-swatch-btn');
+            const textInput   = pageFlipAnimField.querySelector('.cwfm-color-value-input');
+            const modeTabs    = pageFlipAnimField.querySelectorAll('.cwfm-color-mode-tab');
             if (toggleInput) toggleInput.disabled = animDisabled;
             if (swatchBtn)   swatchBtn.disabled   = animDisabled;
             if (textInput)   textInput.disabled   = animDisabled;
@@ -5692,34 +5693,96 @@
     let cwfmTapZoneRight = null;
 
     // ============================================================
-    // [cwfm] 翻頁動畫（K16Pro chevron 風格移植）
-    // 動畫流程：P1(120ms) 豎線滑入→P2(300ms) 展開成箭頭→FO(120ms) 淡出
-    // 動畫 chevron 最終停止位置與 .cwfm-tap-chevron 完全重疊。
+    // [cwfm] 翻頁動畫（K16Pro chevron 風格完整移植）
+    // 架構：外層 alpha 狀態機（fadein/visible/fadeout）+ item queue
+    //       每次觸發推一個 item，persistent 停住等整體淡出，
+    //       additional 跑完後 200ms 自行淡出。
+    // 所有參數直接對應 K16Pro 的 global 變數，不打折扣。
     // ============================================================
-    // 內部尺寸常數（SVG 單位，和 K16Pro 同一套比例）
-    const CWFM_ANIM_P1_MS       = 120;   // 豎線平移時長
-    const CWFM_ANIM_P2_MS       = 300;   // 展開時長
-    const CWFM_ANIM_FO_MS       = 120;   // 淡出時長
-    const CWFM_ANIM_P1_SLIDE_PX = 0.4;  // 豎線滑入距離（相對於 chevron 大小的比例）
-    // 大小：和 tap zone 箭頭連動，調這個數值兩者同步縮放
-    const CWFM_PAGE_ANIM_SIZE   = 22;    // px（和 .cwfm-tap-chevron 預設 22px 對齊）
 
-    let cwfmPageAnimSvg = null;   // 全域共用 SVG element（fixed 在 body）
+    // ── 形狀參數（對應 K16Pro seekSvgH / seekStrokeW / seekLineCap）──
+    const CANIM_SVG_H     = 27.5;   // chevron 高度（SVG 單位）
+    const CANIM_STROKE_W  = 6.0;    // 線條粗細（SVG 單位）
+    // seekLineCap = 2 (Round) → stroke-linecap="round"
+
+    // ── 動畫疊加上限（MAX_ANIMS = 3）──
+    const CANIM_MAX       = 3;
+
+    // ── 容器淡入（FADEIN_MS=120, FADEIN_AL_S=0, FADEIN_AL_E=230）──
+    const CANIM_FADEIN_MS   = 120;
+    const CANIM_FADEIN_AL_S = 0;
+    const CANIM_FADEIN_AL_E = 230;
+
+    // ── P1 豎線平移（P1_MS=120, P1_SLIDE=20）──
+    const CANIM_P1_MS    = 120;
+    const CANIM_P1_SLIDE = 20.0;
+
+    // ── P1 透明度（persistent 和 additional 相同）──
+    const CANIM_P1_PERS_AL_S = 0;
+    const CANIM_P1_PERS_AL_E = 50;
+    const CANIM_P1_ADD_AL_S  = 0;
+    const CANIM_P1_ADD_AL_E  = 50;
+
+    // ── P2 展開（P2_MS=300, P2_BACK=20, P2_TIP=32）──
+    const CANIM_P2_MS   = 300;
+    const CANIM_P2_BACK = 20.0;
+    const CANIM_P2_TIP  = 32.0;
+
+    // ── P2 透明度（P2_PERS/ADD 相同）──
+    const CANIM_P2_PERS_AL_S = 50;
+    const CANIM_P2_PERS_AL_E = 230;
+    const CANIM_P2_ADD_AL_S  = 50;
+    const CANIM_P2_ADD_AL_E  = 230;
+
+    // ── ADD_Y_OFFSET = 0（additional 不偏移）──
+    const CANIM_ADD_Y_OFFSET    = 0.0;
+    // ── additional 跑完後的淡出時長（CommitFrame 裡的 ADD_FADEOUT_MS）──
+    const CANIM_ADD_FADEOUT_MS  = 200;
+
+    // ── 容器淡出（FADEOUT_MS=120）──
+    const CANIM_FADEOUT_MS = 120;
+
+    // ── 大小：最終 chevron 高度 = CWFM_PAGE_ANIM_SIZE px ──
+    const CWFM_PAGE_ANIM_SIZE = 22;  // px，對齊 .cwfm-tap-chevron 22px
+
+    // ── 狀態 ──
+    let cwfmPageAnimSvg   = null;
     let cwfmPageAnimRafId = null;
-    let cwfmPageAnimState = null; // { dir, startT, color, cx, cy }
+    // 整體狀態機：'idle' | 'fadein' | 'visible' | 'fadeout'
+    let cwfmPageAnimGlobalState = 'idle';
+    let cwfmPageAnimGlobalT0    = 0;
+    let cwfmPageAnimGlobalAlpha = 0;   // 0~230，等比對應 K16Pro seekArwAlpha
+    let cwfmPageAnimFadeStartAl = 230;
+    let cwfmPageAnimDir         = 'right';
+    // item queue：每個 item = { startT, isPers, done, doneT }
+    let cwfmPageAnimQueue = [];
+
+    // ── CubicBezier（完整移植 K16Pro 的 Newton-Raphson 實作）──
+    function cwfmCubicBezier(progress, p1x, p1y, p2x, p2y) {
+        if (progress <= 0) return 0;
+        if (progress >= 1) return 1;
+        let s = progress;
+        for (let i = 0; i < 8; i++) {
+            const x    = 3*(1-s)*(1-s)*s*p1x + 3*(1-s)*s*s*p2x + s*s*s;
+            const dxds = 3*(1-s)*(1-s)*p1x + 6*(1-s)*s*(p2x-p1x) + 3*s*s*(1-p2x);
+            if (Math.abs(dxds) < 1e-6) break;
+            s -= (x - progress) / dxds;
+            if (s < 0) s = 0;
+            if (s > 1) s = 1;
+        }
+        return 3*(1-s)*(1-s)*s*p1y + 3*(1-s)*s*s*p2y + s*s*s;
+    }
+    // 位移 easing：CubicBezier(t, 0.05, 0, 0, 1)
+    function cwfmAnimEasePos(t)   { return cwfmCubicBezier(t, 0.05, 0, 0, 1); }
+    // 透明度 easing：CubicBezier(t, 0.20, 0, 0.60, 1)
+    function cwfmAnimEaseAlpha(t) { return cwfmCubicBezier(t, 0.20, 0, 0.60, 1); }
 
     function cwfmBuildPageAnimSvg() {
         if (cwfmPageAnimSvg) return;
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'cwfm-page-anim');
-        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
         document.body.appendChild(svg);
         cwfmPageAnimSvg = svg;
-    }
-
-    function cwfmPageAnimEasing(t) {
-        // cubicBezier(0.4, 0, 0.2, 1) — Material standard easing，近似計算
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     function cwfmTriggerPageAnim(dir) {
@@ -5727,105 +5790,209 @@
             const settings = window.__cwfm?.settings;
             if (!settings?.pageFlipAnimEnabled) return;
             if (settings.flow === 'scrolled') return;
-            // tap zone 箭頭顯示中時不觸發
             const tapZone = dir === 'left' ? cwfmTapZoneLeft : cwfmTapZoneRight;
             if (tapZone?.classList.contains('cwfm-tap-visible')) return;
 
-            // 取得動畫中心點（對齊 tap zone 箭頭的中心）
+            // 取動畫中心點
             let cx, cy;
             if (tapZone) {
                 const r = tapZone.getBoundingClientRect();
                 cx = r.left + r.width / 2;
                 cy = r.top  + r.height / 2;
             } else {
-                // tap zone 不存在時，落在畫面左/右 1/6 處，垂直置中
-                cx = dir === 'left'
-                    ? window.innerWidth / 6
-                    : window.innerWidth * 5 / 6;
+                cx = dir === 'left' ? window.innerWidth / 6 : window.innerWidth * 5 / 6;
                 cy = window.innerHeight / 2;
             }
 
             cwfmBuildPageAnimSvg();
-            const color = settings.pageFlipAnimColor || '#ffffff';
-            cwfmPageAnimState = { dir, startT: performance.now(), color, cx, cy };
+            // 方向切換時清空 queue，重置狀態
+            if (dir !== cwfmPageAnimDir && cwfmPageAnimGlobalState !== 'idle') {
+                cwfmPageAnimQueue = [];
+                cwfmPageAnimGlobalAlpha = 0;
+                cwfmPageAnimGlobalState = 'idle';
+            }
+            cwfmPageAnimDir = dir;
+            // 儲存最新中心點（顯示位置跟著最新翻頁方向的 tapZone）
+            cwfmPageAnimSvg.dataset.cx = cx;
+            cwfmPageAnimSvg.dataset.cy = cy;
+
+            // 推 item 進 queue
+            const isPers = (cwfmPageAnimQueue.length === 0);
+            while (cwfmPageAnimQueue.length >= CANIM_MAX) {
+                // 優先丟最舊的 additional
+                const addIdx = cwfmPageAnimQueue.findIndex(it => !it.isPers);
+                if (addIdx !== -1) cwfmPageAnimQueue.splice(addIdx, 1);
+                else cwfmPageAnimQueue.shift();
+            }
+            cwfmPageAnimQueue.push({ startT: performance.now(), isPers, done: false, doneT: 0 });
+
+            // 啟動或重振狀態機
+            if (cwfmPageAnimGlobalState === 'idle') {
+                cwfmPageAnimGlobalState = 'fadein';
+                cwfmPageAnimGlobalT0    = performance.now();
+                cwfmPageAnimGlobalAlpha = CANIM_FADEIN_AL_S;
+            } else if (cwfmPageAnimGlobalState === 'fadeout') {
+                // 在淡出中重新觸發：從當前 alpha 繼續淡入
+                cwfmPageAnimGlobalState = cwfmPageAnimGlobalAlpha > 150 ? 'visible' : 'fadein';
+                if (cwfmPageAnimGlobalState === 'fadein') cwfmPageAnimGlobalT0 = performance.now();
+            }
             if (!cwfmPageAnimRafId) {
-                cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimTick);
+                cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimFrame);
             }
         } catch (e) {
             console.error('[cwfm] cwfmTriggerPageAnim error', e);
         }
     }
 
-    function cwfmPageAnimTick(now) {
+    function cwfmPageAnimFrame(now) {
         cwfmPageAnimRafId = null;
-        if (!cwfmPageAnimState || !cwfmPageAnimSvg) return;
-        const { dir, startT, color, cx, cy } = cwfmPageAnimState;
-        const elapsed = now - startT;
-        const total   = CWFM_ANIM_P1_MS + CWFM_ANIM_P2_MS + CWFM_ANIM_FO_MS;
-        if (elapsed >= total) {
-            cwfmPageAnimSvg.innerHTML = '';
-            cwfmPageAnimState = null;
+        if (!cwfmPageAnimSvg || cwfmPageAnimGlobalState === 'idle') {
+            if (cwfmPageAnimSvg) cwfmPageAnimSvg.innerHTML = '';
             return;
         }
 
-        const sz      = CWFM_PAGE_ANIM_SIZE;
-        const isRight = dir === 'right';
-        // chevron 三節點（正規化到 sz×sz 畫布，尖端朝右）
-        // 最終形態：top=(0,0), tip=(sz,sz/2), bot=(0,sz)
-        // 初始形態（豎線）：top=(sz*0.45,0), tip=(sz*0.45,sz/2), bot=(sz*0.45,sz)
-        const TIP_X_FINAL = sz;
-        const BACK_X_FINAL = 0;
-        const TIP_X_INIT  = sz * 0.45;
-        const BACK_X_INIT = sz * 0.45;
-
-        let topX, tipX, botX, opacity;
-        const slideDir = isRight ? 1 : -1;
-
-        if (elapsed < CWFM_ANIM_P1_MS) {
-            // P1：豎線從外側滑入
-            const tp = elapsed / CWFM_ANIM_P1_MS;
-            const ease = cwfmPageAnimEasing(tp);
-            const slide = CWFM_ANIM_P1_SLIDE_PX * sz * (1 - ease);
-            topX = BACK_X_INIT - slide * slideDir;
-            tipX = TIP_X_INIT  - slide * slideDir;
-            botX = BACK_X_INIT - slide * slideDir;
-            opacity = 0.2 * ease;
-        } else if (elapsed < CWFM_ANIM_P1_MS + CWFM_ANIM_P2_MS) {
-            // P2：節點展開成箭頭
-            const tp = (elapsed - CWFM_ANIM_P1_MS) / CWFM_ANIM_P2_MS;
-            const ease = cwfmPageAnimEasing(tp);
-            topX = BACK_X_INIT + (BACK_X_FINAL - BACK_X_INIT) * ease;
-            tipX = TIP_X_INIT  + (TIP_X_FINAL  - TIP_X_INIT)  * ease;
-            botX = BACK_X_INIT + (BACK_X_FINAL - BACK_X_INIT) * ease;
-            opacity = 0.2 + 0.7 * ease;
-        } else {
-            // FO：淡出
-            const tp = (elapsed - CWFM_ANIM_P1_MS - CWFM_ANIM_P2_MS) / CWFM_ANIM_FO_MS;
-            topX = BACK_X_FINAL;
-            tipX = TIP_X_FINAL;
-            botX = BACK_X_FINAL;
-            opacity = 0.9 * (1 - cwfmPageAnimEasing(tp));
+        // ── 1. 更新整體 alpha ──
+        if (cwfmPageAnimGlobalState === 'fadein') {
+            const t = Math.min((now - cwfmPageAnimGlobalT0) / CANIM_FADEIN_MS, 1);
+            cwfmPageAnimGlobalAlpha = Math.round(
+                CANIM_FADEIN_AL_S + (CANIM_FADEIN_AL_E - CANIM_FADEIN_AL_S) * cwfmAnimEaseAlpha(t)
+            );
+            if (t >= 1) {
+                cwfmPageAnimGlobalAlpha = CANIM_FADEIN_AL_E;
+                cwfmPageAnimGlobalState = 'visible';
+            }
+        } else if (cwfmPageAnimGlobalState === 'visible') {
+            cwfmPageAnimGlobalAlpha = CANIM_FADEIN_AL_E;
+        } else if (cwfmPageAnimGlobalState === 'fadeout') {
+            const t = Math.min((now - cwfmPageAnimGlobalT0) / CANIM_FADEOUT_MS, 1);
+            cwfmPageAnimGlobalAlpha = Math.round(
+                cwfmPageAnimFadeStartAl * (1 - cwfmAnimEaseAlpha(t))
+            );
+            if (t >= 1) {
+                cwfmPageAnimGlobalAlpha = 0;
+                cwfmPageAnimGlobalState = 'idle';
+                cwfmPageAnimQueue = [];
+                cwfmPageAnimSvg.innerHTML = '';
+                return;
+            }
         }
 
-        // 鏡像：向左翻時翻轉 X
-        const flip = isRight ? 1 : -1;
-        const ox   = cx - sz / 2;  // chevron 繪製原點（左上角）
-        const oy   = cy - sz / 2;
-        const ax   = isRight ? ox + topX  : ox + sz - topX;
-        const ay   = oy;
-        const bx   = isRight ? ox + tipX  : ox + sz - tipX;
-        const by   = oy + sz / 2;
-        const ccx  = isRight ? ox + botX  : ox + sz - botX;
-        const ccy  = oy + sz;
+        // ── 2. 計算幾何（scale 對應 CWFM_PAGE_ANIM_SIZE / CANIM_SVG_H）──
+        const scale    = CWFM_PAGE_ANIM_SIZE / CANIM_SVG_H;
+        const svgH_px  = CANIM_SVG_H * scale;        // = CWFM_PAGE_ANIM_SIZE
+        const halfSW   = svgH_px * (CANIM_STROKE_W / 24) / 2;
+        const capPad   = Math.max(2, Math.round(halfSW)) + 2;
+        const capPadY  = Math.max(1, Math.round(halfSW)) + 1;
+        const P1slide  = CANIM_P1_SLIDE * scale;
+        const P2back   = CANIM_P2_BACK  * scale;
+        const P2tip    = CANIM_P2_TIP   * scale;
+        const lineX0   = capPad;
+        const lineX1   = lineX0 + P1slide;
+        const backTgt  = lineX1 + P2back;
+        const tipTgt   = lineX1 + P2tip;
+        const bmpW     = Math.round(2 * capPad + P1slide + P2tip);
+        const bmpH     = Math.round(svgH_px + 2 * capPadY);
+        const p1frac   = CANIM_P1_MS / (CANIM_P1_MS + CANIM_P2_MS);
 
-        const strokeW = Math.max(1.5, sz * 0.18);
-        cwfmPageAnimSvg.innerHTML =
-            `<polyline points="${ax},${ay} ${bx},${by} ${ccx},${ccy}"` +
-            ` fill="none" stroke="${color}"` +
-            ` stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round"` +
-            ` opacity="${opacity.toFixed(3)}"/>`;
+        const cx = parseFloat(cwfmPageAnimSvg.dataset.cx || 0);
+        const cy = parseFloat(cwfmPageAnimSvg.dataset.cy || 0);
+        const isRight = cwfmPageAnimDir === 'right';
+        const strokeW = svgH_px * (CANIM_STROKE_W / 24);
+        const globalOpacity = cwfmPageAnimGlobalAlpha / 255;
+        const color = window.__cwfm?.settings?.pageFlipAnimColor || '#ffffff';
 
-        cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimTick);
+        // ── 3. 畫每個 item，更新 done 狀態 ──
+        let polylines = '';
+        const toRemove = [];
+        for (let idx = 0; idx < cwfmPageAnimQueue.length; idx++) {
+            const item = cwfmPageAnimQueue[idx];
+            const elapsed = now - item.startT;
+            const totalMs = CANIM_P1_MS + CANIM_P2_MS;
+            const tRaw    = Math.min(elapsed / totalMs, 1);
+
+            let topX, midX, botX, itemAlpha;
+
+            if (tRaw <= p1frac) {
+                // P1：豎線平移
+                const t1   = p1frac > 1e-4 ? Math.min(tRaw / p1frac, 1) : 1;
+                const ease = cwfmAnimEasePos(t1);
+                const lx   = lineX0 + (lineX1 - lineX0) * ease;
+                topX = lx; midX = lx; botX = lx;
+                const alS = item.isPers ? CANIM_P1_PERS_AL_S : CANIM_P1_ADD_AL_S;
+                const alE = item.isPers ? CANIM_P1_PERS_AL_E : CANIM_P1_ADD_AL_E;
+                itemAlpha = Math.round(alS + (alE - alS) * cwfmAnimEaseAlpha(t1));
+            } else {
+                // P2：展開成箭頭
+                const rem = 1 - p1frac;
+                const t2   = rem > 1e-4 ? Math.min((tRaw - p1frac) / rem, 1) : 1;
+                const ease = cwfmAnimEasePos(t2);
+                topX = lineX1 + (backTgt - lineX1) * ease;
+                midX = lineX1 + (tipTgt  - lineX1) * ease;
+                botX = topX;  // 上下端點對稱
+                const alS = item.isPers ? CANIM_P2_PERS_AL_S : CANIM_P2_ADD_AL_S;
+                const alE = item.isPers ? CANIM_P2_PERS_AL_E : CANIM_P2_ADD_AL_E;
+                itemAlpha = Math.round(alS + (alE - alS) * cwfmAnimEaseAlpha(t2));
+            }
+
+            // 標記 done（P2 結束）
+            if (tRaw >= 1 && !item.done) {
+                item.done  = true;
+                item.doneT = now;
+            }
+
+            // additional 完成後淡出（ADD_FADEOUT_MS = 200ms）
+            let blitAlpha = itemAlpha;
+            if (!item.isPers && item.done) {
+                const fadeT = Math.min((now - item.doneT) / CANIM_ADD_FADEOUT_MS, 1);
+                blitAlpha = Math.round(itemAlpha * (1 - fadeT));
+                if (blitAlpha <= 0) {
+                    toRemove.push(idx);
+                    continue;
+                }
+            }
+
+            // 座標換算（對應 DrawChevronMorph）
+            // bmpH 的垂直中心 = cy（含 capPadY），半高 = svgH_px/2
+            const bmpCY = bmpH / 2;
+            const aHY   = svgH_px / 2;
+            // 繪製原點：讓 chevron 中心對齊 (cx, cy)
+            // isRight: topX/botX 在左，midX 在右
+            // isLeft:  翻轉 bmpW - x
+            const ox = isRight ? (cx - tipTgt - capPad)    : (cx - (bmpW - lineX0 - capPad));
+            const oy = cy - bmpCY;
+            const addOff = CANIM_ADD_Y_OFFSET * scale;
+
+            const ax  = isRight ? ox + topX  : ox + (bmpW - topX);
+            const ay  = oy + bmpCY - aHY + (item.isPers ? addOff : 0);
+            const bx  = isRight ? ox + midX  : ox + (bmpW - midX);
+            const by_ = oy + bmpCY           + (item.isPers ? addOff : 0);
+            const cx_ = isRight ? ox + botX  : ox + (bmpW - botX);
+            const cy_ = oy + bmpCY + aHY     + (item.isPers ? addOff : 0);
+
+            const opacity = (blitAlpha / 255) * globalOpacity;
+            polylines += `<polyline points="${ax.toFixed(2)},${ay.toFixed(2)} ${bx.toFixed(2)},${by_.toFixed(2)} ${cx_.toFixed(2)},${cy_.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${strokeW.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity.toFixed(4)}"/>`;
+        }
+
+        // 清除已完成的 additional
+        for (let i = toRemove.length - 1; i >= 0; i--) {
+            cwfmPageAnimQueue.splice(toRemove[i], 1);
+        }
+
+        cwfmPageAnimSvg.innerHTML = polylines;
+
+        // ── 4. 判斷是否進入整體淡出 ──
+        // persistent P2 跑完 && 沒有未完成的 additional → 開始整體 fadeout
+        if (cwfmPageAnimGlobalState === 'visible') {
+            const persItem = cwfmPageAnimQueue.find(it => it.isPers);
+            const addPending = cwfmPageAnimQueue.some(it => !it.isPers && !it.done);
+            if (persItem?.done && !addPending) {
+                cwfmPageAnimFadeStartAl = cwfmPageAnimGlobalAlpha;
+                cwfmPageAnimGlobalState = 'fadeout';
+                cwfmPageAnimGlobalT0    = now;
+            }
+        }
+
+        cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimFrame);
     }
 
     function cwfmBuildTapZones() {
