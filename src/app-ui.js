@@ -992,8 +992,19 @@
             if (bar) {
                 const r = bar.getBoundingClientRect();
                 if (clientX >= r.left && clientX <= r.right &&
-                    clientY >= r.top  && clientY <= r.bottom) return;
+                    clientY >= r.top  && clientY <= r.bottom) {
+                    // 在 bar 內——只有進度條區域允許翻頁，且不受防彈跳限制
+                    const progressWrap = document.querySelector('.cwfm-progress-wrap');
+                    if (!progressWrap) return;
+                    const pr = progressWrap.getBoundingClientRect();
+                    if (!(clientX >= pr.left && clientX <= pr.right &&
+                          clientY >= pr.top  && clientY <= pr.bottom)) return;
+                    if (e.deltaY > 0) cwfmGoRight();
+                    else cwfmGoLeft();
+                    return;
+                }
             }
+            // 書本閱讀區：套用防彈跳
             const debounceMs = settings.pageFlipDebounceMs ?? DEFAULT_SETTINGS.pageFlipDebounceMs;
             const now = performance.now();
             if (debounceMs > 0 && now - cwfmLastPageFlipTime < debounceMs) return;
