@@ -51,6 +51,7 @@
             theme_light: '\u4eae\u8272',
             theme_dark: '\u6697\u8272',
             theme_sepia: '\u5fa9\u53e4\u9ec3',
+            theme_old_gold: '\u58a8\u91d1',
             btn_add_key: '+ \u65b0\u589e',
             hint_press_key: '\u8acb\u6309\u4e0b\u6309\u9375\u2026\uff08Esc \u53d6\u6d88\uff09',
             hint_key_used: '\u5df2\u7d93\u88ab\u4f7f\u7528\u4e86\uff0c\u63db\u4e00\u7d44\u770b\u770b',
@@ -270,6 +271,7 @@
             theme_light: 'Light',
             theme_dark: 'Dark',
             theme_sepia: 'Sepia',
+            theme_old_gold: 'Old Gold',
             btn_add_key: '+ Add',
             hint_press_key: 'Press a key\u2026 (Esc to cancel)',
             hint_key_used: ' is already in use, try another combo',
@@ -2121,7 +2123,7 @@
         // 不顯示視覺，區域一樣有作用，只是看不到。
         tapZoneEnabled: true,
         tapZoneVisible: true,
-        tapZoneWidthPx: 80,   // 每側感應區固定寬度(px)
+        tapZoneWidthPx: 120,  // 每側感應區固定寬度(px)；最小值由 CWFM_PAGE_ANIM_SIZE 動態算出（約 104px）
         pageFlipAnimEnabled: true,
         pageFlipAnimColor: 'AUTO',
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
@@ -2142,9 +2144,10 @@
     // 色調）。custom 則用下面兩個 customXxxColor 設定值，讓使用者自己挑。
     // auto 沒有自己的一組固定配色——見下面 resolveThemeColors()。
     const THEME_PRESETS = {
-        light: { text: '#1a1a1a', background: '#ffffff' },
-        dark: { text: '#e0e0e0', background: '#1a1a1a' },
-        sepia: { text: '#4b3621', background: '#f4ecd8' },
+        light:    { text: '#1a1a1a', background: '#ffffff' },
+        dark:     { text: '#e0e0e0', background: '#1a1a1a' },
+        sepia:    { text: '#4b3621', background: '#f4ecd8' },
+        old_gold: { text: '#a5803a', background: '#060811' },
     };
 
     // [cwfm] 面板本身（工具列/設定/目錄）要不要用深色還是淺色配色，改成
@@ -4604,6 +4607,7 @@
                 ['light', t('theme_light')],
                 ['dark', t('theme_dark')],
                 ['sepia', t('theme_sepia')],
+                ['old_gold', t('theme_old_gold')],
             ];
 
             function applyBuiltin(value) {
@@ -5104,7 +5108,14 @@
         // 翻頁動畫整區，邏輯上靠近翻頁動畫比靠近寬度更合理）。
         const tapZoneEnabledCheckbox = addCheckboxField(t('field_tap_zone_enabled'), 'tapZoneEnabled');
         tapZoneEnabledCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
-        const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', 0, 300, 5, 'px');
+        // [cwfm] tap zone 最小寬度 = bmpW × 2（箭頭寬度 + 左右各 50% 邊距），
+        // 連動 CWFM_PAGE_ANIM_SIZE，確保箭頭放得進去且有呼吸空間。
+        const _tapMinScale  = CWFM_PAGE_ANIM_SIZE / CANIM_SVG_H;
+        const _tapHalfSW    = CWFM_PAGE_ANIM_SIZE * (CANIM_STROKE_W / 24) / 2;
+        const _tapCapPad    = Math.max(2, Math.round(_tapHalfSW)) + 2;
+        const _tapBmpW      = 2 * _tapCapPad + CANIM_P1_SLIDE * _tapMinScale + CANIM_P2_TIP * _tapMinScale;
+        const _tapZoneMinW  = Math.ceil((_tapBmpW * 2) / 2) * 2;  // 取偶數
+        const tapZoneWidthSlider = addNumberField(t('field_tap_zone_width'), 'tapZoneWidthPx', _tapZoneMinW, 300, 5, 'px');
         const tapZoneWidthValueInput = tapZoneWidthSlider.closest('.cwfm-field').querySelector('.cwfm-value-input');
         const tapZoneVisibleCheckbox = addCheckboxField(t('field_tap_zone_visible'), 'tapZoneVisible');
 
@@ -5758,8 +5769,12 @@
     // ── 容器淡出（FADEOUT_MS=120）──
     const CANIM_FADEOUT_MS = 120;
 
-    // ── 大小：最終 chevron 高度 = CWFM_PAGE_ANIM_SIZE px ──
-    const CWFM_PAGE_ANIM_SIZE = 22;  // px，對齊 .cwfm-tap-chevron 22px
+    // [cwfm] 箭頭大小：視窗短邊的 2.14%，無條件進到最近偶數。
+    // 旋轉螢幕前後短邊數值不變，大小自動一致。
+    // tap zone canvas 尺寸和動畫畫布都連動這個值。
+    const CWFM_PAGE_ANIM_SCALE = 0.0214;
+    const _animRaw = Math.min(window.innerWidth, window.innerHeight) * CWFM_PAGE_ANIM_SCALE;
+    const CWFM_PAGE_ANIM_SIZE = Math.ceil(_animRaw / 2) * 2;
 
     // ── 狀態 ──
     let cwfmPageAnimCanvas = null;  // <canvas> element
