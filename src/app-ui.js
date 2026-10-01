@@ -1018,6 +1018,12 @@
     document.addEventListener('wheel', handleWheel, { passive: true });
     view.addEventListener('load', ({ detail }) => {
         detail.doc.addEventListener('wheel', handleWheel, { passive: true });
+        // [cwfm] 游標自動隱藏：detail.doc 是章節 load 完成後確定可用的
+        // iframe document，在這裡掛 mousemove listener 比透過
+        // getBookIframeDocument() 更可靠，初始載入和換章節都覆蓋到。
+        if (cwfmCursorHideEnabled) {
+            detail.doc.addEventListener('mousemove', cwfmWakeCursor);
+        }
     });
 
     // ============================================================
@@ -5643,17 +5649,10 @@
         cwfmCursorHideEnabled = !!settings.cursorAutoHideEnabled;
         cwfmCursorHideDelayMs = Math.max(1, settings.cursorAutoHideDelaySeconds || 3) * 1000;
         clearTimeout(cwfmCursorHideTimer);
-        if (cwfmCursorHideEnabled) {
-            cwfmWakeCursor();
-            cwfmAttachIframeMouseListener();
-        } else {
-            cwfmApplyCursorVisibility(false);
-        }
+        if (cwfmCursorHideEnabled) cwfmWakeCursor();
+        else cwfmApplyCursorVisibility(false);
     }
     document.addEventListener('mousemove', cwfmWakeCursor);
-    view.addEventListener('relocate', () => {
-        if (cwfmCursorHideEnabled) cwfmAttachIframeMouseListener();
-    });
 
     try { tocPanel = buildTOCPanel(); } catch (e) { console.error(t('err_build_toc'), e); }
     try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
