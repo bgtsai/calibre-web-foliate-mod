@@ -4396,6 +4396,7 @@
                 const toggleOff = toggleKey && !settings[toggleKey];
                 if (toggleOff) {
                     valueInput.value = '--';
+                    valueInput.style.opacity = '0.4';
                     swatchBtn.style.background = 'var(--cwfm-border-light)';
                     valueInput.readOnly = true;
                     // [cwfm] 開關關閉時色塊也不給點(反正已經整組真停用)，
@@ -4405,6 +4406,7 @@
                     swatchBtn.disabled = true;
                     return;
                 }
+                valueInput.style.opacity = '';
                 const hex = effectiveHex();
                 valueInput.value = formatForMode(hex);
                 refreshPlaceholder();
@@ -6021,12 +6023,15 @@
         // [cwfm] 中央的小箭頭圖示——參考 Material Design 圖示庫的
         // chevron（角括號箭頭）樣式，不是自己編的符號，淡淡的、不搶眼，
         // 只是給一個「這裡可以點」的視覺提示。
-        cwfmTapZoneLeft.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+        // [cwfm] 箭頭形狀改成和翻頁動畫最終形態完全一致的 polyline，
+        // 讓動畫停止時位置與形狀無縫接軌。
+        // viewBox 對應動畫的 bmpW×bmpH（52×30），strokeW=5.5，linecap=round。
+        cwfmTapZoneLeft.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 52 30" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,4 5.4,15 15,26"/></svg>';
         cwfmTapZoneLeft.addEventListener('click', () => { if (cwfmTapZoneLeft.dataset.cwfmTapEnabled === 'true') cwfmGoLeft(); });
         cwfmTapZoneRight = document.createElement('div');
         cwfmTapZoneRight.className = 'cwfm-tap-zone cwfm-tap-right';
         cwfmTapZoneRight.dataset.cwfmOwned = 'true';
-        cwfmTapZoneRight.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>';
+        cwfmTapZoneRight.innerHTML = '<svg class="cwfm-tap-chevron" viewBox="0 0 52 30" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="37,4 46.6,15 37,26"/></svg>';
         cwfmTapZoneRight.addEventListener('click', () => { if (cwfmTapZoneRight.dataset.cwfmTapEnabled === 'true') cwfmGoRight(); });
         document.body.appendChild(cwfmTapZoneLeft);
         document.body.appendChild(cwfmTapZoneRight);
