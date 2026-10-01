@@ -6108,9 +6108,9 @@
                     ctx.lineTo(_tipTgt  + _xOffset, _midY);
                     ctx.lineTo(_backTgt + _xOffset, _botY);
                 } else {
-                    ctx.moveTo(_bmpW - _backTgt + _xOffset, _topY);
-                    ctx.lineTo(_bmpW - _tipTgt  + _xOffset, _midY);
-                    ctx.lineTo(_bmpW - _backTgt + _xOffset, _botY);
+                    ctx.moveTo(_bmpW - _backTgt - _xOffset, _topY);
+                    ctx.lineTo(_bmpW - _tipTgt  - _xOffset, _midY);
+                    ctx.lineTo(_bmpW - _backTgt - _xOffset, _botY);
                 }
                 ctx.stroke();
             }
