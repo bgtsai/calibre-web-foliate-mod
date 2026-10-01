@@ -527,36 +527,18 @@
     // 「顏色跟背景融在一起、整個看不到游標」。轉成 data URI 後餵給
     // CSS 的 cursor 屬性。
     function cwfmBuildCursorSvgDataUri(shape, color) {
-        // [cwfm] 不要在這裡把顏色先編碼——SVG 屬性值是純文字，fill
-        // 直接放 "#ff0000" 這種原始顏色字串就對了，不能塞進
-        // encodeURIComponent() 編碼過的 "%23ff0000"，那不是合法的顏色
-        // 值，SVG 渲染器不會幫忙解碼，會直接當成無法辨識的顏色（這正是
-        // 自訂顏色沒有反映到真實游標上的根因）。只有最後整份 SVG 轉成
-        // data URI 那一步，才需要對整個字串做一次編碼。
-        //
-        // [cwfm] 拿掉白色外框——查證需求後確認要單色、低視覺刺激，不要
-        // 原本那種高反差外框。箭頭座標也換成使用者已經用獨立 HTML 檔案
-        // 實際看過、確認過的版本，跟之前部署的舊座標不一樣。
+        // [cwfm] 游標 SVG 來自使用者上傳的 arr.svg / hand.svg，
+        // 去掉空白 <g> 框，fill 改成 color 參數，尺寸用作業系統標準 32px。
+        // 熱點：箭頭 (3, 4)（尖端），手型 (9, 1)（食指尖）。
         let svg;
         if (shape === 'arrow') {
-            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
-                + `<path fill="${color}" `
-                + `d="M2 2 L2 17 L5.5 13.8 L7.6 19.3 L10 18.3 L7.9 13 L13 12.6 Z"/></svg>`;
+            // arr.svg，viewBox 0 0 70 95，縮放到 height=32
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 70 95">`
+                + `<path fill="${color}" d="M 8.89 13.92 C 9.21 13.65 9.84 13.11 10.16 12.84 C 10.54 12.97 11.30 13.22 11.69 13.35 C 27.44 29.33 43.25 45.25 59.03 61.20 C 60.24 62.02 60.21 64.26 58.67 64.69 C 52.44 64.66 46.23 63.95 40.01 63.73 C 42.53 69.81 46.02 75.62 47.89 81.90 C 47.67 82.17 47.23 82.73 47.01 83.01 C 43.52 84.46 40.05 85.98 36.60 87.52 C 35.48 88.03 34.30 87.55 33.87 86.40 C 31.00 79.99 27.80 73.73 25.02 67.29 C 20.26 72.12 15.77 77.25 10.87 81.91 C 9.96 82.98 8.94 81.72 8.17 81.22 C 8.39 58.79 8.26 36.29 8.89 13.92 Z"/></svg>`;
         } else {
-            // [cwfm] 改用使用者已經確認過、貼近截圖參考樣式的手型剪影
-            // (食指往上直伸、右側三個手指關節的微凸輪廓、左側拇指位置)，
-            // 取代之前的箭頭+地球徽章做法。這裡是獨立的手型形狀，不是
-            // 箭頭的延伸。
-            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 28">`
-                + `<path fill="${color}" d="`
-                + `M10 2 C8.9 2 8 2.9 8 4 L8 13 L7 12.2 `
-                + `C6.2 11.5 5 11.6 4.3 12.4 C3.6 13.2 3.7 14.4 4.5 15.1 `
-                + `L9.5 19.5 C10.3 20.2 11.3 20.5 12.4 20.5 L15.5 20.5 `
-                + `C17.4 20.5 19 18.9 19 17 L19 11 `
-                + `C19 10.2 18.3 9.5 17.5 9.5 C16.9 9.5 16.4 9.9 16.1 10.4 L16.1 9 `
-                + `C16.1 8.2 15.4 7.5 14.6 7.5 C14 7.5 13.5 7.9 13.2 8.4 L13.2 7 `
-                + `C13.2 6.2 12.5 5.5 11.7 5.5 C11.4 5.5 11.1 5.6 10.9 5.8 L10.9 4 `
-                + `C10.9 2.9 10.6 2 10 2 Z"/></svg>`;
+            // hand.svg，viewBox 0 0 204 248，縮放到 height=32，width≈26
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="32" viewBox="0 0 204 248">`
+                + `<path fill="${color}" d="M 56.89 21.87 C 57.16 13.00 64.99 4.99 73.97 5.13 C 83.37 4.42 91.66 12.89 92.22 22.00 C 92.47 43.18 91.93 64.37 92.51 85.54 C 93.16 76.89 101.38 69.90 109.97 70.21 C 118.70 70.04 126.68 77.32 127.39 86.00 C 127.64 90.30 127.29 94.61 127.74 98.90 C 128.36 89.89 137.12 82.85 146.00 83.51 C 154.28 83.88 161.37 91.01 162.52 99.06 C 162.79 102.44 162.50 105.83 162.85 109.20 C 163.85 101.63 170.28 95.11 177.93 94.36 C 187.72 92.66 197.92 100.95 197.79 110.97 C 197.84 136.66 197.81 162.35 197.81 188.04 C 197.96 201.44 192.45 214.61 183.49 224.46 C 173.70 235.21 159.53 241.89 144.98 242.43 C 130.33 242.48 115.68 242.42 101.03 242.45 C 86.26 242.64 71.61 236.27 61.50 225.53 C 44.93 206.97 29.55 187.39 13.95 168.02 C 10.76 163.92 6.74 160.11 5.57 154.85 C 4.72 150.30 4.93 145.31 7.32 141.22 C 10.64 134.89 17.80 130.71 24.98 131.28 C 31.16 131.21 36.52 135.03 40.34 139.59 C 45.70 145.47 51.18 151.25 56.75 156.93 C 56.98 111.91 56.72 66.89 56.89 21.87 Z"/></svg>`;
         }
         return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
     }
@@ -605,11 +587,11 @@
         let handUri = null, arrowUri = null;
         if (handEnabled) {
             handUri = cwfmBuildCursorSvgDataUri('hand', handColor);
-            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 10 4, pointer !important; }`);
+            rules.push(`.cwfm-tap-zone, .cwfm-tap-zone *, a, button, [role="button"] { cursor: url("${handUri}") 9 1, pointer !important; }`);
         }
         if (arrowEnabled) {
             arrowUri = cwfmBuildCursorSvgDataUri('arrow', arrowColor);
-            rules.push(`body, html { cursor: url("${arrowUri}") 2 2, auto !important; }`);
+            rules.push(`body, html { cursor: url("${arrowUri}") 3 4, auto !important; }`);
         }
         cwfmCursorStyleEl.textContent = rules.join('\n');
         cwfmApplyCursorToBookIframe(arrowEnabled || handEnabled ? { arrowUri, handUri, arrowEnabled, handEnabled } : null);
@@ -633,8 +615,8 @@
             (doc.head || doc.documentElement).appendChild(styleEl);
         }
         const rules = [];
-        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 10 4, pointer !important; }`);
-        if (info.arrowEnabled) rules.push(`body, html, * { cursor: url("${info.arrowUri}") 2 2, auto !important; }`);
+        if (info.handEnabled) rules.push(`a, a *, button, [role="button"] { cursor: url("${info.handUri}") 9 1, pointer !important; }`);
+        if (info.arrowEnabled) rules.push(`body, html, * { cursor: url("${info.arrowUri}") 3 4, auto !important; }`);
         styleEl.textContent = rules.join('\n');
     }
 
