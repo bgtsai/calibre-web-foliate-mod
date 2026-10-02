@@ -12,18 +12,52 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ## Features
 
-- **Fine-grained typography**: font size (up to 300%), letter spacing (up to 0.5em), line spacing (up to 5X), justification, and hyphenation — all independently adjustable and applied instantly.
-- **Margin Priority / Content Priority**: independently selectable for the horizontal and vertical axes. Margin Priority sets a fixed margin value; Content Priority sets a fixed content width/height, with the margin automatically absorbing any change in available space — content size stays consistent when toggling fullscreen.
-- **Column control**: max columns and gap between columns in paginated mode (locked to 1 column in scroll mode; these two settings are automatically disabled there).
-- **Themes**: four built-in themes (Follow System, Light, Dark, Sepia), plus the ability to save your current typography settings as a custom theme. Multiple themes can be reordered by drag-and-drop, and an existing theme can be overwritten with your current settings.
-- **Custom colors**: text and background colors can each be entered in HEX / RGB / HSV format (a built-in color picker is also available), with color schemes savable and reorderable by drag-and-drop.
-- **Font management**: manually enter the name of a font already installed on your system, or upload a font file (.ttf / .otf / .woff) directly; the font list also supports drag-and-drop reordering.
-- **Left/right tap zones**: click zones on either edge of the screen for previous/next page navigation. Enabling the zone (click-to-page) and showing its visual hint are separate toggles; zone width is configurable in pixels. This feature is meaningless in scroll mode and is automatically disabled there.
-- **Auto-hide toolbar**: the toolbar and progress bar can slide out of view after a few seconds of inactivity while reading, and wake up on hover or click.
-- **Page-turn shortcuts**: customizable keyboard shortcuts for previous/next page, with multiple key combinations recordable per direction.
-- **Bookmarks and progress**: uses Calibre-Web's existing server-side bookmark mechanism; reading progress is also remembered locally (saved instantly on every page turn), with an option to auto-sync back to the server bookmark after a configurable idle period.
-- **Precise page alignment** (experimental, off by default): when adjusting typography settings or resizing the window, attempts to precisely align the currently-read line to the top of the new layout, reducing visual jumps or lost reading position. There's no "top of page" concept in scroll mode, so this is automatically disabled there.
-- **Bilingual interface**: defaults to Traditional Chinese or English based on your browser, with a manual override available in settings (requires a page reload to take effect).
+### Typography
+
+- **Font size**: adjustable from 50% to 300%.
+- **Letter spacing**: adjustable from −0.1em to 0.5em.
+- **Line spacing**: adjustable from 1× to 5×.
+- **Justification**: toggle full justification on or off.
+- **Auto-hyphenation**: toggle automatic hyphenation on or off.
+- **Disable ligatures**: turn off OpenType ligature substitution. Useful when a font uses the ligature mechanism for advanced purposes such as glyph-level character mapping (common in fonts that implement display-layer script conversion, e.g. simplified-to-traditional Chinese). When letter spacing is applied, such fonts may show uneven spacing within certain word groups; enabling this option normalizes spacing at the cost of disabling those substitutions.
+
+> [!NOTE]
+> If you notice certain words or character groups appearing noticeably tighter than the surrounding text when using a custom letter spacing, try enabling **Disable Ligatures**. This is most commonly seen with fonts that perform glyph substitution for script conversion.
+
+### Layout
+
+- **Page flow**: switch between Paginated and Scroll mode.
+- **Horizontal mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content width). In Content Priority mode, set the target content width in pixels; the margin absorbs any leftover space, keeping content width consistent when toggling fullscreen.
+- **Vertical mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content height), with the same logic as horizontal mode.
+- **Column control**: set the maximum number of columns and the gap between them in paginated mode. Both settings are automatically disabled in scroll mode (locked to 1 column).
+
+### Themes and colors
+
+- **Themes**: four built-in themes (Follow System, Light, Dark, Sepia), plus the ability to save your current settings as a named custom theme. Multiple themes can be reordered by drag-and-drop, and an existing theme can be overwritten with your current settings.
+- **Custom colors**: text and background colors can each be entered in HEX / RGB / HSV format, with a built-in color picker also available. Color schemes are savable and reorderable by drag-and-drop.
+
+### Fonts
+
+- Manually enter the name of a font already installed on your system, or upload a font file (.ttf / .otf / .woff) to embed it directly. Font files are stored in the browser's IndexedDB and persist across sessions. The font list supports drag-and-drop reordering.
+
+### Page-turn shortcuts
+
+- Fully customizable keyboard shortcuts for previous/next page. Multiple key combinations can be recorded per direction.
+- **Page-flip debounce**: set a minimum interval (in milliseconds) between consecutive page-turn triggers from the same shortcut, to prevent accidental double-flips.
+
+### Reading behavior
+
+- **Precise page alignment** (experimental, off by default): when adjusting typography settings or resizing the window, attempts to align the currently-read line to the top of the new layout, reducing visual jumps. Automatically disabled in scroll mode.
+- **Local reading progress**: reading position is saved locally on every page turn. On reopening a book, the reader restores the last position automatically.
+- **Auto-sync to server**: optionally sync the local reading position back to Calibre-Web's server-side bookmark after a configurable idle period. Can also be triggered manually.
+- **Auto-hide cursor**: the cursor hides automatically after a configurable number of seconds of inactivity, and reappears on mouse movement.
+- **Auto-hide toolbar**: the toolbar and progress bar slide out of view after a few seconds of inactivity and reappear on hover or click.
+- **Left/right tap zones**: clickable zones on the left and right edges of the screen for previous/next page navigation. The zone can be enabled (click-to-page) independently of its visual hint (whether the zone boundary is visible). Zone width is configurable in pixels. Automatically disabled in scroll mode.
+- **Page-turn animation**: a brief directional chevron animation plays at the tap zone position on each page turn, confirming the direction. Color is configurable (or follows the current theme automatically). Automatically disabled when the tap-zone visual hint is on.
+
+### Interface
+
+- **Language**: defaults to Traditional Chinese or English based on your browser's preferred language for web content. Can be manually set to either language; a page reload is required for the change to take effect.
 
 ## Requirements
 
@@ -33,7 +67,7 @@ You'll need the [Tampermonkey](https://www.tampermonkey.net/) browser extension 
 
 1. Install Tampermonkey (see above).
 2. Install this script: [calibre-web-foliate-mod.user.js](https://cdn.jsdelivr.net/gh/bgtsai/calibre-web-foliate-mod@main/calibre-web-foliate-mod.user.js)
-3. Open any EPUB in Calibre-Web — the reader will automatically switch to the foliate-js version. Click the gear icon in the top-right corner to open the typography settings panel.
+3. Open any EPUB in Calibre-Web — the reader will automatically switch to the foliate-js version. Click the gear icon in the top-right corner to open the settings panel.
 
 ## Interface language not as expected?
 
