@@ -5656,8 +5656,8 @@
     // ── additional 跑完後的淡出時長（CommitFrame 裡的 ADD_FADEOUT_MS）──
     const CANIM_ADD_FADEOUT_MS  = 200;
 
-    // ── 容器淡出（FADEOUT_MS=120）──
-    const CANIM_FADEOUT_MS = 240;
+    // ── 容器淡出（FADEOUT_MS=500）──
+    const CANIM_FADEOUT_MS = 500;
 
     // ── 大小：最終 chevron 高度 = CWFM_PAGE_ANIM_SIZE px（在上方已宣告）──
 
