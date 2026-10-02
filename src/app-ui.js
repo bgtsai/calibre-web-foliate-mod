@@ -1462,12 +1462,14 @@
             '  border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.25);',
             '  cursor: pointer;',
             '}',
-            '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; }',
+            '.cwfm-value-input-wrap { display: flex; align-items: center; gap: 4px; color: var(--cwfm-text-secondary); font-size: 12px; flex-shrink: 0; }',
             '.cwfm-value-input {',
-            '  width: 4em; box-sizing: border-box; padding: 2px 4px;',
+            '  box-sizing: border-box; padding: 2px 4px;',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 12px; text-align: right; outline: none;',
             '}',
+            // [cwfm] 提高優先權讓 width: 4em 蓋過 .cwfm-panel input[type="number"] 的 width: 100%
+            '.cwfm-panel .cwfm-value-input { width: 4em; font-size: 12px; }',
             // [cwfm] 焦點樣式跟色塊旁的顏色輸入框統一同一套（內縮陰影
             // 模擬邊框），原本這裡完全沒設，就會露出瀏覽器原生的外框
             // 樣式，跟顏色輸入框的效果對不起來。
@@ -1505,7 +1507,7 @@
             // 幾乎貼在一起。跟 .cwfm-checkbox-row 用同樣的 12px，全面板
             // 統一間距規則。
             '.cwfm-panel .cwfm-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 14px 0 4px; }',
-            '.cwfm-panel .cwfm-row label { margin: 0; }',
+            '.cwfm-panel .cwfm-row label { margin: 0; flex: 1 1 0; min-width: 0; }',
             // [cwfm] 核取方塊改用獨立的排列方式，不跟範圍/顏色欄位共用
             // .cwfm-row 的排法——查了業界規範，開關這種元件多數規範建議
             // 「文字在左、開關在右」（螢幕報讀軟體先唸文字再唸到控制項，
