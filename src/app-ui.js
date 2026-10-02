@@ -4451,6 +4451,7 @@
                 });
                 updateToggleLock();
             }
+            swatchBtn.cwfmRefresh = refreshValueInput;
             return swatchBtn;
         }
 
@@ -4488,6 +4489,7 @@
                 saveSettings(settings);
                 applySettings(settings);
                 render();
+                if (pageFlipAnimSwatchBtn?.cwfmRefresh) pageFlipAnimSwatchBtn.cwfmRefresh();
             }
 
             function applyCustomScheme(scheme) {
@@ -4505,6 +4507,7 @@
                 textColorSwatchBtn.style.background = scheme.textColor;
                 bgColorSwatchBtn.style.background = scheme.backgroundColor;
                 render();
+                if (pageFlipAnimSwatchBtn?.cwfmRefresh) pageFlipAnimSwatchBtn.cwfmRefresh();
             }
 
             function render() {
