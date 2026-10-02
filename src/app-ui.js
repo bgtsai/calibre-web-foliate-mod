@@ -253,7 +253,7 @@
             field_tap_zone_width: 'Left/Right Tap Zone Width',
             field_page_flip_anim: 'Page-turn Animation (active only when tap-zone visual hint is off)',
             unit_seconds: 'sec',
-            unit_times: '×',
+            unit_times: 'X',
             unit_col: 'col',
             dlg_cancel: 'Cancel',
             dlg_confirm_delete: 'Confirm Delete',
