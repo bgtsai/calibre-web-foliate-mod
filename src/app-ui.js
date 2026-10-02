@@ -1468,8 +1468,8 @@
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text); border-radius: 4px;',
             '  font-size: 12px; text-align: right; outline: none;',
             '}',
-            // [cwfm] 提高優先權讓 width: 4em 蓋過 .cwfm-panel input[type="number"] 的 width: 100%
-            '.cwfm-panel .cwfm-value-input { width: 4em; font-size: 12px; }',
+            // [cwfm] !important 確保 width: 4em 蓋過 .cwfm-panel input[type="number"] 的 width: 100%
+            '.cwfm-panel .cwfm-value-input { width: 4em !important; font-size: 12px !important; }',
             // [cwfm] 焦點樣式跟色塊旁的顏色輸入框統一同一套（內縮陰影
             // 模擬邊框），原本這裡完全沒設，就會露出瀏覽器原生的外框
             // 樣式，跟顏色輸入框的效果對不起來。
