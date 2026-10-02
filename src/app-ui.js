@@ -5751,15 +5751,7 @@
                 if (addIdx !== -1) cwfmPageAnimQueue.splice(addIdx, 1);
                 else cwfmPageAnimQueue.shift();
             }
-            // [cwfm] fadein 期間 globalOpacity 很低，item 的 P1 如果同時開始
-            // 兩者相乘後幾乎不可見。把 startT 推遲到 fadein 結束後，讓 P1
-            // 在 globalOpacity 已經夠高時才開始，單次翻頁也能看到前段動畫。
-            const fadeRemaining = cwfmPageAnimGlobalState === 'fadein'
-                ? Math.max(0, CANIM_FADEIN_MS - (performance.now() - cwfmPageAnimGlobalT0))
-                : 0;
-            cwfmPageAnimQueue.push({ startT: performance.now() + fadeRemaining, isPers, done: false, doneT: 0 });
-
-            // 啟動或重振狀態機
+            // 啟動或重振狀態機（必須在計算 fadeRemaining 之前）
             if (cwfmPageAnimGlobalState === 'idle') {
                 cwfmPageAnimGlobalState = 'fadein';
                 cwfmPageAnimGlobalT0    = performance.now();
@@ -5769,6 +5761,14 @@
                 cwfmPageAnimGlobalState = cwfmPageAnimGlobalAlpha > 150 ? 'visible' : 'fadein';
                 if (cwfmPageAnimGlobalState === 'fadein') cwfmPageAnimGlobalT0 = performance.now();
             }
+            // [cwfm] fadein 期間 globalOpacity 很低，item P1 如果同時開始
+            // 兩者相乘後幾乎不可見。推遲 startT 到 fadein 結束後，讓 P1
+            // 在 globalOpacity 已夠高時才開始，單次翻頁也能看到前段動畫。
+            // 注意：必須在狀態機更新後才計算，此時 globalState 已正確。
+            const fadeRemaining = cwfmPageAnimGlobalState === 'fadein'
+                ? Math.max(0, CANIM_FADEIN_MS - (performance.now() - cwfmPageAnimGlobalT0))
+                : 0;
+            cwfmPageAnimQueue.push({ startT: performance.now() + fadeRemaining, isPers, done: false, doneT: 0 });
             if (!cwfmPageAnimRafId) {
                 cwfmPageAnimRafId = requestAnimationFrame(cwfmPageAnimFrame);
             }
