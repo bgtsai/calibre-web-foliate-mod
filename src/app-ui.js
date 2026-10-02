@@ -5751,7 +5751,13 @@
                 if (addIdx !== -1) cwfmPageAnimQueue.splice(addIdx, 1);
                 else cwfmPageAnimQueue.shift();
             }
-            cwfmPageAnimQueue.push({ startT: performance.now(), isPers, done: false, doneT: 0 });
+            // [cwfm] fadein 期間 globalOpacity 很低，item 的 P1 如果同時開始
+            // 兩者相乘後幾乎不可見。把 startT 推遲到 fadein 結束後，讓 P1
+            // 在 globalOpacity 已經夠高時才開始，單次翻頁也能看到前段動畫。
+            const fadeRemaining = cwfmPageAnimGlobalState === 'fadein'
+                ? Math.max(0, CANIM_FADEIN_MS - (performance.now() - cwfmPageAnimGlobalT0))
+                : 0;
+            cwfmPageAnimQueue.push({ startT: performance.now() + fadeRemaining, isPers, done: false, doneT: 0 });
 
             // 啟動或重振狀態機
             if (cwfmPageAnimGlobalState === 'idle') {
