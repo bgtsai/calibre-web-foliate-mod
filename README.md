@@ -1,6 +1,6 @@
 # calibre-web-foliate-mod
 
-&nbsp;&nbsp;[繁體中文](README.zh.md)
+**English** | [繁體中文](README.zh.md)
 
 A Tampermonkey userscript that replaces Calibre-Web's built-in, epub.js-based reader with a self-packaged [foliate-js](https://github.com/johnfactotum/foliate-js) reader. The interface supports Traditional Chinese and English, switching automatically based on your browser's language, with a manual override available in the settings.
 
