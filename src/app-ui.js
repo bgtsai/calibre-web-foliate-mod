@@ -4248,8 +4248,10 @@
             }
 
             function formatForMode(hex) {
+                if (!hex) return '';
                 const rgb = cwfmHexToRgb(hex);
                 if (mode === 'HEX' || mode === 'AUTO') return hex.toUpperCase();
+                if (!rgb) return hex.toUpperCase();
                 if (mode === 'RGB') return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
                 const hsv = cwfmRgbToHsv(rgb.r, rgb.g, rgb.b);
                 return `${Math.round(hsv.h)}, ${Math.round(hsv.s * 100)}, ${Math.round(hsv.v * 100)}`;
