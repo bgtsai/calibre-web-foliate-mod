@@ -5468,6 +5468,18 @@
             // settingsPanel 掛在外層作用域，還沒打開過設定面板時會是
             // undefined，用 ?. 安全跳過，不用另外判斷。
             settingsPanel?.cwfmRelayout?.();
+            // [cwfm] 翻頁動畫 canvas 尺寸在建立時固定為當時的視窗大小，
+            // 全螢幕切換後視窗尺寸改變，右側動畫會超出 canvas 邊界而不可見。
+            // 這裡在全螢幕切換後重新設定 canvas 尺寸。
+            if (cwfmPageAnimCanvas) {
+                const dpr = window.devicePixelRatio || 1;
+                cwfmPageAnimCanvas.width  = Math.round(window.innerWidth  * dpr);
+                cwfmPageAnimCanvas.height = Math.round(window.innerHeight * dpr);
+                cwfmPageAnimCanvas.style.width  = window.innerWidth  + 'px';
+                cwfmPageAnimCanvas.style.height = window.innerHeight + 'px';
+                cwfmPageAnimCtx = cwfmPageAnimCanvas.getContext('2d');
+                cwfmPageAnimCtx.scale(dpr, dpr);
+            }
         });
         bar.appendChild(fullscreenBtn);
 
