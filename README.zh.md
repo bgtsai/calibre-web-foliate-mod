@@ -4,6 +4,8 @@
 
 一支 Tampermonkey 使用者腳本，把 Calibre-Web 內建、基於 epub.js 的閱讀器，換成自己包裝的 [foliate-js](https://github.com/johnfactotum/foliate-js) 閱讀器。介面支援繁體中文／英文，依瀏覽器語言自動切換，設定裡也可以手動指定。
 
+> 本腳本針對 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) 開發與測試。
+
 ![設定面板（繁體中文）](docs/screenshot_zh.png)
 
 ## 這是為了什麼寫的
