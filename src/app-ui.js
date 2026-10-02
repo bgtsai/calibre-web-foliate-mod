@@ -5635,10 +5635,10 @@
     const CANIM_P1_SLIDE = 20.0;
 
     // ── P1 透明度（persistent 和 additional 相同）──
-    const CANIM_P1_PERS_AL_S = 50;
-    const CANIM_P1_PERS_AL_E = 150;
-    const CANIM_P1_ADD_AL_S  = 50;
-    const CANIM_P1_ADD_AL_E  = 150;
+    const CANIM_P1_PERS_AL_S = 0;
+    const CANIM_P1_PERS_AL_E = 50;
+    const CANIM_P1_ADD_AL_S  = 0;
+    const CANIM_P1_ADD_AL_E  = 50;
 
     // ── P2 展開（P2_MS=300, P2_BACK=20, P2_TIP=32）──
     const CANIM_P2_MS   = 300;
@@ -5646,9 +5646,9 @@
     const CANIM_P2_TIP  = 32.0;
 
     // ── P2 透明度（P2_PERS/ADD 相同）──
-    const CANIM_P2_PERS_AL_S = 150;
+    const CANIM_P2_PERS_AL_S = 50;
     const CANIM_P2_PERS_AL_E = 230;
-    const CANIM_P2_ADD_AL_S  = 150;
+    const CANIM_P2_ADD_AL_S  = 50;
     const CANIM_P2_ADD_AL_E  = 230;
 
     // ── ADD_Y_OFFSET = 0（additional 不偏移）──
