@@ -35,6 +35,8 @@
             field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
             field_page_flip_anim: '\u7ffb\u9801\u52d5\u756b\u6548\u679c\uff08\u50c5\u65bc\u95dc\u9589\u7ffb\u9801\u9ede\u9078\u5340\u8996\u89ba\u63d0\u793a\u6642\u751f\u6548\uff09',
             unit_seconds: '\u79d2',
+            unit_times: '\u500d',
+            unit_col: '\u6b04',
             dlg_cancel: '\u53d6\u6d88',
             dlg_confirm_delete: '\u78ba\u5b9a\u522a\u9664',
             title_reading_settings: '\u95B1\u8B80\u8A2D\u5B9A',
@@ -251,6 +253,8 @@
             field_tap_zone_width: 'Left/Right Tap Zone Width',
             field_page_flip_anim: 'Page-turn Animation (active only when tap-zone visual hint is off)',
             unit_seconds: 'sec',
+            unit_times: '×',
+            unit_col: 'col',
             dlg_cancel: 'Cancel',
             dlg_confirm_delete: 'Confirm Delete',
             title_reading_settings: 'Reading Settings',
@@ -4749,7 +4753,7 @@
         beginGroup(t('group_typography'));
         addRangeField(t('field_font_size'), 'fontSize', 70, 300, 5, '%');
         addRangeField(t('field_letter_spacing'), 'letterSpacing', -0.05, 0.5, 0.01, 'em');
-        addRangeField(t('field_line_spacing'), 'lineSpacing', 1, 5, 0.1, '');
+        addRangeField(t('field_line_spacing'), 'lineSpacing', 1, 5, 0.1, t('unit_times'));
         addCheckboxField(t('field_justify'), 'justify');
         addCheckboxField(t('field_hyphenate'), 'hyphenate');
         // [cwfm] 查證後確認：詞彙替換字型（用 ccmp 這個 OpenType 機制把
@@ -4884,7 +4888,7 @@
         const columnGroupWrap = document.createElement('div');
         columnGroupWrap.className = 'cwfm-color-input-group';
         columnGroupWrap.style.padding = '8px';
-        const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, '');
+        const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, t('unit_col'));
         const columnGapSlider = addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnGroupField = columnSlider.closest('.cwfm-field');
         const columnGapField = columnGapSlider.closest('.cwfm-field');
