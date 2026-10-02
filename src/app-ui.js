@@ -5108,8 +5108,13 @@
                 // 「目前這個模擬結果裡最高的那一欄」往上加一點點，不是
                 // 用倍數硬乘，一樣是精算、不是預估。
                 let heightLimit = availableHeight;
-                while (columns.length > maxColumnsByWidth) {
+                let heightLimitIter = 0;
+                while (columns.length > maxColumnsByWidth && heightLimitIter < 200) {
+                    heightLimitIter++;
                     const tallestColumn = Math.max(...columns);
+                    // 如果 heightLimit 已經超過所有分組高度總和，不可能再壓縮欄數，直接停
+                    const totalHeight = groupHeights.reduce((a, b) => a + b, 0);
+                    if (heightLimit >= totalHeight) break;
                     heightLimit = tallestColumn + 1;
                     columns = simulateColumns(groupHeights, heightLimit);
                 }
