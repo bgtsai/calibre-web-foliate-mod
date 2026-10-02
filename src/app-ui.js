@@ -1431,6 +1431,8 @@
             // 偽元素明確畫出圓點顏色，不透過瀏覽器自己判斷的間接方式。
             // 代價是原生「拖到哪填到哪」的軌道填色效果會消失，但兩害
             // 相權，先求真的有效果。
+            '.cwfm-slider-row { display: flex; align-items: center; gap: 8px; }',
+            '.cwfm-slider-row input[type="range"] { flex: 1 1 0; min-width: 0; }',
             '.cwfm-panel input[type="range"] {',
             '  width: 100%; -webkit-appearance: none; appearance: none;',
             '  background: transparent; height: 16px; margin: 8px 0;',
@@ -3943,11 +3945,9 @@
             const field = document.createElement('div');
             field.className = 'cwfm-field';
 
-            const row = document.createElement('div');
-            row.className = 'cwfm-row';
             const label = document.createElement('label');
             label.textContent = labelText;
-            row.appendChild(label);
+            field.appendChild(label);
 
             // [cwfm] 數值顯示改成可編輯的數字輸入框，不再是純顯示用的
             // <span>——使用者除了拖滑桿，也可以直接打數字調整。用一個小
@@ -3965,8 +3965,6 @@
             unitSpan.textContent = unitSuffix || '';
             valueWrap.appendChild(valueInput);
             valueWrap.appendChild(unitSpan);
-            row.appendChild(valueWrap);
-            field.appendChild(row);
 
             const slider = document.createElement('input');
             slider.type = 'range';
@@ -3974,6 +3972,13 @@
             slider.max = String(max);
             slider.step = String(step);
             slider.value = String(settings[key]);
+
+            // [cwfm] 滑桿列：滑桿 + 輸入框同一列，輸入框靠右
+            const sliderRow = document.createElement('div');
+            sliderRow.className = 'cwfm-slider-row';
+            sliderRow.appendChild(slider);
+            sliderRow.appendChild(valueWrap);
+            field.appendChild(sliderRow);
 
             function commit(val) {
                 // 夾在 min/max 範圍內，避免使用者手動輸入超出範圍的數字
@@ -3992,7 +3997,6 @@
                 commit(val);
             });
 
-            field.appendChild(slider);
             panelTarget.appendChild(field);
             return slider;
         }
