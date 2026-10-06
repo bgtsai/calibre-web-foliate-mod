@@ -1,0 +1,45 @@
+name: Unbundle Foliate JS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unbundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Extract BUNDLE_SOURCE to foliate-src/bundle.js
+        run: |
+          python3 - <<'PYEOF'
+          import json, pathlib
+
+          src = pathlib.Path("calibre-web-foliate-mod.user.js").read_text(encoding="utf-8")
+          lines = src.split("\n")
+
+          # Line 133 (0-indexed: 132) contains the BUNDLE_SOURCE declaration
+          BUNDLE_LINE = 132
+          line = lines[BUNDLE_LINE]
+          prefix = "    const BUNDLE_SOURCE = "
+          assert line.startswith(prefix), f"Unexpected line format: {line[:80]}"
+          json_str = line[len(prefix):-1]  # strip prefix and trailing semicolon
+          decoded = json.loads(json_str)
+
+          out = pathlib.Path("foliate-src/bundle.js")
+          out.parent.mkdir(exist_ok=True)
+          out.write_text(decoded, encoding="utf-8")
+          print(f"Extracted {len(decoded):,} chars to {out}")
+          PYEOF
+
+      - name: Commit foliate-src/bundle.js
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add foliate-src/bundle.js
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "unbundle: extract BUNDLE_SOURCE to foliate-src/bundle.js"
+          git push

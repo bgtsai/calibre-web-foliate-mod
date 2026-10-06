@@ -1,0 +1,46 @@
+name: Rebundle Foliate JS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rebundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Pack foliate-src/bundle.js back into BUNDLE_SOURCE
+        run: |
+          python3 - <<'PYEOF'
+          import json, pathlib, re
+
+          bundle_js = pathlib.Path("foliate-src/bundle.js").read_text(encoding="utf-8")
+          encoded = json.dumps(bundle_js)  # produces "..." with proper JSON escaping
+
+          script_path = pathlib.Path("calibre-web-foliate-mod.user.js")
+          src = script_path.read_text(encoding="utf-8")
+          lines = src.split("\n")
+
+          # Replace line 133 (0-indexed: 132) with the new BUNDLE_SOURCE
+          BUNDLE_LINE = 132
+          prefix = "    const BUNDLE_SOURCE = "
+          assert lines[BUNDLE_LINE].startswith(prefix), \
+              f"Unexpected line format: {lines[BUNDLE_LINE][:80]}"
+
+          lines[BUNDLE_LINE] = f"{prefix}{encoded};"
+          script_path.write_text("\n".join(lines), encoding="utf-8")
+          print(f"Packed {len(bundle_js):,} chars into BUNDLE_SOURCE (line {BUNDLE_LINE+1})")
+          PYEOF
+
+      - name: Commit updated script
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add calibre-web-foliate-mod.user.js
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "rebundle: pack foliate-src/bundle.js back into BUNDLE_SOURCE"
+          git push
