@@ -16,8 +16,8 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ### Typography
 
-- **Font size**: adjustable from 50% to 300%.
-- **Letter spacing**: adjustable from −0.1em to 0.5em.
+- **Font size**: adjustable from 70% to 300%.
+- **Letter spacing**: adjustable from −0.05em to 0.5em.
 - **Line spacing**: adjustable from 1× to 5×.
 - **Justification**: toggle full justification on or off.
 - **Auto-hyphenation**: toggle automatic hyphenation on or off.
@@ -25,6 +25,9 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 > [!NOTE]
 > If you notice certain words or character groups appearing noticeably tighter than the surrounding text when using a custom letter spacing, try enabling **Disable Ligatures**. This is most commonly seen with fonts that perform glyph substitution for script conversion.
+
+> [!TIP]
+> Every numeric field can be typed into directly or adjusted with the **− / +** buttons on either side (hold to repeat). After clicking a slider or number box to focus it, you can also fine-tune with the arrow keys or the mouse wheel: ↑→ / ↓← on sliders, ↑ / ↓ in number boxes. The step follows the decimal places of the current value (e.g. line spacing 1.25 steps by 0.01), but is never coarser than the field's own minimum step.
 
 ### Layout
 
@@ -35,7 +38,7 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ### Themes and colors
 
-- **Themes**: four built-in themes (Follow System, Light, Dark, Sepia), plus the ability to save your current settings as a named custom theme. Multiple themes can be reordered by drag-and-drop, and an existing theme can be overwritten with your current settings.
+- **Themes**: five built-in themes (Follow System, Light, Dark, Sepia, Old Gold), plus the ability to save your current settings as a named custom theme. Multiple themes can be reordered by drag-and-drop, and an existing theme can be overwritten with your current settings.
 - **Custom colors**: text and background colors can each be entered in HEX / RGB / HSV format, with a built-in color picker also available. Color schemes are savable and reorderable by drag-and-drop.
 
 ### Fonts
@@ -46,10 +49,12 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 - Fully customizable keyboard shortcuts for previous/next page. Multiple key combinations can be recorded per direction.
 - **Page-flip debounce**: set a minimum interval (in milliseconds) between consecutive page-turn triggers from the same shortcut, to prevent accidental double-flips.
+- Pages can also be turned with the **mouse wheel** (over the page, or over the progress bar at the bottom).
+- While the settings panel is open, page-turn shortcuts and wheel paging are paused so the arrow keys and wheel can adjust values instead; shortcuts keep working while the table of contents is open.
 
 ### Reading behavior
 
-- **Precise page alignment** (experimental, off by default): when adjusting typography settings or resizing the window, attempts to align the currently-read line to the top of the new layout, reducing visual jumps. Automatically disabled in scroll mode.
+- **Precise page alignment** (experimental, off by default): after toggling fullscreen, resizing the window or changing typography settings, the **first character** of the page you were on stays exactly at the top of the new layout, and paging forward or back continues from there. Jumping via the table of contents, a link or the progress bar restores the chapter's normal pagination. Automatically disabled in scroll mode.
 - **Local reading progress**: reading position is saved locally on every page turn. On reopening a book, the reader restores the last position automatically.
 - **Auto-sync to server**: optionally sync the local reading position back to Calibre-Web's server-side bookmark after a configurable idle period. Can also be triggered manually.
 - **Auto-hide cursor**: the cursor hides automatically after a configurable number of seconds of inactivity, and reappears on mouse movement.
