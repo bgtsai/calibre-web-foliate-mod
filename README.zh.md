@@ -4,7 +4,7 @@
 
 一支 Tampermonkey 使用者腳本，把 Calibre-Web 內建、基於 epub.js 的閱讀器，換成自己包裝的 [foliate-js](https://github.com/johnfactotum/foliate-js) 閱讀器。介面支援繁體中文／英文，依瀏覽器語言自動切換，設定裡也可以手動指定。
 
-> 本腳本針對 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) 開發與測試。
+> 本腳本針對 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) 開發與測試。不想安裝腳本或瀏覽器無法安裝 Tampermonkey（例如 iOS）時，請改用 [Docker 鏡像版](#不想裝腳本或瀏覽器無法安裝-tampermonkey改用-docker-鏡像)。
 
 ![設定面板（繁體中文）](docs/screenshot_zh.png)
 
@@ -65,6 +65,16 @@ Calibre-Web 內建的 epub.js 閱讀器，排版控制項有限（字級、字�
 ### 語言
 
 - 預設依瀏覽器的網頁內容偏好語言自動判斷顯示繁體中文或英文，可在設定裡手動指定，切換後需重新整理頁面才會生效。
+
+## 不想裝腳本，或瀏覽器無法安裝 Tampermonkey？改用 Docker 鏡像
+
+如果你不想安裝這支腳本，或是使用的瀏覽器沒辦法安裝 Tampermonkey（例如 iOS 上的瀏覽器），建議改用 Docker 鏡像版：**[calibre-web-foliate-docker](https://github.com/bgtsai/calibre-web-foliate-docker)**。
+
+鏡像版已經把這個閱讀器直接內建在 Calibre-Web 裡，裝在伺服器端，不需要在任何瀏覽器安裝外掛；凡是連到這台 Calibre-Web 的裝置（電腦、手機、平板）打開 EPUB，都會直接使用新的閱讀器。
+
+- **鏡像位置**：`ghcr.io/bgtsai/calibre-web-foliate-docker:latest`
+- 以 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) 為基礎，用法相同：把原本 compose 裡的 image 換成上面這個即可（設定檔、書庫路徑不用改）。完整的 compose 範例請見該 repo 的 README。
+- 閱讀器程式直接取自本 repo 的原始碼，功能與本腳本相同；差別是設定改存在瀏覽器的 `localStorage`，而不是 Tampermonkey 的儲存空間。
 
 ## 安裝需求
 

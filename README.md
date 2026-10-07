@@ -4,7 +4,7 @@
 
 A Tampermonkey userscript that replaces Calibre-Web's built-in, epub.js-based reader with a self-packaged [foliate-js](https://github.com/johnfactotum/foliate-js) reader. The interface supports Traditional Chinese and English, switching automatically based on your browser's language, with a manual override available in the settings.
 
-> Developed and tested against [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web).
+> Developed and tested against [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web). If you don't want to install the userscript, or your browser can't run Tampermonkey (e.g. on iOS), use the [Docker image](#cant-or-dont-want-to-install-the-userscript-use-the-docker-image) instead.
 
 ![Settings panel (English)](docs/screenshot_en.png)
 
@@ -65,6 +65,16 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 ### Interface
 
 - **Language**: defaults to Traditional Chinese or English based on your browser's preferred language for web content. Can be manually set to either language; a page reload is required for the change to take effect.
+
+## Can't or don't want to install the userscript? Use the Docker image
+
+If you'd rather not install this userscript, or your browser can't run Tampermonkey (for example, browsers on iOS), use the Docker image instead: **[calibre-web-foliate-docker](https://github.com/bgtsai/calibre-web-foliate-docker)**.
+
+The image builds this reader directly into Calibre-Web on the server side, so no browser extension is needed: every device that opens an EPUB on that Calibre-Web instance (desktop, phone or tablet) gets the new reader automatically.
+
+- **Image**: `ghcr.io/bgtsai/calibre-web-foliate-docker:latest`
+- Based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) and used the same way: just replace the image in your existing compose file (config and library paths stay the same). See that repo's README for a full compose example.
+- The reader is built from this repo's source, so the features are the same; the only difference is that settings are stored in the browser's `localStorage` instead of Tampermonkey storage.
 
 ## Requirements
 
