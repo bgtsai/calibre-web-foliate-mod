@@ -5867,17 +5867,21 @@
     }
     document.addEventListener('mousemove', cwfmWakeCursor);
 
-    try { tocPanel = buildTOCPanel(); } catch (e) { console.error(t('err_build_toc'), e); }
-    try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
-    try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_toolbar'), e); }
-    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_top_toolbar'), e); }
-
     // [cwfm] 左右翻頁點擊區。功能開關(cwfmTapZoneEnabled，能不能點擊
     // 翻頁)、顯示開關(cwfmTapZoneVisible，看不看得到)分開存成模組層級
     // 變數，applySettings() 每次都會呼叫 cwfmApplyTapZoneSettings() 重新
     // 同步這兩個開關跟寬度設定。
+    // 宣告必須放在 buildSettingsPanel() 之前：它結尾會呼叫 applySettings()
+    // → cwfmApplyTapZoneSettings() 讀取這兩個變數，let 在宣告前被讀取會拋
+    // ReferenceError（TDZ）。原本放在後面，每次開書都留下一筆「套用左右
+    // 翻頁點擊區設定失敗」；功能沒壞是因為點擊區建好後又重新套用了一次。
     let cwfmTapZoneLeft = null;
     let cwfmTapZoneRight = null;
+
+    try { tocPanel = buildTOCPanel(); } catch (e) { console.error(t('err_build_toc'), e); }
+    try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
+    try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_toolbar'), e); }
+    try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_top_toolbar'), e); }
 
     // ============================================================
     // [cwfm] 翻頁動畫（K16Pro chevron 風格完整移植）
