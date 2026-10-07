@@ -246,7 +246,7 @@
             field_precise_anchor_align: 'Precise Page Alignment: try to precisely align the anchor point on resize/restore',
             field_local_auto_remember: 'Remember reading progress locally (saved instantly on this browser; won\'t sync across devices)',
             field_auto_sync_enabled: 'Auto-bookmark on idle (works across devices)',
-            field_auto_sync_delay: 'Bookmark After Idle (seconds)',
+            field_auto_sync_delay: 'Bookmark After Idle',
             field_auto_hide_toolbar: 'Auto-hide Toolbar (slides to edge after 3s idle; hover edge or click to wake)',
             field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
@@ -438,7 +438,7 @@
             field_column_control_title: 'Column Control',
             err_apply_cursor: '[cwfm] Failed to apply cursor settings',
             field_cursor_auto_hide_enabled: 'Auto-hide Cursor on Idle',
-            field_cursor_auto_hide_delay: 'Hide After Idle (seconds)',
+            field_cursor_auto_hide_delay: 'Hide After Idle',
             field_page_flip_debounce: 'Page-Flip Debounce (prevents repeated triggers within this window)',
             mode_auto: 'Auto',
         },
@@ -996,6 +996,9 @@
     let cwfmLastPageFlipTime = 0;
     function handleKeydown(e) {
         try {
+            // [cwfm] 設定面板開著時，翻頁快速鍵完全停用（面板裡的滑桿／數值框會用方向鍵
+            // 調整數值，不能同時翻頁）。目錄面板開著時照常翻頁——使用者可能想邊看目錄邊翻。
+            if (document.querySelector('.cwfm-settings-panel.cwfm-open')) return;
             const combo = formatKeyCombo(e);
             if (!combo) return;
             // [cwfm] 讀 window.__cwfm.settings 而不是直接讀某個外層變數：
@@ -1699,7 +1702,26 @@
             // space-between 整包往右推，單位文字越寬，輸入框就被越往左
             // 擠。給單位文字一個固定寬度，不管實際字數多少都佔用同樣的
             // 水平空間，輸入框的右邊界才會在所有欄位間保持一致。
-            '.cwfm-value-input-wrap span { display: inline-block; width: 1.6em; text-align: left; }',
+            // [cwfm] 數值調整器「− 數值 ＋」（樣式比照 YouTube Home Filter 的 stepper，顏色用面板變數）。
+            // 單位已移到標籤後面，原本固定單位文字寬度的規則不再需要。
+            '.cwfm-stepper { display: inline-flex; align-items: center; flex-shrink: 0; height: 24px;',
+            '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); border-radius: 6px; overflow: hidden; }',
+            '.cwfm-stepper:focus-within { box-shadow: inset 0 0 0 1.5px var(--cwfm-accent); }',
+            '.cwfm-stepper-btn { flex: 0 0 auto; width: 24px; height: 100%; padding: 0; margin: 0; border: none; background: transparent;',
+            '  color: var(--cwfm-text-secondary); font-size: 15px; line-height: 1; cursor: pointer; user-select: none;',
+            '  display: flex; align-items: center; justify-content: center; }',
+            '.cwfm-stepper-btn:hover { background: var(--cwfm-border-light); color: var(--cwfm-text); }',
+            '.cwfm-panel .cwfm-stepper .cwfm-value-input { width: 3.4em !important; height: 100% !important; padding: 0 2px !important;',
+            '  border: none !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important;',
+            '  text-align: center !important; font-size: 12px !important; color: var(--cwfm-text) !important; }',
+            // 蓋掉瀏覽器原生的上下微調箭頭（WebKit 偽元素＋Firefox/標準 appearance），只留自訂的 − ＋
+            '.cwfm-stepper .cwfm-value-input { -moz-appearance: textfield !important; appearance: textfield !important; }',
+            '.cwfm-stepper .cwfm-value-input::-webkit-outer-spin-button,',
+            '.cwfm-stepper .cwfm-value-input::-webkit-inner-spin-button { -webkit-appearance: none !important; appearance: none !important; margin: 0 !important; display: none !important; }',
+            // 停用狀態：整個調整器變淡、按鈕不可按（輸入框本身不再疊加一次透明度）
+            '.cwfm-stepper:has(.cwfm-value-input:disabled) { opacity: 0.4; }',
+            '.cwfm-stepper:has(.cwfm-value-input:disabled) .cwfm-stepper-btn { cursor: not-allowed; pointer-events: none; }',
+            '.cwfm-stepper .cwfm-value-input:disabled { opacity: 1; }',
             // [cwfm] 改成頂端對齊(flex-start)，不再用置中(center)——
             // 中文標籤大多是單行，置中沒有問題；但英文翻譯普遍比中文長，
             // 換行成多行之後，置中會讓右邊的開關/輸入框往下掉到整個
@@ -3958,7 +3980,7 @@
         const settings = loadSettings();
 
         const panel = document.createElement('div');
-        panel.className = 'cwfm-panel';
+        panel.className = 'cwfm-panel cwfm-settings-panel';
         panel.dataset.side = 'right';
         panel.dataset.cwfmOwned = 'true';
 
@@ -4104,30 +4126,113 @@
         })();
 
 
-        function addRangeField(labelText, key, min, max, step, unitSuffix) {
+        // [cwfm] 數值調整器：「− 數值 ＋」，樣式比照 YouTube Home Filter 的 stepper。
+        // 增減單位：看輸入框目前數值的小數位數，但至少等於欄位步進值的小數位數
+        // （例：行距步進 0.1，數值 1.25 → ±0.01、數值 2 → ±0.1；字級步進 5 → ±1）。
+        // integer=true 的欄位（最大欄數）一律整數。
+        // 改值一律寫回輸入框後觸發 change 事件，沿用各欄位原本的 change 處理與外部監聽
+        // （例如捲動模式鎖欄數、1 欄鎖欄間距）。輸入框被停用時按鈕一併失效。
+        function cwfmDecimals(x) {
+            const str = String(x).trim();
+            if (/e-/i.test(str)) return parseInt(str.split(/e-/i)[1], 10) || 0;
+            const k = str.indexOf('.');
+            return k < 0 ? 0 : str.length - k - 1;
+        }
+        function cwfmStepValue(input, dir, opts) {
+            if (input.disabled) return;
+            const { min, max, step, integer } = opts;
+            let cur = parseFloat(input.value);
+            if (Number.isNaN(cur)) cur = parseFloat(input.defaultValue) || min;
+            const d = integer ? 0 : Math.max(cwfmDecimals(input.value), cwfmDecimals(step));
+            const unit = Math.pow(10, -d);
+            const f = Math.pow(10, d);
+            let next = Math.round((cur + dir * unit) * f) / f;
+            next = Math.min(max, Math.max(min, next));
+            if (next === cur) return;
+            // 保留小數位數（例：1.29 + 0.01 顯示 1.30），下一次增減的單位才會一致
+            input.value = next.toFixed(d);
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        function cwfmBindHold(btn, fn) {
+            let holdTimer = null, holdInterval = null;
+            const stop = () => { clearTimeout(holdTimer); clearInterval(holdInterval); holdTimer = holdInterval = null; };
+            const start = (e) => {
+                e.preventDefault();
+                fn();
+                holdTimer = setTimeout(() => { holdInterval = setInterval(fn, 60); }, 400);
+            };
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('touchstart', start, { passive: false });
+            ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach((ev) => btn.addEventListener(ev, stop));
+            btn.addEventListener('click', (e) => e.preventDefault());
+        }
+        // 輸入框與滑桿取得焦點時，滾輪增減（未取得焦點時滾輪照常捲動面板）
+        function cwfmBindWheel(el, input, opts) {
+            el.addEventListener('wheel', (e) => {
+                if (document.activeElement !== el || el.disabled || !e.deltaY) return;
+                e.preventDefault();
+                e.stopPropagation();
+                cwfmStepValue(input, e.deltaY < 0 ? 1 : -1, opts);
+            }, { passive: false });
+        }
+        function cwfmBuildStepper(key, min, max, step, integer) {
+            const opts = { min, max, step, integer: !!integer };
+            const wrap = document.createElement('span');
+            wrap.className = 'cwfm-stepper';
+            const dec = document.createElement('button');
+            dec.type = 'button'; dec.className = 'cwfm-stepper-btn'; dec.textContent = '−'; dec.tabIndex = -1;
+            dec.setAttribute('aria-label', '-');
+            const inc = document.createElement('button');
+            inc.type = 'button'; inc.className = 'cwfm-stepper-btn'; inc.textContent = '+'; inc.tabIndex = -1;
+            inc.setAttribute('aria-label', '+');
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'cwfm-value-input';
+            input.min = String(min);
+            input.max = String(max);
+            input.step = 'any'; // 允許使用者輸入比步進更細的數值（方案 B），也避免瀏覽器的步進驗證
+            input.value = String(settings[key]);
+            wrap.append(dec, input, inc);
+            cwfmBindHold(dec, () => cwfmStepValue(input, -1, opts));
+            cwfmBindHold(inc, () => cwfmStepValue(input, 1, opts));
+            // 輸入框：只有 ↑ ↓ 增減（← → 照常移動游標）；攔截瀏覽器原生的步進
+            input.addEventListener('keydown', (e) => {
+                if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                e.preventDefault();
+                e.stopPropagation();
+                cwfmStepValue(input, e.key === 'ArrowUp' ? 1 : -1, opts);
+            });
+            cwfmBindWheel(input, input, opts);
+            return { wrap, input, opts };
+        }
+        // 滑桿取得焦點時：↑ → 增加、↓ ← 減少（取代瀏覽器原生依滑桿步進的移動），滾輪同理
+        function cwfmBindSliderKeys(slider, input, opts) {
+            slider.addEventListener('keydown', (e) => {
+                const dir = (e.key === 'ArrowUp' || e.key === 'ArrowRight') ? 1 : (e.key === 'ArrowDown' || e.key === 'ArrowLeft') ? -1 : 0;
+                if (!dir) return;
+                e.preventDefault();
+                e.stopPropagation();
+                cwfmStepValue(input, dir, opts);
+            });
+            cwfmBindWheel(slider, input, opts);
+        }
+        // 單位放在標籤後面：「字距(em)」
+        function cwfmLabelWithUnit(labelText, unitSuffix) {
+            if (!unitSuffix) return labelText;
+            return labelText + (CWFM_LOCALE === 'zh' ? '' : ' ') + '(' + unitSuffix + ')';
+        }
+
+        function addRangeField(labelText, key, min, max, step, unitSuffix, fieldOpts) {
+            const integer = !!fieldOpts?.integer;
             const field = document.createElement('div');
             field.className = 'cwfm-field';
 
             const label = document.createElement('label');
-            label.textContent = labelText;
+            label.textContent = cwfmLabelWithUnit(labelText, unitSuffix);
             field.appendChild(label);
 
-            // [cwfm] 數值顯示改成可編輯的數字輸入框，不再是純顯示用的
-            // <span>——使用者除了拖滑桿，也可以直接打數字調整。用一個小
-            // 容器把輸入框跟單位文字包起來，維持原本的排版位置。
-            const valueWrap = document.createElement('span');
-            valueWrap.className = 'cwfm-value-input-wrap';
-            const valueInput = document.createElement('input');
-            valueInput.type = 'number';
-            valueInput.className = 'cwfm-value-input';
-            valueInput.min = String(min);
-            valueInput.max = String(max);
-            valueInput.step = String(step);
-            valueInput.value = String(settings[key]);
-            const unitSpan = document.createElement('span');
-            unitSpan.textContent = unitSuffix || '';
-            valueWrap.appendChild(valueInput);
-            valueWrap.appendChild(unitSpan);
+            // [cwfm] 數值區改成「− 數值 ＋」調整器，單位移到標籤後面（見 cwfmBuildStepper）。
+            const { wrap: valueWrap, input: valueInput, opts } = cwfmBuildStepper(key, min, max, step, integer);
 
             const slider = document.createElement('input');
             slider.type = 'range';
@@ -4136,7 +4241,7 @@
             slider.step = String(step);
             slider.value = String(settings[key]);
 
-            // [cwfm] 滑桿列：滑桿 + 輸入框同一列，輸入框靠右
+            // [cwfm] 滑桿列：滑桿 + 調整器同一列，調整器靠右
             const sliderRow = document.createElement('div');
             sliderRow.className = 'cwfm-slider-row';
             sliderRow.appendChild(slider);
@@ -4144,11 +4249,12 @@
             field.appendChild(sliderRow);
 
             function commit(val) {
-                // 夾在 min/max 範圍內，避免使用者手動輸入超出範圍的數字
-                const clamped = Math.min(max, Math.max(min, val));
+                // 夾在 min/max 範圍內，避免使用者手動輸入超出範圍的數字；整數欄位強制取整
+                let clamped = Math.min(max, Math.max(min, val));
+                if (integer) clamped = Math.round(clamped);
                 settings[key] = clamped;
                 slider.value = String(clamped);
-                valueInput.value = String(clamped);
+                if (parseFloat(valueInput.value) !== clamped) valueInput.value = String(clamped);
                 saveSettings(settings);
                 applySettings(settings);
             }
@@ -4159,6 +4265,9 @@
                 if (Number.isNaN(val)) { valueInput.value = String(settings[key]); return; }
                 commit(val);
             });
+            // [cwfm] 滑桿的方向鍵／滾輪改由調整器的輸入框統一處理，改值後同樣觸發 change → commit
+            cwfmBindSliderKeys(slider, valueInput, opts);
+            // 滑桿被外部停用時（例如捲動模式鎖欄數），讓輸入框跟著停用狀態一致的程式碼本來就會同時設兩者
 
             panelTarget.appendChild(field);
             return slider;
@@ -4175,21 +4284,9 @@
             const row = document.createElement('div');
             row.className = 'cwfm-row';
             const label = document.createElement('label');
-            label.textContent = labelText;
+            label.textContent = cwfmLabelWithUnit(labelText, unitSuffix);
             row.appendChild(label);
-            const valueWrap = document.createElement('span');
-            valueWrap.className = 'cwfm-value-input-wrap';
-            const valueInput = document.createElement('input');
-            valueInput.type = 'number';
-            valueInput.className = 'cwfm-value-input';
-            valueInput.min = String(min);
-            valueInput.max = String(max);
-            valueInput.step = String(step);
-            valueInput.value = String(settings[key]);
-            const unitSpan = document.createElement('span');
-            unitSpan.textContent = unitSuffix || '';
-            valueWrap.appendChild(valueInput);
-            valueWrap.appendChild(unitSpan);
+            const { wrap: valueWrap, input: valueInput } = cwfmBuildStepper(key, min, max, step, false);
             row.appendChild(valueWrap);
             field.appendChild(row);
             valueInput.addEventListener('change', () => {
@@ -4197,7 +4294,7 @@
                 if (Number.isNaN(val)) { valueInput.value = String(settings[key]); return; }
                 const clamped = Math.min(max, Math.max(min, val));
                 settings[key] = clamped;
-                valueInput.value = String(clamped);
+                if (parseFloat(valueInput.value) !== clamped) valueInput.value = String(clamped);
                 saveSettings(settings);
                 applySettings(settings);
             });
@@ -5050,7 +5147,7 @@
         const columnGroupWrap = document.createElement('div');
         columnGroupWrap.className = 'cwfm-color-input-group';
         columnGroupWrap.style.padding = '8px';
-        const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, t('unit_col'));
+        const columnSlider = addRangeField(t('field_max_column_count'), 'maxColumnCount', 1, 4, 1, t('unit_col'), { integer: true });
         const columnGapSlider = addRangeField(t('field_column_gap'), 'columnGapPx', 0, 200, 1, 'px');
         const columnGroupField = columnSlider.closest('.cwfm-field');
         const columnGapField = columnGapSlider.closest('.cwfm-field');
