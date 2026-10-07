@@ -208,7 +208,9 @@ const t = (t, e) =>
   },
   y = (t, e, i) => {
     let { id: s, parentNode: n } = t;
-    for (; i;) n = n.parentNode;
+    // [cwfm] v1.76.23：照官方 foliate-js epubcfi.js nodeToParts 修正（原壓縮版為 for(;i;)，
+    // 只要傳入過濾器就會無窮迴圈）。只有父節點被過濾器標為 FILTER_SKIP 時才往上找。
+    for (; i && n && n !== t.ownerDocument.documentElement && i(n) === NodeFilter.FILTER_SKIP;) n = n.parentNode;
     const r = b(n, i),
       a = r.findIndex((e) => (Array.isArray(e) ? e.some((e) => e === t) : e === t)),
       o = r[a];
@@ -981,13 +983,14 @@ let W = class extends HTMLElement {
   }
   getCFI(t, e) {
     const i = this.book.sections[t].cfi ?? S(t);
-    return e ? r(i, v(e)) : i;
+    // [cwfm] v1.76.23：傳入過濾器略過 <cwfm-anchor-break>，相鄰文字節點合併計算，CFI 與原始文件一致
+    return e ? r(i, v(e, globalThis.__cwfm?.cfiFilter)) : i;
   }
   resolveCFI(t) {
     if (this.book.resolveCFI) return this.book.resolveCFI(t);
     {
       const e = c(t);
-      return { index: T((e.parent ?? e).shift()), anchor: (t) => x(t, e) };
+      return { index: T((e.parent ?? e).shift()), anchor: (t) => x(t, e, globalThis.__cwfm?.cfiFilter) };
     }
   }
   resolveNavigation(t) {
@@ -3850,7 +3853,8 @@ class us {
     let s = A(this.opf, i);
     s && "idref" !== s.nodeName && ((i.at(-1).id = null), (s = A(this.opf, i)));
     const n = s?.getAttribute("idref");
-    return { index: this.spine.findIndex((t) => t.idref === n), anchor: (t) => x(t, e) };
+    // [cwfm] v1.76.23：解析時同樣略過錨點換欄標記
+    return { index: this.spine.findIndex((t) => t.idref === n), anchor: (t) => x(t, e, globalThis.__cwfm?.cfiFilter) };
   }
 }
 class ps {
@@ -25685,6 +25689,11 @@ const Xh = (t, e, i) => {
                 r = s(od(i));
               // [cwfm] v1.76.22：gap=0 時本頁內容的左緣「等於」e，原本 r.left > e 不成立，
               // 二分法會往錯的方向找。改為容許相等＋1px 容差。
+              // [cwfm] v1.76.23：二分法最後一步比的是兩個游標位置（collapsed range）。若頁首字
+              // 剛好是文字節點第一個字（錨點換欄標記切開後必然如此），游標 s 的位置就「等於」e，
+              // 上一行的容許相等條件會把它判成上一頁、回報的起點多跳一個字。游標 s 已在 e 上或
+              // 右側時，s 就是本頁第一個字。只在量得到游標位置（寬度 0、座標有限）時適用。
+              if (t.collapsed && 0 === n.width && Number.isFinite(n.left) && n.left >= e - 1) return -1;
               return n.right <= e + 1 && r.left >= e - 1 ? 0 : r.left >= e - 1 ? -1 : 1;
             }),
       c =
@@ -26194,8 +26203,8 @@ class md extends HTMLElement {
           (this.#Rd == null ? "null" : typeof this.#Rd === "number" ? "number:" + this.#Rd : "Range") +
           " 文字=" +
           (this.#Rd && typeof this.#Rd === "object" ? globalThis.__cwfm?.rangeText?.(this.#Rd) : "-") +
-          " cwfmStartRange=" +
-          (this.cwfmStartRange ? "有(將被攔截)" : "無"),
+          " 精準對位回呼=" +
+          (this.cwfmResolveAnchor ? "有" : "無"),
       );
     this.#Os &&
       ((globalThis.__cwfm?.log ?? console.log)(
@@ -26322,8 +26331,10 @@ class md extends HTMLElement {
         this.#iu(i, e)
       );
     }
+    // [cwfm] v1.76.23：+1px 容差。gap=0 時頁面第一個字的左緣剛好落在頁邊界，瀏覽器回傳
+    // 2099.999 這類小數時 floor 會算成上一頁；任何字都不會落在頁邊界前 1px 內。
     const i = this.#Qd()(t).left,
-      s = Math.floor(i / this.size) + (this.#Ed ? -1 : 1);
+      s = Math.floor((i + 1) / this.size) + (this.#Ed ? -1 : 1);
     return (
       (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] #scrollToRect() 分欄模式 mapper後offset=" +
@@ -26399,81 +26410,19 @@ class md extends HTMLElement {
     return this.#qd(t, e ? "selection" : "navigation");
   }
   async #qd(t, e = "anchor") {
-    const _dbg = window.__cwfm?.debug;
-    if (this.cwfmStartRange) {
-      const _sr = this.cwfmStartRange;
-      this.cwfmStartRange = null;
-      const _doc = this.#Os.document;
-      if (_doc) {
-        const _body = _doc.body;
-        const _er = _doc.createRange();
-        _er.setStart(_body, 0);
-        _er.setEnd(_sr.startContainer, _sr.startOffset);
-        if (_dbg)
-          (globalThis.__cwfm?.log ?? console.log)(
-            "[cwfm:engine] #qd 攔截 cwfmStartRange e=" +
-              e +
-              " extractRange.collapsed=" +
-              _er.collapsed +
-              " src=" +
-              (_sr.startContainer?.nodeType === 3
-                ? JSON.stringify(_sr.startContainer.nodeValue?.slice(0, 20))
-                : _sr.startContainer?.nodeName) +
-              " offset=" +
-              _sr.startOffset,
-          );
-        if (!_er.collapsed) {
-          this.cwfmStashedFragment = _er.extractContents();
-          if (_dbg)
-            (globalThis.__cwfm?.log ?? console.log)(
-              "[cwfm:engine] extractContents 完成 fragment.childNodes=" +
-                this.cwfmStashedFragment.childNodes.length,
-            );
-        } else {
-          if (_dbg)
-            (globalThis.__cwfm?.log ?? console.log)("[cwfm:engine] extractRange.collapsed=true，定位點已在開頭，跳過搬移");
-        }
-        let _startNode = _sr.startContainer,
-          _startOff = _sr.startOffset;
-        if (_startNode.nodeType === 3 && !(_startNode.nodeValue?.slice(_startOff) ?? "").trim()) {
-          const _tw = _doc.createTreeWalker(_doc.body, NodeFilter.SHOW_TEXT, null);
-          _tw.currentNode = _startNode;
-          let _nx;
-          while ((_nx = _tw.nextNode())) {
-            if (_nx.nodeValue?.trim()) {
-              _startNode = _nx;
-              _startOff = 0;
-              break;
-            }
-          }
-        }
-        const _fr = _doc.createRange();
-        _fr.setStart(_startNode, _startOff);
-        _fr.collapse(true);
-        if (_dbg)
-          (globalThis.__cwfm?.log ?? console.log)(
-            "[cwfm:engine] freshRange 建立 container.nodeType=" +
-              _startNode?.nodeType +
-              " offset=" +
-              _startOff +
-              " text=" +
-              JSON.stringify(_startNode?.nodeValue?.slice(_startOff, _startOff + 20)),
-          );
-        t = _fr;
-      } else {
-        if (_dbg) (globalThis.__cwfm?.log ?? console.log)("[cwfm:engine] _doc 為 null，跳過攔截");
-      }
-    } else {
-      if (_dbg)
-        (globalThis.__cwfm?.log ?? console.log)(
-          "[cwfm:engine] #qd 正常流程 e=" +
-            e +
-            " t類型=" +
-            (t === null ? "null" : typeof t === "number" ? "number:" + t : "Range 文字=" + globalThis.__cwfm?.rangeText?.(t)) +
-            " cwfmStashedFragment=" +
-            (this.cwfmStashedFragment ? "有" : "無"),
-        );
+    // [cwfm] v1.76.23：精準對位改為「錨點換欄標記」。重新排版後的自動定位（reason=anchor）
+    // 交給 app 的 cwfmResolveAnchor：它會移除舊標記、在鎖定的錨點插入新標記，回傳錨點位置；
+    // 回傳 null（功能關閉、無鎖定值等）就用引擎原本的錨點 #Rd。其他原因（翻頁、導覽）照原流程。
+    if ("anchor" === e && this.cwfmResolveAnchor) {
+      const _r = this.cwfmResolveAnchor();
+      if (_r) t = _r;
     }
+    (globalThis.__cwfm?.log ?? console.log)(
+      "[cwfm:engine] #qd e=" +
+        e +
+        " t類型=" +
+        (t == null ? "null" : typeof t === "number" ? "number:" + t : "Range 文字=" + globalThis.__cwfm?.rangeText?.(t)),
+    );
     this.#Rd = t;
     const i = Qh(t)?.getClientRects?.();
     if (i) {
@@ -26513,12 +26462,6 @@ class md extends HTMLElement {
       }
     }
     return null;
-  }
-  cwfmSyncAnchorToView() {
-    this.#Rd = this.#su();
-    (globalThis.__cwfm?.log ?? console.log)(
-      "[cwfm:engine] cwfmSyncAnchorToView：#Rd 改為目前可見範圍 文字=" + globalThis.__cwfm?.rangeText?.(this.#Rd),
-    );
   }
   #Gd(t) {
     const e = this.#su();
