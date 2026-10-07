@@ -2964,7 +2964,7 @@
     // 抓到的即時節點，被 cwfmReinsertStash() 的 normalize() 影響，
     // isConnected 判斷不準）。
     let cwfmLockedAnchorCfi = null;
-    view.renderer.addEventListener('relocate', (e) => {
+    view.renderer.addEventListener('relocate', async (e) => {
         const reason = e.detail?.reason;
         // 只有「翻頁」「跳轉」這兩種代表使用者/書本內容真的換了位置的
         // 原因才更新；resize 造成的內部自動重新導覽（reason=anchor）
@@ -2982,8 +2982,31 @@
             console.warn('[cwfm:align] relocate(reason=' + reason + t('log_stash_skip'));
             return;
         }
-        const cfi = view.lastLocation?.cfi;
-        if (cfi) cwfmLockedAnchorCfi = cfi;
+        // [cwfm] 根本原因修正：foliate paginator 的 relocate(reason=page)
+        // 在導覽請求發出後 ~3ms 就觸發，此時 CSS smooth scroll 動畫尚未
+        // 完成，paginator 的 this.start 仍指向舊頁面位置。用
+        // view.lastLocation?.cfi 或立刻呼叫 cwfmGetCurrentPageRange() 都會
+        // 拿到前一頁的內容（paginator #su() 的 start-size 偏移效果）。
+        // 延遲 350ms 等動畫結束後，this.start 已更新到新頁面起點，
+        // cwfmGetCurrentPageRange() 的 left>=this.start 條件才能正確
+        // 找到當前頁真正的第一個可見文字節點。
+        await new Promise(resolve => setTimeout(resolve, 350));
+        if (cwfmAligningAnchor || cwfmAnchorStash) return;
+        const contents = view.renderer.getContents?.();
+        if (!contents?.length) return;
+        const { index } = contents[0];
+        const range = view.renderer.cwfmGetCurrentPageRange?.();
+        if (range) {
+            const cfi = view.getCFI?.(index, range);
+            if (cfi) {
+                cwfmLockedAnchorCfi = cfi;
+                dlog('[cwfm:lock] 定位鎖定 reason=' + reason + ' cfi=' + cfi);
+            }
+        } else {
+            // fallback：cwfmGetCurrentPageRange 沒有回傳（例如頁面無文字節點）
+            const cfi = view.lastLocation?.cfi;
+            if (cfi) cwfmLockedAnchorCfi = cfi;
+        }
     });
 
     function cwfmAncestorChain(node, stopAbove) {
