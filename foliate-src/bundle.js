@@ -25655,14 +25655,20 @@ const Xh = (t, e, i) => {
           if ("script" === r || "style" === r) return nd;
           if (1 === n.nodeType) {
             const { left: t, right: r } = s(n.getBoundingClientRect());
-            if (r < e || t > i) return nd;
-            if (t >= e && r <= i) return sd;
+            // [cwfm] v1.76.22：gap=0 時欄邊界＝頁邊界，上一頁元素右緣會「剛好等於」e、
+            // 下一頁元素左緣會「剛好等於」i，原本 r < e / t > i 排除不掉。改為嚴格＋1px 容差
+            // （吸收瀏覽器小數誤差，例如 Chromium 實測 e+0.0156；遠小於任何字元寬度）。
+            if (r <= e + 1 || t >= i - 1) return nd;
+            if (t >= e - 1 && r <= i + 1) return sd;
           } else {
             if (!n.nodeValue?.trim()) return rd;
             const r = t.createRange();
             r.selectNodeContents(n);
             const { left: a, right: o } = s(r.getBoundingClientRect());
-            if (o >= e && a <= i) return sd;
+            // [cwfm] v1.76.22：同上。原本 o >= e 會把「整段在上一頁、右緣剛好碰到 e」的段落
+            // 當成本頁可見而收進來（實測 Firefox right-e=0、Chromium 0.0156），可見範圍起點
+            // 因此落在上一頁。改為嚴格＋1px 容差。
+            if (o > e + 1 && a < i - 1) return sd;
           }
           return rd;
         },
@@ -25677,7 +25683,9 @@ const Xh = (t, e, i) => {
           : Zh(t, a, (t, i) => {
               const n = s(od(t)),
                 r = s(od(i));
-              return n.right < e && r.left > e ? 0 : r.left > e ? -1 : 1;
+              // [cwfm] v1.76.22：gap=0 時本頁內容的左緣「等於」e，原本 r.left > e 不成立，
+              // 二分法會往錯的方向找。改為容許相等＋1px 容差。
+              return n.right <= e + 1 && r.left >= e - 1 ? 0 : r.left >= e - 1 ? -1 : 1;
             }),
       c =
         1 === o.nodeType
@@ -25685,7 +25693,8 @@ const Xh = (t, e, i) => {
           : Zh(t, o, (t, e) => {
               const n = s(od(t)),
                 r = s(od(e));
-              return n.right < i && r.left > i ? 0 : r.left > i ? -1 : 1;
+              // [cwfm] v1.76.22：頁尾端同上。
+              return n.right <= i + 1 && r.left >= i - 1 ? 0 : r.left >= i - 1 ? -1 : 1;
             }),
       h = t.createRange();
     return (h.setStart(a, l), h.setEnd(o, c), h);
