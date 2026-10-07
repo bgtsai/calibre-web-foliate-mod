@@ -2964,6 +2964,10 @@
     // 抓到的即時節點，被 cwfmReinsertStash() 的 normalize() 影響，
     // isConnected 判斷不準）。
     let cwfmLockedAnchorCfi = null;
+    // [cwfm] 全螢幕切換保護旗標：切換期間設為 true，阻止 350ms 延遲的
+    // relocate 監聽器在全螢幕重繪後把「顯示中（但位置錯誤）的頁面」
+    // 當作正確位置更新 cwfmLockedAnchorCfi。
+    let cwfmFullscreenTransitioning = false;
     view.renderer.addEventListener('relocate', async (e) => {
         const reason = e.detail?.reason;
         // 只有「翻頁」「跳轉」這兩種代表使用者/書本內容真的換了位置的
@@ -2992,6 +2996,13 @@
         // 找到當前頁真正的第一個可見文字節點。
         await new Promise(resolve => setTimeout(resolve, 350));
         if (cwfmAligningAnchor || cwfmAnchorStash) return;
+        // [cwfm] 全螢幕切換期間：350ms 計時器到期時頁面顯示的內容
+        // 已被 foliate 換成切換後的錯誤頁，此時讀到的 CFI 是錯的——
+        // 略過更新，等 fullscreenchange 自己的對位邏輯用快照還原正確值。
+        if (cwfmFullscreenTransitioning) {
+            dlog('[cwfm:lock] 全螢幕切換中，略過 CFI 更新 reason=' + reason);
+            return;
+        }
         const contents = view.renderer.getContents?.();
         if (!contents?.length) return;
         const { index } = contents[0];
@@ -5485,6 +5496,31 @@
             dlog(t('log_fullscreen_event') + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
             renderFullscreenIcon();
             cwfmWakeBars();
+            // [cwfm] 全螢幕切換頁碼還原：
+            // 問題根源有兩個：
+            //   ① 使用者剛翻到第 N 頁後的 350ms 內若切換全螢幕，
+            //      350ms 計時器到期時 foliate 已重繪到錯誤頁，
+            //      cwfmLockedAnchorCfi 會被寫入錯誤值。
+            //   ② window.resize 在全螢幕切換時不一定觸發（視瀏覽器實作
+            //      而定），導致 cwfmAlignAnchorToPageStart() 完全沒跑。
+            // 修正方式：
+            //   - 立刻快照 cwfmLockedAnchorCfi（這時還是正確的）。
+            //   - 設旗標 cwfmFullscreenTransitioning，讓 350ms 計時器
+            //     看到旗標就略過 CFI 更新（見 relocate 監聽器）。
+            //   - 500ms 後（> 350ms + foliate 重繪穩定）清旗標、還原
+            //     快照、主動呼叫對位函式——這樣不論 resize 有沒有觸發
+            //     都能還原到正確頁碼。
+            cwfmFullscreenTransitioning = true;
+            const _fsCfi = cwfmLockedAnchorCfi;
+            dlog('[cwfm:fs] 全螢幕切換快照 cfi=' + _fsCfi);
+            setTimeout(() => {
+                cwfmFullscreenTransitioning = false;
+                if (_fsCfi) {
+                    cwfmLockedAnchorCfi = _fsCfi;
+                    dlog('[cwfm:fs] 快照還原 cfi=' + _fsCfi);
+                }
+                cwfmAlignAnchorToPageStart();
+            }, 500);
             // [cwfm] 設定面板的排版計算原本只在建立當下跑一次，切換
             // 全螢幕/一般模式後視窗尺寸變了卻不會重新算，面板高度卡在
             // 舊數字，底下會露出一段沒用到的空間——這裡補上重新計算。
