@@ -25809,7 +25809,7 @@ class gd {
     t &&
       ((this.#_d = "scrolled" !== t.flow),
       (this.#qr = t),
-      console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] View.render() flow=" +
           t.flow +
           " column=" +
@@ -25892,7 +25892,7 @@ class gd {
         r = (this.#Cd ? 0 : this.#Ed ? n.right - s.right : s.left - n.left) + s[e],
         a = Math.ceil(r / this.#Md),
         o = a * this.#Md;
-      (console.log(
+      ((globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] expand() column分支 side=" +
           e +
           " documentElement寬度(套用前)=" +
@@ -25912,7 +25912,7 @@ class gd {
         (this.#Ad.style[i] = "100%"),
         (this.#xd.style[i] = "100%"),
         (t.style[e] = `${this.#Md}px`),
-        console.log(
+        (globalThis.__cwfm?.log ?? console.log)(
           "[cwfm:node] expand() 已將 documentElement.style." +
             e +
             " 固定為 " +
@@ -26063,9 +26063,9 @@ class md extends HTMLElement {
       this.#Ud.addEventListener("change", this.#Hd));
   }
   attributeChangedCallback(t, e, i) {
-    switch ((console.log("[cwfm:node] attributeChangedCallback name=" + t + " value=" + i), t)) {
+    switch (((globalThis.__cwfm?.log ?? console.log)("[cwfm:node] attributeChangedCallback name=" + t + " value=" + i), t)) {
       case "flow":
-        (console.log("[cwfm:node] attributeChangedCallback 觸發 render()（因為 flow 變了）"),
+        ((globalThis.__cwfm?.log ?? console.log)("[cwfm:node] attributeChangedCallback 觸發 render()（因為 flow 變了）"),
           this.render());
         break;
       case "gap":
@@ -26076,7 +26076,7 @@ class md extends HTMLElement {
         break;
       case "max-inline-size":
         (this.#nl.style.setProperty("--_" + t, i),
-          console.log(
+          (globalThis.__cwfm?.log ?? console.log)(
             "[cwfm:node] attributeChangedCallback 觸發 render()（因為 max-inline-size 變了）",
           ),
           this.render());
@@ -26142,7 +26142,7 @@ class md extends HTMLElement {
     const p = Math.min(l, Math.ceil(r / o)),
       g = r / p - d;
     (this.setAttribute("dir", e ? "rtl" : "ltr"),
-      console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] #beforeRender() vertical=" +
           t +
           " rtl=" +
@@ -26180,7 +26180,16 @@ class md extends HTMLElement {
   render() {
     this.cwfmLayoutChangedAt = Date.now();
     this.#Os &&
-      (console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
+        "[cwfm:engine] render() 即將以內部錨點 #Rd 重新定位：類型=" +
+          (this.#Rd == null ? "null" : typeof this.#Rd === "number" ? "number:" + this.#Rd : "Range") +
+          " 文字=" +
+          (this.#Rd && typeof this.#Rd === "object" ? globalThis.__cwfm?.rangeText?.(this.#Rd) : "-") +
+          " cwfmStartRange=" +
+          (this.cwfmStartRange ? "有(將被攔截)" : "無"),
+      );
+    this.#Os &&
+      ((globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] Paginator.render() 被呼叫，即將呼叫 View.render() 然後 #scrollToAnchor()",
       ),
       this.#Os.render(this.#Kd({ vertical: this.#Cd, rtl: this.#Ed })),
@@ -26287,7 +26296,7 @@ class md extends HTMLElement {
   async #eu(t, e) {
     const _dbg2 = window.__cwfm?.debug;
     if (_dbg2)
-      console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:engine] #eu 計算位置 offset=" +
           (t?.left?.toFixed?.(1) ?? t) +
           " size=" +
@@ -26298,7 +26307,7 @@ class md extends HTMLElement {
     if (this.scrolled) {
       const i = this.#Qd()(t).left - this.#Dd;
       return (
-        console.log(
+        (globalThis.__cwfm?.log ?? console.log)(
           "[cwfm:node] #scrollToRect() scrolled模式 offset=" + i.toFixed(1) + " reason=" + e,
         ),
         this.#iu(i, e)
@@ -26307,7 +26316,7 @@ class md extends HTMLElement {
     const i = this.#Qd()(t).left,
       s = Math.floor(i / this.size) + (this.#Ed ? -1 : 1);
     return (
-      console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] #scrollToRect() 分欄模式 mapper後offset=" +
           i.toFixed(1) +
           " this.size=" +
@@ -26326,7 +26335,7 @@ class md extends HTMLElement {
     const s = this.#De,
       { scrollProp: n, size: r } = this;
     return (
-      console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] #scrollTo() 目前位置=" +
           s[n] +
           " 目標offset=" +
@@ -26361,10 +26370,10 @@ class md extends HTMLElement {
   }
   async #Jd(t, e, i) {
     const _dbg3 = window.__cwfm?.debug;
-    if (_dbg3) console.log("[cwfm:engine] #Jd 跳頁 page=" + t + " reason=" + e);
+    if (_dbg3) (globalThis.__cwfm?.log ?? console.log)("[cwfm:engine] #Jd 跳頁 page=" + t + " reason=" + e);
     const s = this.size * (this.#Ed ? -t : t);
     return (
-      console.log(
+      (globalThis.__cwfm?.log ?? console.log)(
         "[cwfm:node] #scrollToPage() page=" +
           t +
           " this.size=" +
@@ -26392,7 +26401,7 @@ class md extends HTMLElement {
         _er.setStart(_body, 0);
         _er.setEnd(_sr.startContainer, _sr.startOffset);
         if (_dbg)
-          console.log(
+          (globalThis.__cwfm?.log ?? console.log)(
             "[cwfm:engine] #qd 攔截 cwfmStartRange e=" +
               e +
               " extractRange.collapsed=" +
@@ -26407,13 +26416,13 @@ class md extends HTMLElement {
         if (!_er.collapsed) {
           this.cwfmStashedFragment = _er.extractContents();
           if (_dbg)
-            console.log(
+            (globalThis.__cwfm?.log ?? console.log)(
               "[cwfm:engine] extractContents 完成 fragment.childNodes=" +
                 this.cwfmStashedFragment.childNodes.length,
             );
         } else {
           if (_dbg)
-            console.log("[cwfm:engine] extractRange.collapsed=true，定位點已在開頭，跳過搬移");
+            (globalThis.__cwfm?.log ?? console.log)("[cwfm:engine] extractRange.collapsed=true，定位點已在開頭，跳過搬移");
         }
         let _startNode = _sr.startContainer,
           _startOff = _sr.startOffset;
@@ -26433,7 +26442,7 @@ class md extends HTMLElement {
         _fr.setStart(_startNode, _startOff);
         _fr.collapse(true);
         if (_dbg)
-          console.log(
+          (globalThis.__cwfm?.log ?? console.log)(
             "[cwfm:engine] freshRange 建立 container.nodeType=" +
               _startNode?.nodeType +
               " offset=" +
@@ -26443,15 +26452,15 @@ class md extends HTMLElement {
           );
         t = _fr;
       } else {
-        if (_dbg) console.log("[cwfm:engine] _doc 為 null，跳過攔截");
+        if (_dbg) (globalThis.__cwfm?.log ?? console.log)("[cwfm:engine] _doc 為 null，跳過攔截");
       }
     } else {
       if (_dbg)
-        console.log(
+        (globalThis.__cwfm?.log ?? console.log)(
           "[cwfm:engine] #qd 正常流程 e=" +
             e +
             " t類型=" +
-            (t === null ? "null" : typeof t === "number" ? "number" : "Range") +
+            (t === null ? "null" : typeof t === "number" ? "number:" + t : "Range 文字=" + globalThis.__cwfm?.rangeText?.(t)) +
             " cwfmStashedFragment=" +
             (this.cwfmStashedFragment ? "有" : "無"),
         );
@@ -26498,11 +26507,31 @@ class md extends HTMLElement {
   }
   cwfmSyncAnchorToView() {
     this.#Rd = this.#su();
+    (globalThis.__cwfm?.log ?? console.log)(
+      "[cwfm:engine] cwfmSyncAnchorToView：#Rd 改為目前可見範圍 文字=" + globalThis.__cwfm?.rangeText?.(this.#Rd),
+    );
   }
   #Gd(t) {
     const e = this.#su();
     ((this.#Vd = e),
       "selection" !== t && "navigation" !== t && "anchor" !== t ? (this.#Rd = e) : (this.#Od = !0));
+    (globalThis.__cwfm?.log ?? console.log)(
+      "[cwfm:engine] #Gd(relocate) reason=" +
+        t +
+        " start=" +
+        this.start +
+        " page=" +
+        this.page +
+        "/" +
+        this.pages +
+        " 可見範圍文字=" +
+        globalThis.__cwfm?.rangeText?.(e) +
+        ("selection" !== t && "navigation" !== t && "anchor" !== t
+          ? " ⇒ #Rd 更新為可見範圍"
+          : " ⇒ #Rd 不更新（維持 " +
+            (this.#Rd == null ? "null" : typeof this.#Rd === "number" ? "number:" + this.#Rd : "Range 文字=" + globalThis.__cwfm?.rangeText?.(this.#Rd)) +
+            "）"),
+    );
     const i = { reason: t, range: e, index: this.#l };
     if (this.scrolled) i.fraction = this.start / this.viewSize;
     else if (this.pages > 0) {

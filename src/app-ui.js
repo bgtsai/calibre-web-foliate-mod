@@ -486,7 +486,7 @@
     // 會收斂掉（對一般使用者沒意義、洩漏內部實作細節），但 console.error
     // 這種真正的失敗訊息會保留，日後排查問題還是需要。預設關閉，不是
     // 直接刪掉這些 log，需要除錯時改成 true 就會恢復印出。
-    const CWFM_DEBUG = false;
+    const CWFM_DEBUG = true;
     function dlog(...args) { if (CWFM_DEBUG) console.log(...args); }
     // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
     // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
@@ -585,6 +585,201 @@
     viewerContainer.innerHTML = '';
     viewerContainer.appendChild(view);
 
+    // ============================================================
+    // [cwfm:diag] 定位問題診斷 log（v1.76.20）
+    // 目的：使用者回報「切換前畫面開頭是 A，切換後變成 B」時，單靠 log
+    // 就能逐步對出每一個時間點畫面上、鎖定值、引擎內部錨點各自指向哪段文字。
+    // 規格：
+    //   - 每行格式：[cwfm:diag #序號 t=毫秒 corr=操作編號] 標籤 內容
+    //   - 序號跨 app-ui 與引擎（bundle.js 經 window.__cwfm.log 印出）共用，
+    //     可直接依序號排出先後。
+    //   - corr（Correlation ID）：每個使用者/系統操作開始時配一個新編號
+    //     （NAV-翻頁、GOTO-跳轉、FSC-全螢幕、RSZ-視窗縮放、SET-套用設定、
+    //     INIT-開書），之後所有 log（含引擎）都帶這個編號，直到下一個操作。
+    //   - 文字一律印頭 24 字（空白壓縮、JSON 跳脫），CFI 同時印出它指向的文字。
+    //   - 全部走 dlog()，受 CWFM_DEBUG 控制；診斷程式本身一律 try/catch，
+    //     不影響原本流程。
+    // ============================================================
+    const CWFM_VERSION = "__CWFM_VERSION__";
+    let cwfmDiagSeq = 0;
+    let cwfmCorr = 'BOOT';
+    const cwfmCorrCounters = {};
+    function cwfmNewCorr(kind) {
+        cwfmCorrCounters[kind] = (cwfmCorrCounters[kind] || 0) + 1;
+        cwfmCorr = kind + '-' + cwfmCorrCounters[kind];
+        return cwfmCorr;
+    }
+    function cwfmDiagPrefix() {
+        return '[cwfm:diag #' + (++cwfmDiagSeq) + ' t=' + performance.now().toFixed(1) + ' corr=' + cwfmCorr + ']';
+    }
+    function cwfmDiag(tag, msg) {
+        if (!CWFM_DEBUG) return;
+        try { console.log(cwfmDiagPrefix() + ' ' + tag + (msg ? ' ' + msg : '')); } catch (e) { /* 診斷不可影響流程 */ }
+    }
+    // 讀取可能還在 TDZ（let 宣告尚未執行）的變數，不讓診斷本身拋錯
+    function cwfmSafe(fn, fallback) { try { return fn(); } catch (e) { return fallback === undefined ? '(N/A)' : fallback; } }
+    // 從 range 起點往後抓 n 個字（跨文字節點），空白壓縮
+    function cwfmRangeHead(range, n) {
+        try {
+            if (!range) return 'null';
+            n = n || 24;
+            const doc = range.startContainer.ownerDocument || range.startContainer;
+            let node = range.startContainer, off = range.startOffset;
+            if (node.nodeType !== 3) {
+                const child = node.childNodes[off];
+                const tw0 = doc.createTreeWalker(child || node, NodeFilter.SHOW_TEXT, null);
+                node = child ? (child.nodeType === 3 ? child : tw0.nextNode()) : null;
+                off = 0;
+                if (!node) {
+                    const tw1 = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+                    tw1.currentNode = range.startContainer;
+                    node = tw1.nextNode();
+                }
+            }
+            let out = '';
+            const tw = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+            if (node) tw.currentNode = node;
+            while (node && out.length < n * 2) {
+                out += (node.nodeValue || '').slice(off);
+                off = 0;
+                node = tw.nextNode();
+            }
+            return JSON.stringify(out.replace(/\s+/g, ' ').trim().slice(0, n));
+        } catch (e) { return '(err:' + e.message + ')'; }
+    }
+    // range 終點往前抓 n 個字（用來看「這一頁結尾」）
+    function cwfmRangeTail(range, n) {
+        try {
+            if (!range) return 'null';
+            n = n || 12;
+            const c = range.endContainer;
+            if (c.nodeType !== 3) return '(non-text:' + c.nodeName + ')';
+            return JSON.stringify((c.nodeValue || '').slice(0, range.endOffset).replace(/\s+/g, ' ').slice(-n));
+        } catch (e) { return '(err:' + e.message + ')'; }
+    }
+    // CFI 指向的文字（只在 CFI 屬於目前載入的章節時能解析）
+    function cwfmCfiText(cfi) {
+        try {
+            if (!cfi) return 'cfi=null';
+            const resolved = view.resolveCFI(cfi);
+            const contents = view.renderer.getContents?.() || [];
+            const cur = contents[0];
+            if (!resolved) return 'cfi=' + cfi + ' (無法解析)';
+            if (!cur || resolved.index !== cur.index) return 'cfi=' + cfi + ' (章節' + resolved.index + '，目前章節' + (cur ? cur.index : '無') + '，無法取文字)';
+            const range = resolved.anchor(cur.doc);
+            return 'cfi=' + cfi + ' text=' + cwfmRangeHead(range);
+        } catch (e) { return 'cfi=' + cfi + ' (err:' + e.message + ')'; }
+    }
+    // 目前畫面狀態快照：頁碼、捲動位置、引擎自己的可見範圍文字、我們抓的
+    // 「頁首第一個文字節點」、lastLocation、鎖定值、暫存/對齊旗標、全螢幕
+    function cwfmSnap() {
+        try {
+            const r = view.renderer;
+            const contents = r?.getContents?.() || [];
+            const cur = contents[0];
+            const parts = [];
+            parts.push('sec=' + (cur ? cur.index : 'none'));
+            parts.push('page=' + cwfmSafe(() => r.page) + '/' + cwfmSafe(() => r.pages));
+            parts.push('start=' + cwfmSafe(() => r.start.toFixed(1)) + ' size=' + cwfmSafe(() => r.size.toFixed(1)));
+            const vis = cwfmSafe(() => r.getVisibleRange?.(), null);
+            parts.push('畫面頁首(引擎visibleRange)=' + cwfmRangeHead(vis) + ' 頁尾=' + cwfmRangeTail(vis));
+            const cur2 = cwfmSafe(() => r.cwfmGetCurrentPageRange?.(), null);
+            let curLeft = 'N/A';
+            if (cur2) curLeft = cwfmSafe(() => cur2.getBoundingClientRect().left.toFixed(1));
+            parts.push('cwfmGetCurrentPageRange=' + cwfmRangeHead(cur2) + ' left=' + curLeft);
+            parts.push('lastLocation ' + cwfmCfiText(cwfmSafe(() => view.lastLocation?.cfi, null)));
+            parts.push('鎖定 ' + cwfmCfiText(cwfmSafe(() => cwfmLockedAnchorCfi, null)));
+            parts.push('stash=' + cwfmSafe(() => (cwfmAnchorStash ? '有' : '無')));
+            parts.push('aligning=' + cwfmSafe(() => cwfmAligningAnchor));
+            parts.push('engineStartRange=' + (r?.cwfmStartRange ? '有' : '無') + ' engineFragment=' + (r?.cwfmStashedFragment ? '有' : '無'));
+            parts.push('fullscreen=' + !!document.fullscreenElement + ' win=' + window.innerWidth + 'x' + window.innerHeight);
+            return parts.join(' | ');
+        } catch (e) { return '(snap err:' + e.message + ')'; }
+    }
+    function cwfmStack() {
+        try {
+            return (new Error().stack || '').split('\n').slice(2, 7)
+                .map((l) => l.replace(/^\s*at\s*/, '').replace(/https?:\/\/[^\s)]*\//g, '').trim())
+                .filter(Boolean).join(' <- ');
+        } catch (e) { return '(no stack)'; }
+    }
+    // 給引擎（bundle.js）共用：同一套序號與 corr、同一個文字擷取函式
+    window.__cwfm.debug = CWFM_DEBUG;
+    window.__cwfm.log = (msg) => { if (CWFM_DEBUG) console.log(cwfmDiagPrefix() + ' ' + msg); };
+    window.__cwfm.rangeText = (range) => cwfmRangeHead(range);
+    window.__cwfm.snap = cwfmSnap;
+    window.__cwfm.newCorr = cwfmNewCorr;
+
+    cwfmNewCorr('INIT');
+    cwfmDiag('INIT', 'version=' + CWFM_VERSION + ' bookId=' + BOOK_ID
+        + ' ua=' + JSON.stringify(navigator.userAgent)
+        + ' win=' + window.innerWidth + 'x' + window.innerHeight + ' dpr=' + window.devicePixelRatio
+        + ' INITIAL_SETTINGS=' + cwfmSafe(() => JSON.stringify({
+            flow: INITIAL_SETTINGS?.flow, maxColumnCount: INITIAL_SETTINGS?.maxColumnCount,
+            preciseAnchorAlign: INITIAL_SETTINGS?.preciseAnchorAlign, localAutoRemember: INITIAL_SETTINGS?.localAutoRemember,
+            verticalSizeMode: INITIAL_SETTINGS?.verticalSizeMode, targetContentHeightPx: INITIAL_SETTINGS?.targetContentHeightPx,
+            maxInlineSize: INITIAL_SETTINGS?.maxInlineSize, fontSize: INITIAL_SETTINGS?.fontSize }))
+        + ' INITIAL_POSITION=' + cwfmSafe(() => JSON.stringify(INITIAL_POSITION)));
+
+    view.addEventListener('load', ({ detail }) => {
+        cwfmDiag('SECTION-LOAD', 'index=' + detail?.index + ' href=' + cwfmSafe(() => JSON.stringify(view.book?.sections?.[detail.index]?.id)));
+    });
+    view.addEventListener('relocate', (e) => {
+        cwfmDiag('VIEW-RELOCATE', 'cfi=' + e.detail?.cfi + ' toc=' + cwfmSafe(() => JSON.stringify(e.detail?.tocItem?.label)) + ' pageItem=' + cwfmSafe(() => JSON.stringify(e.detail?.pageItem?.label)));
+    });
+    // 書內超連結點擊（不經過我們的翻頁函式）
+    view.addEventListener('link', (e) => {
+        cwfmNewCorr('LINK');
+        cwfmDiag('LINK-CLICK', 'href=' + JSON.stringify(e.detail?.href) + ' || ' + cwfmSnap());
+    });
+    // 所有導覽入口：記錄呼叫來源（stack），用來查 reason=navigation 是誰觸發的。
+    // view.renderer 要等 view.open() 之後才存在，所以這段包成函式，在
+    // open() 完成、還原閱讀位置之前呼叫（見開書流程）。
+    function cwfmInstallRendererDiag() {
+    // 引擎事件：每次 relocate（不分原因）印當下快照，並在 400ms 後再印一次
+    // （確認後續非同步重排有沒有又把畫面移走）
+    view.renderer.addEventListener('relocate', (e) => {
+        const reason = e.detail?.reason;
+        cwfmDiag('RELOCATE', 'reason=' + reason + ' fraction=' + cwfmSafe(() => e.detail?.fraction?.toFixed(4)) + ' || ' + cwfmSnap());
+        const corrAt = cwfmCorr;
+        setTimeout(() => cwfmDiag('RELOCATE+400', 'reason=' + reason + ' (觸發時corr=' + corrAt + ') || ' + cwfmSnap()), 400);
+    });
+    try {
+        const _origViewGoTo = view.goTo.bind(view);
+        view.goTo = function (target) {
+            cwfmDiag('CALL view.goTo', 'target=' + JSON.stringify(typeof target === 'object' ? String(target) : target) + ' from=' + cwfmStack());
+            return _origViewGoTo(target);
+        };
+        const _origGoToFraction = view.goToFraction.bind(view);
+        view.goToFraction = function (frac) {
+            cwfmDiag('CALL view.goToFraction', 'frac=' + frac + ' from=' + cwfmStack());
+            return _origGoToFraction(frac);
+        };
+        const _r = view.renderer;
+        const _origRGoTo = _r.goTo.bind(_r);
+        _r.goTo = function (target) {
+            cwfmDiag('CALL renderer.goTo', 'from=' + cwfmStack());
+            return _origRGoTo(target);
+        };
+        const _origRScroll = _r.scrollToAnchor.bind(_r);
+        _r.scrollToAnchor = function (anchor, select) {
+            cwfmDiag('CALL renderer.scrollToAnchor', 'anchorType=' + (anchor == null ? 'null' : typeof anchor === 'number' ? 'number:' + anchor : 'Range') + ' text=' + (anchor && typeof anchor === 'object' ? cwfmRangeHead(anchor) : '-') + ' select=' + !!select + ' from=' + cwfmStack());
+            return _origRScroll(anchor, select);
+        };
+        for (const m of ['next', 'prev', 'goLeft', 'goRight']) {
+            const tgt = (m === 'goLeft' || m === 'goRight') ? view : _r;
+            if (typeof tgt[m] !== 'function') continue;
+            const orig = tgt[m].bind(tgt);
+            tgt[m] = function (...args) {
+                cwfmDiag('CALL ' + (tgt === view ? 'view.' : 'renderer.') + m, 'from=' + cwfmStack());
+                return orig(...args);
+            };
+        }
+    } catch (e) { console.error('[cwfm:diag] 導覽入口包裝失敗', e); }
+    }
+    window.addEventListener('error', (e) => cwfmDiag('WINDOW-ERROR', JSON.stringify(e.message) + ' @' + e.filename + ':' + e.lineno));
+    window.addEventListener('unhandledrejection', (e) => cwfmDiag('UNHANDLED-REJECTION', JSON.stringify(String(e.reason))));
+
     // [cwfm] 進度相關的三個獨立功能共用的 key 產生方式，比照原版
     // reading/epub.js 的命名慣例："calibre.reader.position." + book.key()，
     // 我們換成自己的前綴、用 BOOK_ID 當識別碼（同一支腳本、同一本書，
@@ -668,6 +863,8 @@
 
         await view.open(file);
         book = view.book;
+        cwfmInstallRendererDiag();
+        cwfmDiag('INIT-OPENED', 'sections=' + cwfmSafe(() => book.sections.length) + ' title=' + cwfmSafe(() => JSON.stringify(book.metadata?.title)));
 
         // [cwfm] 進度還原優先順序：本機記錄優先（功能一存的，翻頁就即時
         // 記，通常比較新），本機沒有才看伺服器書籤（Calibre-Web 原本開書
@@ -677,11 +874,13 @@
         // 不等 buildSettingsPanel 建好設定物件（那時已經太晚，開書一開始
         // 就要決定要不要還原位置）。
         let restored = false;
+        let cwfmRestorePath = 'none(renderer.next)';
         try {
             const localRememberEnabled = INITIAL_SETTINGS ? INITIAL_SETTINGS.localAutoRemember !== false : true;
             if (localRememberEnabled && INITIAL_POSITION && INITIAL_POSITION.cfi) {
                 await view.goTo(INITIAL_POSITION.cfi);
                 restored = true;
+                cwfmRestorePath = 'local cfi=' + INITIAL_POSITION.cfi;
                 dlog(t('log_restore_local2'), INITIAL_POSITION.cfi);
             }
         } catch (e) {
@@ -699,6 +898,7 @@
                 try {
                     await view.goTo(serverBookmark);
                     restored = true;
+                    cwfmRestorePath = 'server cfi=' + serverBookmark;
                     dlog(t('log_restore_server2'), serverBookmark);
                 } catch (e) {
                     console.error(t('err_restore_server2'), e);
@@ -707,6 +907,7 @@
         }
 
         if (!restored) view.renderer.next();
+        cwfmDiag('INIT-RESTORED', 'path=' + cwfmRestorePath + ' || ' + cwfmSnap());
     } catch (e) {
         console.error(t('err_open_book2'), e);
         viewerContainer.innerHTML = '';
@@ -908,6 +1109,7 @@
     Object.assign(window.__cwfm, {
         view,
         book,
+        debug: CWFM_DEBUG,
         bookId: BOOK_ID,
         settings: null, // 稍後設定選單初始化時會填入
         // [cwfm-debug] 排版除錯用——在 Console 打
@@ -2864,6 +3066,7 @@
         }
 
         dlog('[cwfm:node] applyHorizontalPadding() mode=' + settings.horizontalSizeMode + ' effectiveMarginPx=' + effectiveMarginPx + ' columnCount=' + cols + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx + ' gapPercent=' + gapPercent.toFixed(3));
+        dlog('[cwfm:align] applyHorizontalPadding 即將設 max-inline-size=' + maxInlineSizePx + 'px t=' + performance.now().toFixed(1));
         view.renderer.setAttribute('max-inline-size', maxInlineSizePx + 'px');
         dlog(t('log_hpad_end') + performance.now().toFixed(1));
     }
@@ -2898,6 +3101,7 @@
         view.renderer.setAttribute('margin', effectiveMarginPx + 'px');
         dlog('[cwfm:node] applyVerticalPadding() mode=' + settings.verticalSizeMode + ' effectiveMarginPx=' + effectiveMarginPx + ' totalHeight=' + totalHeight + ' maxBlockSize=' + maxBlockSizePx);
         view.renderer.setAttribute('max-block-size', maxBlockSizePx + 'px');
+        dlog('[cwfm:align] applyVerticalPadding 即將呼叫 render() t=' + performance.now().toFixed(1));
         view.renderer.render();
         dlog(t('log_vpad_end') + performance.now().toFixed(1));
     }
@@ -2931,7 +3135,10 @@
     // 查到根因就被連同方向 A 一起整段刪除，這次補上 [cwfm:align:h]
     // 診斷紀錄，下次重現時才能實際比對留白/欄寬數字，不是用猜的。
     // ============================================================
-    let cwfmAligningAnchor = false; // 重入鎖：操作進行中，暫停本機記憶/自動同步書籤寫入、進度條畫面更新，避免讀到資料量被動過手腳當下的錯誤瞬間值
+    let cwfmAligningAnchor = false;
+        let cwfmAlignSettleCancel = null; // [cwfm] 取消上一個 cwfmWaitForAlignSettle 的 timeout/listener
+        let cwfmAlignTargetText = '(none)'; // [cwfm:diag] 本次對位的目標文字，結束時比對畫面用
+        let cwfmAlignSeq = 0; // [cwfm] Correlation ID 流水號 // 重入鎖：操作進行中，暫停本機記憶/自動同步書籤寫入、進度條畫面更新，避免讀到資料量被動過手腳當下的錯誤瞬間值
 
     // [cwfm] 純粹的時間軸診斷，跟對齊功能開關無關（一律記錄，不受實驗性
     // 開關影響）：每一次 relocate 不分原因都記一筆時間點，方便事後比對
@@ -2964,18 +3171,14 @@
     // 抓到的即時節點，被 cwfmReinsertStash() 的 normalize() 影響，
     // isConnected 判斷不準）。
     let cwfmLockedAnchorCfi = null;
-    // [cwfm] 全螢幕切換保護旗標：切換期間設為 true，阻止 350ms 延遲的
-    // relocate 監聽器在全螢幕重繪後把「顯示中（但位置錯誤）的頁面」
-    // 當作正確位置更新 cwfmLockedAnchorCfi。
-    let cwfmFullscreenTransitioning = false;
-    view.renderer.addEventListener('relocate', async (e) => {
+    view.renderer.addEventListener('relocate', (e) => {
         const reason = e.detail?.reason;
         // 只有「翻頁」「跳轉」這兩種代表使用者/書本內容真的換了位置的
         // 原因才更新；resize 造成的內部自動重新導覽（reason=anchor）
         // 不算，我們自己對齊操作觸發的那次也不算（cwfmAligningAnchor
         // 判斷），不然會變成自己追自己。
-        if (cwfmAligningAnchor) return;
-        if (reason !== 'page' && reason !== 'navigation') return;
+        if (cwfmAligningAnchor) { cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=cwfmAligningAnchor=true'); return; }
+        if (reason !== 'page' && reason !== 'navigation') { cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=reason 不是 page/navigation'); return; }
         // [cwfm] 防呆：正常情況下，翻頁/跳轉一定會先經過 cwfmGoLeft()/
         // cwfmGoRight()（已經先接回暫存才真正翻頁），這裡不該再看到
         // cwfmAnchorStash 還存在。萬一還是看到了（已知的殘留缺口：書本
@@ -2984,40 +3187,19 @@
         // 也不要記錄一個可能有問題的值進去。
         if (cwfmAnchorStash) {
             console.warn('[cwfm:align] relocate(reason=' + reason + t('log_stash_skip'));
+            cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=cwfmAnchorStash 存在');
             return;
         }
-        // [cwfm] 根本原因修正：foliate paginator 的 relocate(reason=page)
-        // 在導覽請求發出後 ~3ms 就觸發，此時 CSS smooth scroll 動畫尚未
-        // 完成，paginator 的 this.start 仍指向舊頁面位置。用
-        // view.lastLocation?.cfi 或立刻呼叫 cwfmGetCurrentPageRange() 都會
-        // 拿到前一頁的內容（paginator #su() 的 start-size 偏移效果）。
-        // 延遲 350ms 等動畫結束後，this.start 已更新到新頁面起點，
-        // cwfmGetCurrentPageRange() 的 left>=this.start 條件才能正確
-        // 找到當前頁真正的第一個可見文字節點。
-        await new Promise(resolve => setTimeout(resolve, 350));
-        if (cwfmAligningAnchor || cwfmAnchorStash) return;
-        // [cwfm] 全螢幕切換期間：350ms 計時器到期時頁面顯示的內容
-        // 已被 foliate 換成切換後的錯誤頁，此時讀到的 CFI 是錯的——
-        // 略過更新，等 fullscreenchange 自己的對位邏輯用快照還原正確值。
-        if (cwfmFullscreenTransitioning) {
-            dlog('[cwfm:lock] 全螢幕切換中，略過 CFI 更新 reason=' + reason);
-            return;
-        }
-        const contents = view.renderer.getContents?.();
-        if (!contents?.length) return;
-        const { index } = contents[0];
-        const range = view.renderer.cwfmGetCurrentPageRange?.();
-        if (range) {
-            const cfi = view.getCFI?.(index, range);
-            if (cfi) {
-                cwfmLockedAnchorCfi = cfi;
-                dlog('[cwfm:lock] 定位鎖定 reason=' + reason + ' cfi=' + cfi);
-            }
-        } else {
-            // fallback：cwfmGetCurrentPageRange 沒有回傳（例如頁面無文字節點）
-            const cfi = view.lastLocation?.cfi;
-            if (cfi) cwfmLockedAnchorCfi = cfi;
-        }
+        // [cwfm] 用當前頁的第一個可見字算 CFI，不用 view.lastLocation（前一頁的起點）。
+        const _curRange = view.renderer.cwfmGetCurrentPageRange?.();
+        const _contents = view.renderer.getContents();
+        const _idx = _contents[0]?.index;
+        const cfi = (_curRange && _idx !== undefined)
+            ? view.getCFI(_idx, _curRange)
+            : view.lastLocation?.cfi;
+        cwfmDiag('LOCK-SET', 'reason=' + reason + ' 來源=' + ((_curRange && _idx !== undefined) ? 'cwfmGetCurrentPageRange' : 'lastLocation(fallback)')
+            + ' 舊:' + cwfmCfiText(cwfmLockedAnchorCfi) + ' => 新:' + cwfmCfiText(cfi) + ' || ' + cwfmSnap());
+        if (cfi) cwfmLockedAnchorCfi = cfi;
     });
 
     function cwfmAncestorChain(node, stopAbove) {
@@ -3057,7 +3239,12 @@
     // 的安全網，避免暫存內容被晾在記憶體裡忘記接回去。
     function cwfmReinsertStash() {
         if (!cwfmAnchorStash) return;
-        const { originalChain, fragment } = cwfmAnchorStash;
+        cwfmDiag('STASH-REINSERT', '開始接回暫存 from=' + cwfmStack() + ' || ' + cwfmSnap());
+        const { originalChain } = cwfmAnchorStash;
+        // [cwfm] fragment 現在由引擎（Paginator.cwfmStashedFragment）管理。
+        const fragment = view.renderer.cwfmStashedFragment;
+        if (!fragment) { cwfmAnchorStash = null; return; }
+        view.renderer.cwfmStashedFragment = null;
         cwfmAligningAnchor = true;
         try {
             const leaf = originalChain[originalChain.length - 1];
@@ -3084,6 +3271,8 @@
             cwfmAnchorStash = null;
             cwfmAligningAnchor = false;
         }
+        view.renderer.cwfmSyncAnchorToView?.(); // [cwfm] DOM 還原後同步 #Rd 到當前可見位置
+        cwfmDiag('STASH-REINSERTED', '接回完成 || ' + cwfmSnap());
     }
 
     // [cwfm] 定位點對齊本體：把 view.lastLocation.cfi（目前畫面顯示的
@@ -3133,143 +3322,115 @@
         return { lastSeenChangedAt, elapsed: performance.now() - settleStart, sawTrigger };
     }
 
-    function cwfmAlignAnchorToPageStart() {
-        if (!window.__cwfm.settings?.preciseAnchorAlign) return;
-        // [cwfm] 這個功能從一開始就只針對分頁模式設計、測試——捲動模式下
-        // 「這一頁」這個概念本身就不成立，resolveCFI／extractContents
-        // 這整套邏輯假設的前提（有明確的頁面邊界）在捲動模式下不適用，
-        // 貿然執行可能產生未知的副作用。老實講：這次查到的捲動模式
-        // 沒辦法捲動，實際根因是 #viewer 的 overflow-y 一直沒有被我們
-        // 覆蓋掉 Calibre-Web 原本的 hidden 值（已經另外修正），跟這個
-        // 精準定位功能本身沒有確認的因果關係——這裡加的是預防性防線，
-        // 不是說已經證實兩者有關。捲動模式下直接跳過，不用靠使用者
-        // 自己記得手動關閉這個開關。
-        if (window.__cwfm.settings?.flow === 'scrolled') return;
-        if (cwfmAligningAnchor) return;
-        const t0 = performance.now();
-        dlog(t('log_align_start') + t0.toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
+    // [cwfm] 精準定位——步驟一：解析 CFI、設好 cwfmStartRange，讓引擎下次 #qd 時自動攔截。
+    // 回傳 true 表示已設好（監聽器在內部已掛上），false 表示條件不符跳過。
+    function cwfmPrepareAnchorAlign(source) {
+        const alignId = (++cwfmAlignSeq) + '(' + (source ?? '?') + ')';
+        cwfmDiag('ALIGN-PREPARE', 'alignId=' + alignId + ' preciseAnchorAlign=' + window.__cwfm.settings?.preciseAnchorAlign + ' flow=' + window.__cwfm.settings?.flow + ' || ' + cwfmSnap());
+        if (!window.__cwfm.settings?.preciseAnchorAlign) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=preciseAnchorAlign 關閉（不做對位，交給引擎自己重新定位）'); return false; }
+        if (window.__cwfm.settings?.flow === 'scrolled') { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=捲動模式'); return false; }
+        if (cwfmAligningAnchor) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=cwfmAligningAnchor=true（上一次對位還沒結束）'); }
+        if (cwfmAligningAnchor) { dlog('[cwfm:align#' + alignId + '] cwfmPrepareAnchorAlign 跳過：cwfmAligningAnchor=true'); return false; }
+        if (!cwfmLockedAnchorCfi) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=沒有鎖定值'); dlog('[cwfm:align#' + alignId + '] cwfmPrepareAnchorAlign 跳過：無 cwfmLockedAnchorCfi'); return false; }
+        // [cwfm] 取消上一個還在跑的 settle，並設 cwfmAligningAnchor=false 讓後面能繼續。
+        if (cwfmAlignSettleCancel) { cwfmAlignSettleCancel(); cwfmAlignSettleCancel = null; }
         try {
-            // [cwfm] 先把任何還沒接回去的暫存內容接回去，確保接下來解析
-            // cwfmLockedAnchorCfi 的時候，文件是完整、沒被動過手腳的乾淨
-            // 狀態——這是這次簡化設計的關鍵：resize/全螢幕切換完全不去
-            // 讀「畫面現在顯示什麼」，只是把已經記錄好的目標重新套用一次。
             cwfmReinsertStash();
-
+            view.renderer.cwfmStartRange = null;
             const contents = view.renderer.getContents();
-            if (!contents.length) { dlog(t('log_no_contents')); return; }
+            if (!contents.length) { dlog('[cwfm:align#' + alignId + '] ' + t('log_no_contents')); return false; }
             const { doc, index } = contents[0];
-
-            const targetCfi = cwfmLockedAnchorCfi;
-            dlog('[cwfm:align:t] cwfmLockedAnchorCfi=' + targetCfi);
-            if (!targetCfi) { dlog(t('log_no_anchor')); return; }
-            const resolved = view.resolveCFI(targetCfi);
-            if (!resolved || resolved.index !== index) { dlog(t('log_cfi_not_chapter') + resolved?.index + ' currentIndex=' + index); return; }
+            const resolved = view.resolveCFI(cwfmLockedAnchorCfi);
+            if (!resolved || resolved.index !== index) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=鎖定值不在目前章節 resolvedIndex=' + resolved?.index + ' currentIndex=' + index); dlog('[cwfm:align#' + alignId + '] ' + t('log_cfi_not_chapter') + resolved?.index + ' currentIndex=' + index); return false; }
             const range = resolved.anchor(doc);
-            if (!range) { dlog(t('log_no_range')); return; }
-
+            if (!range) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=鎖定值解析不出 range'); dlog('[cwfm:align#' + alignId + '] ' + t('log_no_range')); return false; }
             const container = range.startContainer;
             const offset = range.startOffset;
             const anchorElement = container.nodeType === 3 ? container.parentNode : container;
-            dlog(t('log_resolved_content') + cwfmTextPreview(container, offset));
-
             const body = doc.body;
-            if (!anchorElement || anchorElement === body) { dlog(t('log_anchor_outermost')); return; }
-
+            if (!anchorElement || anchorElement === body) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=錨點就是 body'); dlog('[cwfm:align#' + alignId + '] ' + t('log_anchor_outermost')); return false; }
+            const checkRange = doc.createRange();
+            checkRange.setStart(body, 0);
+            checkRange.setEnd(container, offset);
+            if (checkRange.collapsed) { cwfmDiag('ALIGN-SKIP', 'alignId=' + alignId + ' 原因=錨點已在章節開頭，不需搬移 目標=' + cwfmRangeHead(range)); dlog('[cwfm:align#' + alignId + '] ' + t('log_extract_empty')); return false; }
             const originalChain = cwfmAncestorChain(anchorElement, body);
-
-            const extractRange = doc.createRange();
-            extractRange.setStart(body, 0);
-            extractRange.setEnd(container, offset);
-            if (extractRange.collapsed) { dlog(t('log_extract_empty')); return; }
-
+            const cwfmSR = doc.createRange();
+            cwfmSR.setStart(container, offset);
+            cwfmSR.collapse(true);
+            dlog('[cwfm:align#' + alignId + '] cwfmPrepareAnchorAlign 設定 cwfmStartRange container.nodeType=' + container.nodeType + ' offset=' + offset + ' originalChain.length=' + originalChain.length + ' cfi=' + cwfmLockedAnchorCfi);
+            cwfmAnchorStash = { originalChain, sectionIndex: index };
             cwfmAligningAnchor = true;
-            const extracted = extractRange.extractContents();
-            cwfmAnchorStash = { originalChain, fragment: extracted, sectionIndex: index };
-            dlog(t('log_extract_done') + performance.now().toFixed(1));
-
-            // [cwfm] 搬走之後，定位點文字現在是章節最前面的內容，原本卡在
-            // 邊界的那個容器（originalChain 最底層）現在的 firstChild 就是
-            // 精準對應到搬移前定位點所在的位置——不沿用搬移前那個 range
-            // 物件本身（它的邊界節點在 extractContents() 過程中可能已經
-            // 被瀏覽器內部重新指派，直接信任舊物件風險不明），改成重新
-            // 建一個乾淨的 range。
-            const leaf = originalChain[originalChain.length - 1];
-            const expectedText = cwfmTextPreview(leaf.firstChild || leaf, 0);
-            const freshRange = doc.createRange();
-            if (leaf.firstChild) freshRange.setStart(leaf.firstChild, 0);
-            else freshRange.setStart(leaf, 0);
-            freshRange.collapse(true);
-            dlog(t('log_moved_content') + expectedText);
-
-            // [cwfm] 診斷紀錄：跟水平留白/欄寬有關的幾個數字記下來，
-            // 下次重現時直接比對這些數字，不用再猜是不是留白算錯。
-            dlog(t('log_maxinline_before') + view.renderer.getAttribute('max-inline-size')
-                + ' gap=' + view.renderer.getAttribute('gap')
-                + ' maxColumnCount=' + view.renderer.getAttribute('max-column-count'));
-
-            view.renderer.scrollToAnchor(freshRange)
-                .then(async () => {
-                    const firstVisible = view.renderer.getVisibleRange?.();
-                    const firstText = firstVisible ? cwfmTextPreview(firstVisible.startContainer, firstVisible.startOffset) : '(null)';
-                    dlog(t('log_scroll_first') + performance.now().toFixed(1)
-                        + t('txt_content') + firstText);
-
-                    // [cwfm] 排版引擎自己內部有一個 ResizeObserver 監看書本
-                    // 內容尺寸，一變就呼叫 expand()；我們搬移/接回內容本身
-                    // 就會觸發它，而 expand() 調整容器尺寸的動作，可能又
-                    // 讓內容跟著微調、再度觸發同一個監看器，形成一個會自己
-                    // 反覆修正好幾輪才穩定下來的回饋迴圈，把畫面帶離我們
-                    // 剛剛才對齊好的位置。用共用的 cwfmWaitForLayoutSettle()
-                    // 直接量測 cwfmLayoutChangedAt 時間戳，不是猜畫面內容
-                    // 或猜要等多久。
-                    const { lastSeenChangedAt, elapsed: settleElapsed } = await cwfmWaitForLayoutSettle(true);
-                    dlog(t('log_settle_end') + performance.now().toFixed(1)
-                        + t('txt_elapsed') + settleElapsed.toFixed(1) + 'ms cwfmLayoutChangedAt=' + lastSeenChangedAt);
-
-                    // [cwfm] 不管穩定與否，都強制校正一次——穩定的情況下這
-                    // 次呼叫應該幾乎沒有變化（本來就在對的位置）；等到上限
-                    // 還沒穩定的情況下，這是最後一道防線，把畫面拉回我們
-                    // 原本要鎖住的目標。
-                    await view.renderer.scrollToAnchor(freshRange);
-
-                    const finalVisible = view.renderer.getVisibleRange?.();
-                    const actualText = finalVisible ? cwfmTextPreview(finalVisible.startContainer, finalVisible.startOffset) : '(null)';
-                    const matched = actualText === expectedText;
-                    dlog(t('log_final_correction') + performance.now().toFixed(1)
-                        + t('txt_after_align_content') + actualText
-                        + t('txt_check_result') + (matched ? t('txt_match') : t('txt_mismatch')));
-                    if (!matched) {
-                        console.warn(t('log_mismatch_expected') + expectedText + t('txt_actual') + actualText);
-                    }
-                    dlog(t('log_maxinline_after') + view.renderer.getAttribute('max-inline-size')
-                        + ' gap=' + view.renderer.getAttribute('gap')
-                        + ' rendererRect.left=' + view.renderer.getBoundingClientRect().left
-                        + ' viewerRect.left=' + viewerContainer.getBoundingClientRect().left);
-                })
-                .catch((e) => console.error(t('err_align_nav'), e))
-                .finally(() => { cwfmAligningAnchor = false; dlog(t('log_align_all_done') + performance.now().toFixed(1) + t('txt_total_elapsed') + (performance.now() - t0).toFixed(1) + 'ms）'); });
+            view.renderer.cwfmStartRange = cwfmSR;
+            cwfmAlignTargetText = cwfmRangeHead(range);
+            cwfmDiag('ALIGN-ARMED', 'alignId=' + alignId + ' 目標文字=' + cwfmAlignTargetText + ' cfi=' + cwfmLockedAnchorCfi + '（等引擎下一次 #qd 攔截）');
+            // [cwfm] 在 applyVerticalPadding/render() 之前就掛上 relocate 監聽，
+            // 確保不會因為 #Jd 非同步完成比監聽器掛上更早而錯過 relocate。
+            cwfmWaitForAlignSettle(alignId);
+            return true;
         } catch (e) {
             console.error(t('err_align_failed'), e);
+            cwfmDiag('ALIGN-ERROR', 'alignId=' + alignId + ' ' + JSON.stringify(String(e && e.stack || e)));
             cwfmAligningAnchor = false;
+            return false;
         }
     }
 
-    // [cwfm] 往前/往後翻頁的包裝：不管有沒有翻到邊界、暫存屬於哪個章節，
-    // 只要還有暫存沒接回去，一律先接回去、確保文件是完整的，才真正
-    // 執行翻頁——這樣「真正翻頁」這個動作發生的當下，文件保證完整，
-    // relocate 事件算出來的 cfi 自然是對的，不需要再另外判斷邊界、比對
-    // 章節，範圍反而比原本兩層判斷更寬，涵蓋原本想擋的情況。這是修正
-    // 「全螢幕裡翻頁後鎖定失效」那個 DOMException 根因用的（翻頁當下
-    // 如果暫存還沒接回去，relocate 算出來的 cfi 是對著殘缺的樹算的，
-    // 之後拿去解析會撞到 Range 邊界超出範圍的例外）。
-    async function cwfmGoLeft() {
+    // [cwfm] 精準定位——步驟二：在兩次 render() 的同步部分都完成後掛監聽，
+    // 等 relocate 事件（代表引擎完成對齊），或 timeout 後強制還原。
+    function cwfmWaitForAlignSettle(alignId) {
+        const ALIGN_TIMEOUT_MS = 500;
+        let done = false;
+        const t0 = performance.now();
+        function finish(timedOut) {
+            if (done) return;
+            done = true;
+            cwfmDiag(timedOut ? 'ALIGN-TIMEOUT' : 'ALIGN-RELOCATED', 'alignId=' + alignId + ' 耗時=' + (performance.now() - t0).toFixed(1) + 'ms 目標文字=' + cwfmAlignTargetText + ' || ' + cwfmSnap());
+            const _diagTarget = cwfmAlignTargetText;
+            setTimeout(() => {
+                const vis = cwfmSafe(() => view.renderer.getVisibleRange(), null);
+                const shown = cwfmRangeHead(vis);
+                const norm = (x) => String(x).replace(/^"|"$/g, '').slice(0, 8);
+                cwfmDiag('ALIGN-RESULT+400', 'alignId=' + alignId + ' 目標文字=' + _diagTarget + ' 畫面頁首=' + shown
+                    + ' 判定=' + (norm(shown) && norm(shown) === norm(_diagTarget) ? 'MATCH' : 'MISMATCH') + ' || ' + cwfmSnap());
+            }, 400);
+            cwfmAlignSettleCancel = null;
+            clearTimeout(timeoutId);
+            view.renderer.removeEventListener('relocate', onRelocate);
+            if (timedOut) {
+                console.error('[cwfm:align#' + alignId + '] 對齊流程 timeout，主動還原至乾淨狀態');
+                try { cwfmReinsertStash(); } catch (e) { console.error('[cwfm:align#' + alignId + '] timeout 還原失敗', e); }
+                view.renderer.cwfmStashedFragment = null;
+                view.renderer.cwfmStartRange = null;
+                cwfmAnchorStash = null;
+            } else {
+                dlog('[cwfm:relocate#' + alignId + '] onAlignRelocate 觸發，對齊完成 t=' + performance.now().toFixed(1) + '（總耗時 ' + (performance.now() - t0).toFixed(1) + 'ms）');
+            }
+            cwfmAligningAnchor = false;
+        }
+        const timeoutId = setTimeout(() => finish(true), ALIGN_TIMEOUT_MS);
+        function onRelocate() { finish(false); }
+        view.renderer.addEventListener('relocate', onRelocate, { once: true });
+        // [cwfm] 登記取消函式，取消時也把 cwfmAligningAnchor 設回 false。
+        cwfmAlignSettleCancel = () => { cwfmDiag('ALIGN-CANCELLED', 'alignId=' + alignId + '（被下一次對位取消）'); done = true; clearTimeout(timeoutId); view.renderer.removeEventListener('relocate', onRelocate); cwfmAligningAnchor = false; };
+    }
+
+    // [cwfm] 舊的 cwfmAlignAnchorToPageStart 已拆成 cwfmPrepareAnchorAlign + cwfmWaitForAlignSettle，
+    // 這裡保留一個空殼以防其他地方有呼叫（實際上 resize 和 applySettings 都已改用新函式）。
+    function cwfmAlignAnchorToPageStart() {
+        // 已廢棄，由 cwfmPrepareAnchorAlign() + cwfmWaitForAlignSettle() 取代
+    }
+
+        async function cwfmGoLeft() {
+        cwfmNewCorr('NAV');
+        cwfmDiag('NAV-LEFT', 'from=' + cwfmStack() + ' || ' + cwfmSnap());
+        dlog('[cwfm:nav] 使用者翻上一頁 t=' + performance.now().toFixed(1));
         cwfmTriggerPageAnim('left');
-        // [cwfm] 對齊操作（含連鎖反應偵測+最後校正）進行中的這一小段
-        // 空檔，先等它結束，避免翻頁跟校正動作前後重疊、其中一個結果
-        // 被另一個蓋掉。等待有次數上限，不會真的卡死。
+        view.renderer.cwfmStartRange = null;
         for (let i = 0; i < 60 && cwfmAligningAnchor; i++) {
+            if (i === 0) dlog('[cwfm:align] cwfmGoLeft 等待 cwfmAligningAnchor 結束...');
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
+        if (!cwfmAligningAnchor) dlog('[cwfm:align] cwfmGoLeft 等待結束，繼續翻頁');
         try {
             // [cwfm] 這裡曾經加過一行 view.renderer.expand()，想強制立刻
             // 重算頁數，解決接回內容後翻頁卡在頁碼 0 不動的問題——但已經
@@ -3289,9 +3450,14 @@
             console.error(t('err_align_prev'), e);
         }
         await view.goLeft();
+        view.renderer.cwfmSyncAnchorToView?.(); // [cwfm] 翻頁後同步 #Rd
     }
     async function cwfmGoRight() {
+        cwfmNewCorr('NAV');
+        cwfmDiag('NAV-RIGHT', 'from=' + cwfmStack() + ' || ' + cwfmSnap());
+        dlog('[cwfm:nav] 使用者翻下一頁 t=' + performance.now().toFixed(1));
         cwfmTriggerPageAnim('right');
+        view.renderer.cwfmStartRange = null;
         for (let i = 0; i < 60 && cwfmAligningAnchor; i++) {
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
@@ -3304,9 +3470,18 @@
             console.error(t('err_align_next'), e);
         }
         await view.goRight();
+        view.renderer.cwfmSyncAnchorToView?.(); // [cwfm] 翻頁後同步 #Rd
     }
 
     function applySettings(settings) {
+        cwfmNewCorr('SET');
+        cwfmDiag('APPLY-SETTINGS', 'flow=' + settings?.flow + ' maxColumnCount=' + settings?.maxColumnCount + ' preciseAnchorAlign=' + settings?.preciseAnchorAlign
+            + ' verticalSizeMode=' + settings?.verticalSizeMode + ' targetContentHeightPx=' + settings?.targetContentHeightPx + ' from=' + cwfmStack() + ' || ' + cwfmSnap());
+        dlog('[cwfm:settings] applySettings 呼叫 t=' + performance.now().toFixed(1)
+            + ' flow=' + settings?.flow
+            + ' verticalSizeMode=' + settings?.verticalSizeMode
+            + ' targetContentHeightPx=' + settings?.targetContentHeightPx
+            + ' maxColumnCount=' + settings?.maxColumnCount);
         cwfmUpdatePanelScheme(settings);
         try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error(t('err_tapzone_apply'), e); }
         try { updateCursorAutoHide(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
@@ -3320,22 +3495,18 @@
         // 這裡每次呼叫的成本很低。
         cwfmRefreshActiveFontFace(settings).catch((e) => console.error(t('err_check_uploaded'), e));
         try {
+            // [cwfm] 精準對位步驟一：在任何 render() 觸發之前設好 cwfmStartRange。
+            // setAttribute('flow') 本身也會觸發 render()，所以必須在它之前設好。
+            const _willAlign = cwfmPrepareAnchorAlign('SET');
             view.renderer.setAttribute('flow', settings.flow);
-            // [cwfm] 捲動模式下強制鎖回 1 欄——原本不管 flow 是分頁還是
-            // 捲動，都直接把使用者存的 maxColumnCount 套上去，捲動模式
-            // 搭配大於 1 的欄數，排版會整個跑掉（畫面截圖確認：文字變成
-            // 直式單字一行的破版狀態）。這裡只影響「實際套用到 renderer
-            // 的有效欄數」，不動 settings.maxColumnCount 本身——切回分頁
-            // 模式時，使用者原本設定的欄數要能正確恢復，不能被這次的
-            // 強制鎖定覆蓋掉。
             const effectiveColumnCount = settings.flow === 'scrolled' ? 1 : settings.maxColumnCount;
             view.renderer.setAttribute('max-column-count', effectiveColumnCount);
             applyVerticalPadding(settings);
             applyHorizontalPadding(settings, effectiveColumnCount);
-            // [cwfm] flow 剛設定完，捲軸有沒有可能跟著換了，重新量測一次
-            // ——這次改成直接從內部容器量測，不再需要傳 flow 判斷。
             updateScrollbarWidthVar();
             updateDivider(settings);
+            // [cwfm] 精準對位步驟二：所有 render() 同步部分跑完後掛監聽。
+            // [cwfm] 監聽器已在 cwfmPrepareAnchorAlign 內部掛上。
         } catch (e) { console.error(t('err_apply_layout'), e); }
         try {
             updateAutoHideEnabled(settings.autoHideToolbar);
@@ -3378,30 +3549,33 @@
     let resizeExecCount = 0; // 診斷用：防抖動後實際執行了幾次
     window.addEventListener('resize', () => {
         resizeRawCount++;
+        cwfmDiag('RESIZE-RAW', '#' + resizeRawCount + ' win=' + window.innerWidth + 'x' + window.innerHeight + ' fullscreen=' + !!document.fullscreenElement);
         dlog(t('log_resize_raw') + resizeRawCount + ' t=' + performance.now().toFixed(1));
         clearTimeout(resizeDebounceTimer);
         resizeDebounceTimer = setTimeout(() => {
             resizeExecCount++;
+            cwfmNewCorr('RSZ');
+            cwfmDiag('RESIZE-EXEC', '#' + resizeExecCount + ' || ' + cwfmSnap());
+            const _rszCorr = cwfmCorr;
+            for (const ms of [500, 1500]) {
+                setTimeout(() => cwfmDiag('RESIZE+' + ms, '(觸發時corr=' + _rszCorr + ') || ' + cwfmSnap()), ms);
+            }
             dlog(t('log_resize_exec') + resizeExecCount + ' t=' + performance.now().toFixed(1));
+            dlog('[cwfm:resize] cwfmLockedAnchorCfi=' + cwfmLockedAnchorCfi + ' cwfmAnchorStash=' + (cwfmAnchorStash ? '有' : '無'));
             if (window.__cwfm.settings) {
                 try {
+                    dlog('[cwfm:resize] cwfmLockedAnchorCfi=' + cwfmLockedAnchorCfi + ' cwfmAnchorStash=' + (cwfmAnchorStash ? '有' : '無'));
+                    // [cwfm] 精準對位步驟一：在排版之前設好 cwfmStartRange。
+                    const _willAlign = cwfmPrepareAnchorAlign('RSZ');
                     applyVerticalPadding(window.__cwfm.settings);
-                    // [cwfm] 比照 applySettings() 裡的做法：捲動模式下欄數
-                    // 要強制當成 1，不能直接傳原始 maxColumnCount——這裡
-                    // 原本漏掉這層轉換，縮放視窗時，捲動模式底下的最大
-                    // 內容寬度會被誤除以使用者存的欄數(可能是 2/3/4)，
-                    // 算出比實際應有寬度更窄的數字。
                     const resizeEffectiveColumnCount = window.__cwfm.settings.flow === 'scrolled'
                         ? 1 : window.__cwfm.settings.maxColumnCount;
                     applyHorizontalPadding(window.__cwfm.settings, resizeEffectiveColumnCount);
                     updateScrollbarWidthVar();
                     updateDivider(window.__cwfm.settings);
+                    // [cwfm] 精準對位步驟二：兩次 render() 同步部分都跑完後掛監聽。
+                    // [cwfm] 監聽器已在 cwfmPrepareAnchorAlign 內部掛上。
                 } catch (e) { console.error(t('err_resize_padding'), e); }
-                // [cwfm] 定位點對齊要排在留白套用之後——對齊過程要用到的
-                // this.size（頁面尺寸）必須是新版面留白套用完之後的正確值。
-                try {
-                    cwfmAlignAnchorToPageStart();
-                } catch (e) { console.error(t('err_resize_align'), e); }
             }
         }, CWFM_RESIZE_DEBOUNCE_MS);
     });
@@ -5270,6 +5444,8 @@
                     // 這一章還有定位點對齊搬走、還沒接回去的內容，要先接
                     // 回去，不要讓它繼續晾在記憶體裡——不然使用者之後如果
                     // 又跳回這一章，會對到一份少了一截內容的舊暫存。
+                    cwfmNewCorr('TOC');
+                    cwfmDiag('TOC-CLICK', 'href=' + JSON.stringify(href) + ' || ' + cwfmSnap());
                     cwfmReinsertStash();
                     view.goTo(href);
                 } catch (e) {
@@ -5334,6 +5510,8 @@
             progressLabel.textContent = Math.round(parseFloat(slider.value) * 100) + '%';
         });
         slider.addEventListener('change', () => {
+            cwfmNewCorr('SLIDER');
+            cwfmDiag('SLIDER-CHANGE', 'value=' + slider.value + ' || ' + cwfmSnap());
             try { view.goToFraction(parseFloat(slider.value)); }
             catch (e) { console.error(t('err_go_fraction'), e); }
             sliderDragging = false;
@@ -5478,6 +5656,8 @@
         renderFullscreenIcon();
         fullscreenBtn.setAttribute('aria-label', t('aria_fullscreen'));
         fullscreenBtn.addEventListener('click', () => {
+            cwfmNewCorr('FSC');
+            cwfmDiag('FULLSCREEN-CLICK', (document.fullscreenElement ? '退出全螢幕' : '進入全螢幕') + ' || ' + cwfmSnap());
             try {
                 if (document.fullscreenElement) {
                     document.exitFullscreen();
@@ -5493,40 +5673,27 @@
         // 監聽器移除處的說明——這裡改成明確掛在 fullscreenchange 上，
         // 不用再靠巧合。
         document.addEventListener('fullscreenchange', () => {
+            if (!/^FSC-/.test(cwfmCorr)) cwfmNewCorr('FSC'); // 非按鈕觸發（例如 Esc 退出）也配編號
+            cwfmDiag('FULLSCREEN-CHANGE', 'fullscreenElement=' + !!document.fullscreenElement + ' || ' + cwfmSnap());
+            const _fscCorr = cwfmCorr;
+            for (const ms of [100, 500, 1000, 2000]) {
+                setTimeout(() => cwfmDiag('FULLSCREEN+' + ms, '(觸發時corr=' + _fscCorr + ') || ' + cwfmSnap()), ms);
+            }
             dlog(t('log_fullscreen_event') + performance.now().toFixed(1) + ' fullscreenElement=' + !!document.fullscreenElement);
+            dlog('[cwfm:align] fullscreenchange 觸發，即將 cwfmWakeBars + settingsPanel.cwfmRelayout t=' + performance.now().toFixed(1));
             renderFullscreenIcon();
             cwfmWakeBars();
-            // [cwfm] 全螢幕切換頁碼還原：
-            // 問題根源有兩個：
-            //   ① 使用者剛翻到第 N 頁後的 350ms 內若切換全螢幕，
-            //      350ms 計時器到期時 foliate 已重繪到錯誤頁，
-            //      cwfmLockedAnchorCfi 會被寫入錯誤值。
-            //   ② window.resize 在全螢幕切換時不一定觸發（視瀏覽器實作
-            //      而定），導致 cwfmAlignAnchorToPageStart() 完全沒跑。
-            // 修正方式：
-            //   - 立刻快照 cwfmLockedAnchorCfi（這時還是正確的）。
-            //   - 設旗標 cwfmFullscreenTransitioning，讓 350ms 計時器
-            //     看到旗標就略過 CFI 更新（見 relocate 監聽器）。
-            //   - 500ms 後（> 350ms + foliate 重繪穩定）清旗標、還原
-            //     快照、主動呼叫對位函式——這樣不論 resize 有沒有觸發
-            //     都能還原到正確頁碼。
-            cwfmFullscreenTransitioning = true;
-            const _fsCfi = cwfmLockedAnchorCfi;
-            dlog('[cwfm:fs] 全螢幕切換快照 cfi=' + _fsCfi);
-            setTimeout(() => {
-                cwfmFullscreenTransitioning = false;
-                if (_fsCfi) {
-                    cwfmLockedAnchorCfi = _fsCfi;
-                    dlog('[cwfm:fs] 快照還原 cfi=' + _fsCfi);
-                }
-                cwfmAlignAnchorToPageStart();
-            }, 500);
+            // [cwfm] cwfmRelayout 會觸發 render()，在它之前先設好 cwfmStartRange，
+            // 讓這次 render() 被引擎攔截、直接跳到正確位置，避免畫面閃跳。
+            const _fscWillAlign = cwfmPrepareAnchorAlign('FSC');
+            cwfmDiag('FULLSCREEN-PREPARED', 'willAlign=' + _fscWillAlign + '，接著 settingsPanel.cwfmRelayout');
             // [cwfm] 設定面板的排版計算原本只在建立當下跑一次，切換
             // 全螢幕/一般模式後視窗尺寸變了卻不會重新算，面板高度卡在
             // 舊數字，底下會露出一段沒用到的空間——這裡補上重新計算。
             // settingsPanel 掛在外層作用域，還沒打開過設定面板時會是
             // undefined，用 ?. 安全跳過，不用另外判斷。
             settingsPanel?.cwfmRelayout?.();
+            // [cwfm] 監聽器已在 cwfmPrepareAnchorAlign('FSC') 內部掛上。
             // [cwfm] 翻頁動畫 canvas 尺寸在建立時固定為當時的視窗大小，
             // 全螢幕切換後視窗尺寸改變，右側動畫會超出 canvas 邊界而不可見。
             // 這裡在全螢幕切換後重新設定 canvas 尺寸。
@@ -6168,7 +6335,14 @@
     // page/navigation，開書還原位置這次的 reason 很可能是 anchor，會被
     // 擋掉，不會自動記錄到，這裡要另外補一次）。
     try {
-        const initialCfi = view.lastLocation?.cfi;
+        // [cwfm] 用當前頁的第一個可見字算 CFI，確保初始定位點就是使用者看到的第一個字。
+        const _curRange = view.renderer.cwfmGetCurrentPageRange?.();
+        const _contents = view.renderer.getContents();
+        const _idx = _contents[0]?.index;
+        const initialCfi = (_curRange && _idx !== undefined)
+            ? view.getCFI(_idx, _curRange)
+            : view.lastLocation?.cfi;
+        cwfmDiag('LOCK-SET', 'reason=init 來源=' + ((_curRange && _idx !== undefined) ? 'cwfmGetCurrentPageRange' : 'lastLocation(fallback)') + ' 新:' + cwfmCfiText(initialCfi) + ' || ' + cwfmSnap());
         if (initialCfi) {
             cwfmLockedAnchorCfi = initialCfi;
             dlog(t('log_init_anchor') + initialCfi);
