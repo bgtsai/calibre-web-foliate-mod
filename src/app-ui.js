@@ -1100,7 +1100,13 @@
             // v1.77：換章節不解除隱藏——新章節 iframe 載入時沿用目前隱藏狀態
             cwfmSetCursorNone(detail.doc, cwfmCursorHidden);
         }
-        try { cwfmUpdatePanelScheme(window.__cwfm && window.__cwfm.settings); } catch (e) {}
+        // 用這次載入完成的章節 document 判斷（換章節過程中 getBookIframeDocument()
+        // 可能還拿到舊的、正在卸載的那份，會誤退回系統偏好）
+        try { cwfmUpdatePanelScheme(null, detail.doc); } catch (e) {}
+    });
+    // 翻到別章後再用目前位置的章節確認一次
+    view.addEventListener('relocate', () => {
+        try { cwfmUpdatePanelScheme(null); } catch (e) {}
     });
 
     // ============================================================
@@ -2291,27 +2297,28 @@
         return { r: +m[1], g: +m[2], b: +m[3], a };
     }
     function cwfmRgbIsDark(c) { return (c.r * 299 + c.g * 587 + c.b * 114) / 1000 < 128; }
-    function cwfmDetectPageIsDark() {
-        let doc = null;
-        try { doc = getBookIframeDocument(); } catch (e) { doc = null; }
+    function cwfmDetectPageIsDark(docArg) {
+        let doc = docArg || null;
+        if (!doc) { try { doc = getBookIframeDocument(); } catch (e) { doc = null; } }
         const win = doc && doc.defaultView;
         if (win && doc.documentElement) {
             const els = [doc.body, doc.documentElement].filter(Boolean);
             for (const el of els) {
                 const cs = win.getComputedStyle(el);
-                if (cs.backgroundImage && cs.backgroundImage !== 'none') return null; // 背景圖/漸層：取不到，也不看下一層
+                // 背景圖/漸層、半透明：背景色取不到，改看文字顏色（第 2 步）
+                if (cs.backgroundImage && cs.backgroundImage !== 'none') break;
                 const c = cwfmParseCssColor(cs.backgroundColor);
                 if (c && c.a >= 1) return cwfmRgbIsDark(c);
-                if (c && c.a > 0) break; // 半透明：視為取不到
+                if (c && c.a > 0) break;
             }
             const tc = cwfmParseCssColor(win.getComputedStyle(doc.body || doc.documentElement).color);
             if (tc && tc.a > 0) return !cwfmRgbIsDark(tc);
         }
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
-    function cwfmUpdatePanelScheme(settings) {
+    function cwfmUpdatePanelScheme(settings, doc) {
         try {
-            const isDark = cwfmDetectPageIsDark();
+            const isDark = cwfmDetectPageIsDark(doc);
             // [cwfm] 設在 <html> 上，不是設在面板元素本身——面板可能還沒
             // 建立，CSS 選擇器（html[data-cwfm-scheme] .cwfm-panel）之後
             // 面板一建立就會自動生效。
@@ -3080,6 +3087,14 @@
     // 完全不用碰任何私有欄位。已經實測確認這條路拿得到真正的文件
     // 物件（能讀到 body.innerHTML）。
     function getBookIframeDocument() {
+        // v1.77.1：優先問閱讀引擎「目前顯示的章節」——換章節時 shadow root 裡可能同時有
+        // 新舊兩個 iframe，querySelector('iframe') 拿到第一個（舊的、已卸載）會判斷錯。
+        try {
+            const host = document.querySelector('foliate-view');
+            const contents = host?.renderer?.getContents?.();
+            const cur = contents && contents.find((c) => c && c.doc && c.doc.defaultView);
+            if (cur) return cur.doc;
+        } catch (e) { /* 退回下面的舊方法 */ }
         try {
             const map = window.__cwfm?.shadowMap;
             const host = document.querySelector('foliate-view');
@@ -5976,8 +5991,16 @@
         doc.addEventListener('mousemove', cwfmWakeCursor);
     }
     function updateCursorAutoHide(settings) {
-        cwfmCursorHideEnabled = !!settings.cursorAutoHideEnabled;
-        cwfmCursorHideDelayMs = Math.max(1, settings.cursorAutoHideDelaySeconds || 3) * 1000;
+        const enabled = !!settings.cursorAutoHideEnabled;
+        const delayMs = Math.max(1, settings.cursorAutoHideDelaySeconds || 3) * 1000;
+        // v1.77.1：換章節等流程也會呼叫 applySettings；設定沒變就不動目前隱藏狀態，
+        // 只把隱藏樣式補到目前章節（新 iframe）上，避免游標被叫出來。
+        if (enabled === cwfmCursorHideEnabled && delayMs === cwfmCursorHideDelayMs) {
+            if (enabled) cwfmApplyCursorVisibility(cwfmCursorHidden);
+            return;
+        }
+        cwfmCursorHideEnabled = enabled;
+        cwfmCursorHideDelayMs = delayMs;
         clearTimeout(cwfmCursorHideTimer);
         if (cwfmCursorHideEnabled) cwfmWakeCursor();
         else cwfmApplyCursorVisibility(false);
