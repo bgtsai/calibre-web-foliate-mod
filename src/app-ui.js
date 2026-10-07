@@ -8,7 +8,7 @@
     const CWFM_LANG = {
         zh: {
             group_theme: '\u4f48\u666f\u4e3b\u984c',
-            group_color: '\u914d\u8272',
+            group_color: '\u5957\u7528\u984f\u8272',
             group_font: '\u5b57\u9ad4',
             group_typography: '\u6587\u5b57\u6392\u7248',
             group_layout: '\u7248\u9762\u914d\u7f6e',
@@ -226,7 +226,7 @@
         },
         en: {
             group_theme: 'Theme',
-            group_color: 'Colors',
+            group_color: 'Apply Colors',
             group_font: 'Font',
             group_typography: 'Typography',
             group_layout: 'Layout',
@@ -1097,7 +1097,10 @@
         // getBookIframeDocument() 更可靠，初始載入和換章節都覆蓋到。
         if (cwfmCursorHideEnabled) {
             detail.doc.addEventListener('mousemove', cwfmWakeCursor);
+            // v1.77：換章節不解除隱藏——新章節 iframe 載入時沿用目前隱藏狀態
+            cwfmSetCursorNone(detail.doc, cwfmCursorHidden);
         }
+        try { cwfmUpdatePanelScheme(window.__cwfm && window.__cwfm.settings); } catch (e) {}
     });
 
     // ============================================================
@@ -2194,6 +2197,10 @@
         // 游標，不會讓既有使用者一升級就意外看到游標變了)。
         customTextColorEnabled: true,
         customBackgroundColorEnabled: true,
+        // [cwfm] v1.77：配色改成「一鍵填入」——點一個配色就把它的文字/背景色
+        // 填進下面兩個自訂欄位並打開開關；這裡記目前標示的是哪一個
+        // （'auto'/'light'/.../'scheme:<id>'，null＝沒有標示）。手動改過就清掉。
+        activeColorTheme: null,
         // [cwfm] 每個大分組(配色、文字排版...)是否收合，用分組標題當
         // key。收合狀態要記憶，這裡只是存放的地方，不用預先列出所有
         // 分組名稱——沒紀錄的分組，預設就是展開(見 beginGroup 裡讀取
@@ -2272,14 +2279,42 @@
         const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
         return brightness < 128;
     }
+    // [cwfm] v1.77：面板（工具列/設定/目錄）深淺色依序看
+    // (1) 目前位置章節頁面實際套用的背景色（不透明純色才算；透明、半透明、
+    //     背景圖、漸層都視為取不到）→ (2) 實際文字顏色（深色字＝淺色面板）
+    // → (3) 系統深淺色偏好。章節載入、套用設定、系統切換時重算。
+    function cwfmParseCssColor(str) {
+        const m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/.exec(str || '');
+        if (!m) return null;
+        let a = m[4] === undefined ? 1 : parseFloat(m[4]);
+        if (m[4] && m[4].endsWith('%')) a = a / 100;
+        return { r: +m[1], g: +m[2], b: +m[3], a };
+    }
+    function cwfmRgbIsDark(c) { return (c.r * 299 + c.g * 587 + c.b * 114) / 1000 < 128; }
+    function cwfmDetectPageIsDark() {
+        let doc = null;
+        try { doc = getBookIframeDocument(); } catch (e) { doc = null; }
+        const win = doc && doc.defaultView;
+        if (win && doc.documentElement) {
+            const els = [doc.body, doc.documentElement].filter(Boolean);
+            for (const el of els) {
+                const cs = win.getComputedStyle(el);
+                if (cs.backgroundImage && cs.backgroundImage !== 'none') return null; // 背景圖/漸層：取不到，也不看下一層
+                const c = cwfmParseCssColor(cs.backgroundColor);
+                if (c && c.a >= 1) return cwfmRgbIsDark(c);
+                if (c && c.a > 0) break; // 半透明：視為取不到
+            }
+            const tc = cwfmParseCssColor(win.getComputedStyle(doc.body || doc.documentElement).color);
+            if (tc && tc.a > 0) return !cwfmRgbIsDark(tc);
+        }
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
     function cwfmUpdatePanelScheme(settings) {
         try {
-            const background = resolveThemeColors(settings).background;
-            const isDark = cwfmIsColorDark(background);
+            const isDark = cwfmDetectPageIsDark();
             // [cwfm] 設在 <html> 上，不是設在面板元素本身——面板可能還沒
-            // 建立（例如開書當下第一次套用設定時），設在 <html> 不用
-            // 管面板存不存在，CSS 選擇器（html[data-cwfm-scheme] .cwfm-panel）
-            // 之後面板一建立就會自動生效，不用另外處理時序。
+            // 建立，CSS 選擇器（html[data-cwfm-scheme] .cwfm-panel）之後
+            // 面板一建立就會自動生效。
             document.documentElement.dataset.cwfmScheme = isDark ? 'dark' : 'light';
         } catch (e) { console.error(t('err_theme_scheme2'), e); }
     }
@@ -2294,8 +2329,17 @@
     // 固定配色——等於 auto 在這兩個主題之間自動選一個，書本內容跟
     // #main（見 applySettings 裡的用法）都呼叫這同一個函式拿顏色，
     // 保證兩邊查到的結果一致，不會分別查兩次、查到不同結果。
+    function cwfmPresetColors(name) {
+        if (name === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            return prefersDark ? THEME_PRESETS.dark : THEME_PRESETS.light;
+        }
+        return THEME_PRESETS[name] || null;
+    }
+    // [cwfm] v1.77：書本實際套用的顏色一律來自兩個自訂欄位（配色只是把值填進去），
+    // themeName 固定為 'custom'；舊的分支保留給還沒轉換的設定物件。
     function resolveThemeColors(settings) {
-        if (settings.themeName === 'custom') {
+        if (settings.themeName === 'custom' || settings.activeColorTheme !== undefined) {
             return { text: settings.customTextColor, background: settings.customBackgroundColor };
         }
         if (settings.themeName === 'auto') {
@@ -2313,18 +2357,59 @@
     // 觸發，那時候整支腳本早就載入完成。
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         const currentSettings = window.__cwfm && window.__cwfm.settings;
-        if (currentSettings && currentSettings.themeName === 'auto') {
+        if (currentSettings && currentSettings.activeColorTheme === 'auto') {
+            // 跟隨系統仍是目前標示的配色：照一般填入重新填一次，維持標示
+            cwfmFillColorTheme(currentSettings, 'auto');
+            saveSettings(currentSettings);
             applySettings(currentSettings);
+            if (typeof window.__cwfmRefreshColorUI === 'function') window.__cwfmRefreshColorUI();
+        } else if (currentSettings) {
+            cwfmUpdatePanelScheme(currentSettings); // 面板深淺色可能要退回參考系統
         }
     });
+
+    // [cwfm] 把配色填入兩個自訂欄位、打開兩個開關、標示該配色。
+    // name：'auto'/'light'/'dark'/'sepia'/'old_gold' 或 'scheme:<id>'
+    function cwfmFillColorTheme(settings, name) {
+        let colors = null;
+        if (name.indexOf('scheme:') === 0) {
+            const sc = (settings.savedColorSchemes || []).find((x) => 'scheme:' + x.id === name);
+            if (sc) colors = { text: sc.textColor, background: sc.backgroundColor };
+        } else {
+            colors = cwfmPresetColors(name);
+        }
+        if (!colors) return false;
+        settings.customTextColor = colors.text;
+        settings.customBackgroundColor = colors.background;
+        settings.customTextColorEnabled = true;
+        settings.customBackgroundColorEnabled = true;
+        settings.themeName = 'custom';
+        settings.activeColorTheme = name;
+        return true;
+    }
+    // [cwfm] v1.77 舊設定轉換：以前選固定配色 → 填入它的顏色、開關打開並標示；
+    // 以前是自訂 → 欄位值不動。之後若標示的是跟隨系統，開頁時依目前系統重填。
+    function cwfmMigrateColorSettings(parsed, saved) {
+        if (!saved || saved.activeColorTheme === undefined) {
+            const old = parsed.themeName;
+            parsed.activeColorTheme = null;
+            if (old && old !== 'custom' && cwfmPresetColors(old)) cwfmFillColorTheme(parsed, old);
+            parsed.themeName = 'custom';
+        } else if (parsed.activeColorTheme === 'auto') {
+            cwfmFillColorTheme(parsed, 'auto');
+        }
+    }
 
     function loadSettings() {
         try {
             if (!INITIAL_SETTINGS) {
                 dlog(t('log_no_saved2'));
-                return { ...DEFAULT_SETTINGS };
+                const fresh = { ...DEFAULT_SETTINGS };
+                cwfmMigrateColorSettings(fresh, null);
+                return fresh;
             }
             const parsed = { ...DEFAULT_SETTINGS, ...INITIAL_SETTINGS };
+            cwfmMigrateColorSettings(parsed, INITIAL_SETTINGS);
             dlog(t('log_read2'), parsed);
             return parsed;
         } catch (e) {
@@ -2731,7 +2816,7 @@
         'hyphenate', 'disableLigatures', 'flow', 'topBottomPadding',
         'leftRightPadding', 'maxColumnCount', 'themeName', 'customTextColor',
         'customBackgroundColor', 'customTextColorEnabled', 'customBackgroundColorEnabled',
-        'pageFlipAnimColor', 'pageFlipAnimEnabled',
+        'pageFlipAnimColor', 'pageFlipAnimEnabled', 'activeColorTheme',
     ];
     function cwfmSaveCurrentAsTheme(settings, name) {
         const values = {};
@@ -2775,6 +2860,16 @@
             // undefined 不覆蓋，保留使用者目前的設定值。
             if (theme.values[key] !== undefined) settings[key] = theme.values[key];
         });
+        // v1.77 前存的主題沒有 activeColorTheme：比照舊設定轉換（固定配色→填入並標示）
+        if (theme.values.activeColorTheme === undefined) {
+            const oldName = theme.values.themeName;
+            settings.activeColorTheme = null;
+            if (oldName && oldName !== 'custom' && cwfmPresetColors(oldName)) cwfmFillColorTheme(settings, oldName);
+            settings.themeName = 'custom';
+        } else if (settings.activeColorTheme === 'auto') {
+            cwfmFillColorTheme(settings, 'auto');
+        }
+        if (typeof window.__cwfmRefreshColorUI === 'function') window.__cwfmRefreshColorUI();
         if (theme.fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
             settings.fontFamily = '';
             cwfmAlertDialog(t('alert_uploaded_font_deleted'), t('txt_theme_font_deleted_pre') + fontName + t('txt_theme_font_deleted_post'));
@@ -2872,8 +2967,9 @@
         // 只有「佈景主題選的是自訂」(themeName==='custom')時，這兩個開關
         // 才有意義去決定要不要套用；選固定主題(light/dark/sepia/auto)時，
         // 主題本身的顏色一律套用，開關不影響固定主題。
-        const applyTextColor = theme && !(settings.themeName === 'custom' && !settings.customTextColorEnabled);
-        const applyBgColor = theme && !(settings.themeName === 'custom' && !settings.customBackgroundColorEnabled);
+        // v1.77：開關開＝套用欄位顏色，關＝用書本自己的顏色，跟配色無關。
+        const applyTextColor = theme && !!settings.customTextColorEnabled;
+        const applyBgColor = theme && !!settings.customBackgroundColorEnabled;
         const themeRule = applyBgColor
             ? 'html, body { background-color: ' + theme.background + ' !important; }'
             : '';
@@ -3466,6 +3562,8 @@
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error(t('err_apply_font_style'), e); }
+        // 樣式套上書頁之後再看一次實際顏色決定面板深淺
+        cwfmUpdatePanelScheme(settings);
         // [cwfm] 非同步、不 await——applySettings() 本身是同步函式，這裡
         // 只負責「檢查目前選用的字型是不是換成了不同的上傳字型，是的話
         // 去讀取、準備好之後再重新呼叫一次 applySettings()」。cwfmRefreshActiveFontFace
@@ -4447,6 +4545,7 @@
             options = options || {};
             const toggleKey = options.toggleKey || null;
             const computeAutoValue = options.computeAutoValue || null; // function() => hex，null 代表不支援 Auto 分頁
+            const onUserChange = options.onUserChange || null; // 使用者確認修改（數值、取色器 OK、開關）時呼叫
             const field = document.createElement('div');
             field.className = 'cwfm-field';
             const row = document.createElement('div');
@@ -4618,10 +4717,7 @@
                 }
                 settings[key] = hex;
                 refreshValueInput();
-                if (!toggleKey && settings.themeName !== 'custom') {
-                    settings.themeName = 'custom';
-                    colorSchemeState.setValue('custom');
-                }
+                if (onUserChange) onUserChange();
                 saveSettings(settings);
                 applySettings(settings);
             }
@@ -4644,7 +4740,7 @@
                     swatchBtn.style.background = hex;
                     settings[key] = hex;
                     refreshValueInput();
-                    const previewSettings = Object.assign({}, settings, { [key]: hex, themeName: toggleKey ? settings.themeName : 'custom' });
+                    const previewSettings = Object.assign({}, settings, { [key]: hex });
                     applySettings(previewSettings);
                     window.__cwfm.settings = settings;
                     // [cwfm] applySettings() 內部一開始就會呼叫
@@ -4665,10 +4761,7 @@
                     // 兩個 UI 元件，只有選「自訂」時這兩個顏色才會真正套用，
                     // 選色時自動把 themeName 也一併切成 custom。游標欄位
                     // (toggleKey 有值)不受佈景主題連動影響，跳過這段。
-                    if (!toggleKey && settings.themeName !== 'custom') {
-                        settings.themeName = 'custom';
-                        colorSchemeState.setValue('custom');
-                    }
+                    if (onUserChange) onUserChange();
                     saveSettings(settings);
                     applySettings(settings);
                 }, previewColor, key);
@@ -4688,8 +4781,9 @@
 
             // [cwfm] 開關真停用底下所有控制項(分頁、色塊、輸入框)，
             // 不管開關是開是關，欄位本身都看得到，只是停用/變淡。
+            let updateToggleLock = () => {};
             if (toggleInput) {
-                function updateToggleLock() {
+                updateToggleLock = function () {
                     const enabled = toggleInput.checked;
                     modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((tabEl) => { tabEl.disabled = !enabled; });
                     valueInput.disabled = !enabled;
@@ -4698,9 +4792,10 @@
                     // (只看總開關，不受 Auto 模式影響)，這裡直接呼叫它、
                     // 不再自己重複一份判斷邏輯。
                     refreshValueInput();
-                }
+                };
                 toggleInput.addEventListener('change', () => {
                     settings[toggleKey] = toggleInput.checked;
+                    if (onUserChange) onUserChange();
                     saveSettings(settings);
                     applySettings(settings);
                     updateToggleLock();
@@ -4708,6 +4803,12 @@
                 updateToggleLock();
             }
             swatchBtn.cwfmRefresh = refreshValueInput;
+            // 外部改了值或開關（例如點配色一鍵填入）後，整個欄位重新同步顯示
+            swatchBtn.cwfmSync = () => {
+                swatchBtn.style.background = settings[key];
+                if (toggleInput) { toggleInput.checked = !!settings[toggleKey]; updateToggleLock(); }
+                else refreshValueInput();
+            };
             return swatchBtn;
         }
 
@@ -4741,17 +4842,20 @@
             ];
 
             function applyBuiltin(value) {
-                settings.themeName = value;
+                if (!cwfmFillColorTheme(settings, value)) return;
                 saveSettings(settings);
                 applySettings(settings);
+                syncFields();
                 render();
                 if (pageFlipAnimSwatchBtn?.cwfmRefresh) pageFlipAnimSwatchBtn.cwfmRefresh();
             }
+            function syncFields() {
+                if (textColorSwatchBtn?.cwfmSync) textColorSwatchBtn.cwfmSync();
+                if (bgColorSwatchBtn?.cwfmSync) bgColorSwatchBtn.cwfmSync();
+            }
 
             function applyCustomScheme(scheme) {
-                settings.themeName = 'custom';
-                settings.customTextColor = scheme.textColor;
-                settings.customBackgroundColor = scheme.backgroundColor;
+                if (!cwfmFillColorTheme(settings, 'scheme:' + scheme.id)) return;
                 saveSettings(settings);
                 applySettings(settings);
                 // [cwfm] 顏色欄位(下面 addColorField 建立的取色器色塊)要
@@ -4760,8 +4864,7 @@
                 // 會在使用者點擊標籤時才真正執行，那時候變數早就指派好
                 // 了，安全，跟這份程式碼裡其他地方引用「稍後才宣告的
                 // 變數」的做法一致。
-                textColorSwatchBtn.style.background = scheme.textColor;
-                bgColorSwatchBtn.style.background = scheme.backgroundColor;
+                syncFields();
                 render();
                 if (pageFlipAnimSwatchBtn?.cwfmRefresh) pageFlipAnimSwatchBtn.cwfmRefresh();
             }
@@ -4771,15 +4874,13 @@
                 builtinOptions.forEach(([value, labelText]) => {
                     const chip = document.createElement('span');
                     chip.className = 'cwfm-keychip cwfm-keychip-option'
-                        + (settings.themeName === value ? ' cwfm-keychip-selected' : '');
+                        + (settings.activeColorTheme === value ? ' cwfm-keychip-selected' : '');
                     chip.textContent = labelText;
                     chip.addEventListener('click', () => applyBuiltin(value));
                     wrap.appendChild(chip);
                 });
                 (settings.savedColorSchemes || []).forEach((scheme, index) => {
-                    const isActive = settings.themeName === 'custom'
-                        && settings.customTextColor === scheme.textColor
-                        && settings.customBackgroundColor === scheme.backgroundColor;
+                    const isActive = settings.activeColorTheme === 'scheme:' + scheme.id;
                     const chip = cwfmBuildChip(scheme.name, {
                         extraClass: 'cwfm-keychip-option' + (isActive ? ' cwfm-keychip-selected' : ''),
                         onSelect: () => applyCustomScheme(scheme),
@@ -4797,6 +4898,7 @@
                             if (!confirmed) return;
                             const idx = settings.savedColorSchemes.findIndex((s) => s.id === scheme.id);
                             if (idx >= 0) settings.savedColorSchemes.splice(idx, 1);
+                            if (settings.activeColorTheme === 'scheme:' + scheme.id) settings.activeColorTheme = null;
                             saveSettings(settings);
                             render();
                         },
@@ -4817,6 +4919,7 @@
                         textColor: settings.customTextColor,
                         backgroundColor: settings.customBackgroundColor,
                     });
+                    settings.activeColorTheme = 'scheme:' + id; // 新存的配色成為目前標示
                     saveSettings(settings);
                     render();
                 });
@@ -4825,9 +4928,13 @@
 
             panelTarget.appendChild(field);
             render();
+            // 跟隨系統在系統深淺色切換時重新填入，需要讓面板同步顯示
+            window.__cwfmRefreshColorUI = () => { syncFields(); render(); };
             return {
-                setValue(value) {
-                    settings.themeName = value;
+                // 使用者手動改了顏色或開關：一次性清掉標示（不比對數值）
+                clearActive() {
+                    if (settings.activeColorTheme == null) return;
+                    settings.activeColorTheme = null;
                     render();
                 },
             };
@@ -4840,8 +4947,9 @@
         // 游標兩個欄位額外帶 computeAutoValue，支援 HEX/RGB/HSV/Auto
         // 四個分頁；文字/背景維持原本三個分頁，不支援 Auto。全部都
         // 留在「配色」這個分組內部，不獨立分組。
-        addColorField(t('field_color_text'), 'customTextColor', { toggleKey: 'customTextColorEnabled' });
-        addColorField(t('field_color_bg'), 'customBackgroundColor', { toggleKey: 'customBackgroundColorEnabled' });
+        const onColorUserChange = () => colorSchemeState.clearActive();
+        const textColorSwatchBtn = addColorField(t('field_color_text'), 'customTextColor', { toggleKey: 'customTextColorEnabled', onUserChange: onColorUserChange });
+        const bgColorSwatchBtn = addColorField(t('field_color_bg'), 'customBackgroundColor', { toggleKey: 'customBackgroundColorEnabled', onUserChange: onColorUserChange });
 
         // [cwfm] 字型名稱記憶 + 上傳字型清單。settings.fontNameHistory
         // （手動輸入過的名稱）跟 settings.uploadedFonts（上傳字型，實際
@@ -5833,7 +5941,11 @@
         (doc.head || doc.documentElement).appendChild(el);
         el.textContent = hidden ? ':root * { cursor: none !important; }' : '';
     }
+    // v1.77：記住目前是否隱藏中（var：章節 load 監聽器可能比這行早被定義）
+    var cwfmCursorHidden = false;
+    var cwfmLastMouseScreenX = null, cwfmLastMouseScreenY = null;
     function cwfmApplyCursorVisibility(hidden) {
+        cwfmCursorHidden = !!hidden;
         cwfmSetCursorNone(document, hidden);
         cwfmSetCursorNone(getBookIframeDocument(), hidden);
     }
@@ -5842,8 +5954,13 @@
         if (!cwfmCursorHideEnabled) return;
         cwfmCursorHideTimer = setTimeout(() => cwfmApplyCursorVisibility(true), cwfmCursorHideDelayMs);
     }
-    function cwfmWakeCursor() {
+    function cwfmWakeCursor(e) {
         if (!cwfmCursorHideEnabled) return;
+        // 換章節時瀏覽器會補發座標沒變的 mousemove，不算使用者動滑鼠
+        if (e && typeof e.screenX === 'number') {
+            if (e.screenX === cwfmLastMouseScreenX && e.screenY === cwfmLastMouseScreenY) return;
+            cwfmLastMouseScreenX = e.screenX; cwfmLastMouseScreenY = e.screenY;
+        }
         cwfmApplyCursorVisibility(false);
         cwfmScheduleCursorHide();
     }
