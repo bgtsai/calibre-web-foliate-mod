@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Calibre-Web Foliate Reader (mod)
 // @namespace    https://github.com/bgtsai/calibre-web-foliate-mod
-// @version      1.76.16
+// @version      1.76.17
 // @description  Replace Calibre-Web's built-in epub.js reader with a foliate-js based reader for better pagination and layout control.
 // @author       bgtsai
 // @match        *://*/read/*/epub*
