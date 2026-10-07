@@ -14,27 +14,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Pack foliate-src/bundle.js back into BUNDLE_SOURCE
-        run: |
-          python3 - <<'PYEOF'
-          import json, pathlib, re
-
-          bundle_js = pathlib.Path("foliate-src/bundle.js").read_text(encoding="utf-8")
-          encoded = json.dumps(bundle_js)  # produces "..." with proper JSON escaping
-
-          script_path = pathlib.Path("calibre-web-foliate-mod.user.js")
-          src = script_path.read_text(encoding="utf-8")
-          lines = src.split("\n")
-
-          # Replace line 133 (0-indexed: 132) with the new BUNDLE_SOURCE
-          BUNDLE_LINE = 132
-          prefix = "    const BUNDLE_SOURCE = "
-          assert lines[BUNDLE_LINE].startswith(prefix), \
-              f"Unexpected line format: {lines[BUNDLE_LINE][:80]}"
-
-          lines[BUNDLE_LINE] = f"{prefix}{encoded};"
-          script_path.write_text("\n".join(lines), encoding="utf-8")
-          print(f"Packed {len(bundle_js):,} chars into BUNDLE_SOURCE (line {BUNDLE_LINE+1})")
-          PYEOF
+        run: python3 tools/pack.py bundle
 
       - name: Commit updated script
         run: |
