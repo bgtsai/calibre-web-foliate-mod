@@ -3171,14 +3171,38 @@
     // 抓到的即時節點，被 cwfmReinsertStash() 的 normalize() 影響，
     // isConnected 判斷不準）。
     let cwfmLockedAnchorCfi = null;
+    // [cwfm] v1.76.21：鎖定值改用引擎自己的可見範圍起點（getVisibleRange，
+    // 跟引擎算 lastLocation 同一套座標），收合成單點、精確到字元，就是畫面
+    // 左上角第一個字（含上一頁延續過來的半段）。原本的 cwfmGetCurrentPageRange()
+    // 用 left >= this.start 判斷，少減了分頁版面最前面那一頁空白（引擎的
+    // #su() 是 start - size），每次都抓到「下一頁第一個新起的段落」——
+    // v1.76.20 診斷 log 實證（畫面頁首「一點兒都不好笑…」，鎖定卻是下一頁的
+    // 「節目主持人…」），全螢幕/縮放後就跳到下一頁。cwfmGetCurrentPageRange()
+    // 保留給診斷快照對照用，不再拿來鎖定。
+    function cwfmPageStartCfi() {
+        const contents = view.renderer.getContents();
+        const idx = contents[0]?.index;
+        const vis = view.renderer.getVisibleRange?.();
+        if (vis && idx !== undefined) {
+            const r = vis.cloneRange();
+            r.collapse(true);
+            const cfi = view.getCFI(idx, r);
+            if (cfi) return { cfi, src: 'getVisibleRange起點' };
+        }
+        return { cfi: view.lastLocation?.cfi, src: 'lastLocation(fallback)' };
+    }
+    // 會真的換位置、要更新鎖定值的 relocate 原因：翻頁(page)、跳轉(navigation)、
+    // 觸控滑動翻頁(snap)、跳到選取/搜尋結果(selection)。anchor 是重新排版時
+    // 引擎的自動重新定位，不能算，不然會自己追自己。
+    const CWFM_LOCK_REASONS = ['page', 'navigation', 'snap', 'selection'];
     view.renderer.addEventListener('relocate', (e) => {
         const reason = e.detail?.reason;
-        // 只有「翻頁」「跳轉」這兩種代表使用者/書本內容真的換了位置的
-        // 原因才更新；resize 造成的內部自動重新導覽（reason=anchor）
+        // 只有代表使用者/書本內容真的換了位置的原因才更新（見 CWFM_LOCK_REASONS）；
+        // resize 造成的內部自動重新導覽（reason=anchor）
         // 不算，我們自己對齊操作觸發的那次也不算（cwfmAligningAnchor
         // 判斷），不然會變成自己追自己。
         if (cwfmAligningAnchor) { cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=cwfmAligningAnchor=true'); return; }
-        if (reason !== 'page' && reason !== 'navigation') { cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=reason 不是 page/navigation'); return; }
+        if (!CWFM_LOCK_REASONS.includes(reason)) { cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=reason 不在 ' + CWFM_LOCK_REASONS.join('/')); return; }
         // [cwfm] 防呆：正常情況下，翻頁/跳轉一定會先經過 cwfmGoLeft()/
         // cwfmGoRight()（已經先接回暫存才真正翻頁），這裡不該再看到
         // cwfmAnchorStash 還存在。萬一還是看到了（已知的殘留缺口：書本
@@ -3190,14 +3214,8 @@
             cwfmDiag('LOCK-SKIP', 'reason=' + reason + ' 原因=cwfmAnchorStash 存在');
             return;
         }
-        // [cwfm] 用當前頁的第一個可見字算 CFI，不用 view.lastLocation（前一頁的起點）。
-        const _curRange = view.renderer.cwfmGetCurrentPageRange?.();
-        const _contents = view.renderer.getContents();
-        const _idx = _contents[0]?.index;
-        const cfi = (_curRange && _idx !== undefined)
-            ? view.getCFI(_idx, _curRange)
-            : view.lastLocation?.cfi;
-        cwfmDiag('LOCK-SET', 'reason=' + reason + ' 來源=' + ((_curRange && _idx !== undefined) ? 'cwfmGetCurrentPageRange' : 'lastLocation(fallback)')
+        const { cfi, src: _lockSrc } = cwfmPageStartCfi();
+        cwfmDiag('LOCK-SET', 'reason=' + reason + ' 來源=' + _lockSrc
             + ' 舊:' + cwfmCfiText(cwfmLockedAnchorCfi) + ' => 新:' + cwfmCfiText(cfi) + ' || ' + cwfmSnap());
         if (cfi) cwfmLockedAnchorCfi = cfi;
     });
@@ -6335,14 +6353,9 @@
     // page/navigation，開書還原位置這次的 reason 很可能是 anchor，會被
     // 擋掉，不會自動記錄到，這裡要另外補一次）。
     try {
-        // [cwfm] 用當前頁的第一個可見字算 CFI，確保初始定位點就是使用者看到的第一個字。
-        const _curRange = view.renderer.cwfmGetCurrentPageRange?.();
-        const _contents = view.renderer.getContents();
-        const _idx = _contents[0]?.index;
-        const initialCfi = (_curRange && _idx !== undefined)
-            ? view.getCFI(_idx, _curRange)
-            : view.lastLocation?.cfi;
-        cwfmDiag('LOCK-SET', 'reason=init 來源=' + ((_curRange && _idx !== undefined) ? 'cwfmGetCurrentPageRange' : 'lastLocation(fallback)') + ' 新:' + cwfmCfiText(initialCfi) + ' || ' + cwfmSnap());
+        // [cwfm] 用畫面左上角第一個字（引擎可見範圍起點）當初始定位點，見 cwfmPageStartCfi()。
+        const { cfi: initialCfi, src: _initSrc } = cwfmPageStartCfi();
+        cwfmDiag('LOCK-SET', 'reason=init 來源=' + _initSrc + ' 新:' + cwfmCfiText(initialCfi) + ' || ' + cwfmSnap());
         if (initialCfi) {
             cwfmLockedAnchorCfi = initialCfi;
             dlog(t('log_init_anchor') + initialCfi);
