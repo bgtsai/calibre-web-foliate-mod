@@ -49,9 +49,9 @@
             nav_forward: '前往下一個位置',
             nav_clear: '清空紀錄',
             nav_clear_close: '清空紀錄並關閉',
-            dlg_nav_clear_title: '清空跳轉紀錄',
-            dlg_nav_clear_msg: '清空之後就無法再回到這些位置，確定要清空嗎？',
-            btn_clear: '清空',
+            dlg_nav_close_title: '關閉跳轉按鈕',
+            dlg_nav_close_msg: '關閉跳轉按鈕後，就沒有辦法跳回原來閱讀的地方了。確定要關閉嗎？',
+            btn_close_nav: '關閉',
             btn_add_scheme: '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272',
             btn_add_font_name: '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31',
             btn_upload_font: '+ \u4e0a\u50b3\u5b57\u578b',
@@ -274,9 +274,9 @@
             nav_forward: 'Forward',
             nav_clear: 'Clear history',
             nav_clear_close: 'Clear and close',
-            dlg_nav_clear_title: 'Clear history',
-            dlg_nav_clear_msg: "After clearing, you won't be able to return to these positions. Clear the history?",
-            btn_clear: 'Clear',
+            dlg_nav_close_title: 'Close jump button',
+            dlg_nav_close_msg: "After closing the jump button, you won't be able to jump back to where you were reading. Close it?",
+            btn_close_nav: 'Close',
             btn_add_scheme: '+ Save Current Color Scheme',
             btn_add_font_name: '+ Add Font Name',
             btn_upload_font: '+ Upload Font',
@@ -1390,7 +1390,8 @@
             // 外框改用分組卡片同一套淡邊界（陰影環），不再用對比高的實線。
             '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center;',
             '  width: 32px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 50%;',
-            '  border: none; background: none; }',
+            // v1.78.4：最常按的換頁鈕維持圓形外框，跟面板關閉鈕同一組設計
+            '  border: 1px solid var(--cwfm-border-light); background: none; }',
             '.cwfm-toolbar button.cwfm-page-btn svg { width: 20px; height: 20px; display: block; }',
             // [cwfm] v1.78：跳轉紀錄按鈕組（三處共用）
             // v1.78.3：去框，跟上方工具列的書籤/設定/全螢幕同一種樣式——平常只有圖示，
@@ -1879,7 +1880,7 @@
             '}',
             '.cwfm-close-btn {',
             '  flex: 0 0 auto; background: none;',
-            '  border: none; box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft); border-radius: 50%;',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 50%;',
             '  width: 32px; height: 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;',
             '  color: var(--cwfm-text); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; border-radius: 50%;',
             '}',
@@ -5814,8 +5815,12 @@
         const fwd = mk(ICONS.navForward, t('nav_forward'), () => h.forward());
         // 清空紀錄用垃圾桶；右上角那組按下去整個關掉，維持 ✕（與面板關閉鈕的圓形 ✕ 分開）
         const clr = mk(kind === 'link' ? ICONS.navClear : ICONS.navTrash, t(kind === 'link' ? 'nav_clear_close' : 'nav_clear'), async () => {
-            const ok = await cwfmConfirmDialog(t('dlg_nav_clear_title'), t('dlg_nav_clear_msg'), t('btn_clear'));
-            if (ok) h.clear();
+            // v1.78.4：只有右上角那組（關掉整個跳轉按鈕）要確認；目錄、進度條直接清空
+            if (kind === 'link') {
+                const ok = await cwfmConfirmDialog(t('dlg_nav_close_title'), t('dlg_nav_close_msg'), t('btn_close_nav'));
+                if (!ok) return;
+            }
+            h.clear();
         });
         function update() {
             back.b.disabled = h.backCount === 0;
