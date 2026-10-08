@@ -45,6 +45,14 @@
             field_color_bg: '\u81ea\u8a02\u80cc\u666f\u984f\u8272',
             field_key_prev: '\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375',
             field_key_next: '\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375',
+            field_key_link_back: '從註解返回快速鍵',
+            nav_back: '返回上一個位置',
+            nav_forward: '前往下一個位置',
+            nav_clear: '清空紀錄',
+            nav_clear_close: '清空紀錄並關閉',
+            dlg_nav_clear_title: '清空跳轉紀錄',
+            dlg_nav_clear_msg: '清空之後就無法再回到這些位置，確定要清空嗎？',
+            btn_clear: '清空',
             btn_add_scheme: '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272',
             btn_add_font_name: '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31',
             btn_upload_font: '+ \u4e0a\u50b3\u5b57\u578b',
@@ -263,6 +271,14 @@
             field_color_bg: 'Custom Background Color',
             field_key_prev: 'Previous Page Shortcut',
             field_key_next: 'Next Page Shortcut',
+            field_key_link_back: 'Return from Note Shortcut',
+            nav_back: 'Back',
+            nav_forward: 'Forward',
+            nav_clear: 'Clear history',
+            nav_clear_close: 'Clear and close',
+            dlg_nav_clear_title: 'Clear history',
+            dlg_nav_clear_msg: "After clearing, you won't be able to return to these positions. Clear the history?",
+            btn_clear: 'Clear',
             btn_add_scheme: '+ Save Current Color Scheme',
             btn_add_font_name: '+ Add Font Name',
             btn_upload_font: '+ Upload Font',
@@ -396,7 +412,7 @@
             flow_paginated: 'Paginated',
             flow_scrolled: 'Scrolled',
             err_auto_layout: '[cwfm:settings] Auto-layout failed',
-            aria_toc2: 'Table of Contents',
+            aria_toc2: 'Contents',
             txt_no_toc: 'This book has no table-of-contents data',
             err_toc_jump: '[cwfm:toc] Navigation failed',
             err_go_left: '[cwfm:toolbar] goLeft failed',
@@ -729,6 +745,8 @@
     view.addEventListener('link', (e) => {
         cwfmNewCorr('LINK');
         cwfmDiag('LINK-CLICK', 'href=' + JSON.stringify(e.detail?.href) + ' || ' + cwfmSnap());
+        // v1.78：書內連結跳走前記下目前位置（右上角返回按鈕）
+        try { window.__cwfmNavRecord?.('link'); } catch (err) { console.error('[cwfm:nav] 記錄連結跳轉失敗', err); }
     });
     // 所有導覽入口：記錄呼叫來源（stack），用來查 reason=navigation 是誰觸發的。
     // view.renderer 要等 view.open() 之後才存在，所以這段包成函式，在
@@ -1008,9 +1026,18 @@
             // 當下最新的設定，還沒套用完成前退回預設值，不會整個失效。
             const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
                 || DEFAULT_SETTINGS.pagingKeys;
+            const linkBackKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.linkBackKeys)
+                || DEFAULT_SETTINGS.linkBackKeys;
+            if (linkBackKeys.includes(combo)) {
+                // Alt+← 也是瀏覽器的「上一頁」，一定要擋下來，否則會離開閱讀頁
+                e.preventDefault();
+                if (typeof window.__cwfmNavBack === 'function') window.__cwfmNavBack('link');
+                return;
+            }
             const isPrev = pagingKeys.prev.includes(combo);
             const isNext = !isPrev && pagingKeys.next.includes(combo);
             if (!isPrev && !isNext) return;
+            e.preventDefault(); // PageUp/PageDown 等按鍵不要再讓瀏覽器自己捲動
             // [cwfm] 防彈跳——觸發翻頁後，這段時間內忽略其他重複訊號，
             // 避免裝置過於敏感造成連續誤翻頁。0 代表使用者關閉這個功能
             // (不限制)。
@@ -1368,6 +1395,29 @@
             '}',
             '.cwfm-toolbar-top button:hover { background: var(--cwfm-surface-elevated); }',
             '.cwfm-toolbar-top button svg { width: 20px; height: 20px; }',
+            // [cwfm] v1.78：進度條兩側換頁按鈕改用向量箭頭（原本文字 ‹ › 在小螢幕上太細）
+            '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center; padding: 4px 10px; }',
+            '.cwfm-toolbar button.cwfm-page-btn svg { width: 18px; height: 18px; display: block; }',
+            // [cwfm] v1.78：跳轉紀錄按鈕組（三處共用）
+            '.cwfm-nav-group { display: inline-flex; align-items: stretch; flex: 0 0 auto;',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 6px; overflow: hidden; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn { position: relative; display: flex; align-items: center; justify-content: center;',
+            '  background: none; border: none; border-left: 1px solid var(--cwfm-border-light); border-radius: 0;',
+            '  color: var(--cwfm-text); min-width: 30px; padding: 4px 7px; margin: 0; cursor: pointer; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn:first-child { border-left: none; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn:hover:not(:disabled) { background: var(--cwfm-surface-elevated); }',
+            '.cwfm-nav-group > button.cwfm-nav-btn:disabled { opacity: 0.35; cursor: default; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn svg { width: 16px; height: 16px; display: block; }',
+            '.cwfm-nav-count { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
+            '.cwfm-nav-group-bottom { margin-right: 10px; }',
+            '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
+            // 右上角那組：位置固定在工具列（高 44px、內距 8px 14px）下方，與工具列的上/右內距等距；
+            // 工具列隱藏時照樣顯示；有紀錄才出現。
+            '.cwfm-nav-float { position: fixed; top: 52px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
+            '  z-index: 999999; display: none; background: var(--cwfm-toolbar-bg);',
+            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); }',
+            '.cwfm-nav-float.cwfm-nav-visible { display: inline-flex; }',
+            '.cwfm-nav-float > button.cwfm-nav-btn { min-width: 36px; min-height: 32px; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
             // 直接沿用：WebKit 系瀏覽器（Chrome/Edge）用 -webkit-appearance
@@ -1390,7 +1440,11 @@
             // 截圖回報，這是這類排版已知會踩到的坑）。讓這層容器本身
             // 完全沒有 padding，sticky 的 top:0 才會精準對齊真正的頂端，
             // 沒有模糊地帶。
-            '  overflow-y: auto; box-sizing: border-box;',
+            // [cwfm] v1.78：面板改成上下兩層——標題列固定不動，下面的內容
+            // 區（設定面板的 .cwfm-panel-body、目錄的 .cwfm-toc-view）自己
+            // 捲動。原本整個面板一起捲，標題列只 sticky 在上方，左右捲動時
+            // 標題列與分隔線會被捲出去、右側缺一塊（使用者截圖回報）。
+            '  display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;',
             '  font-family: sans-serif; font-size: 13px;',
             '  transition: transform 0.2s ease;',
             '}',
@@ -1407,9 +1461,10 @@
             '  display: flex; align-items: center; justify-content: space-between;',
             '  margin-bottom: 12px; padding: 18px 18px 18px 18px;',
             '  border-bottom: 1px solid var(--cwfm-border);',
-            '  position: sticky; top: 0; z-index: 1;',
+            '  flex: 0 0 auto; gap: 8px;',
             '  background: var(--cwfm-bg);',
             '}',
+            '.cwfm-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; }',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
             '  color: var(--cwfm-text);',
@@ -1423,8 +1478,12 @@
             // 區塊自己獨佔一欄，不會疊到另一個矮區塊底下——這正是「明明
             // 排得下卻被迫換行」的原因。改成 auto：依序把內容緊密塞滿
             // 當前欄，塞不下才換下一欄，矮的區塊會自然疊起來。
-            '.cwfm-fields-wrap { column-gap: 24px; padding: 0 18px 18px 18px; column-fill: auto; }',
-            '.cwfm-toc-view { padding: 0 18px 18px 18px; }',
+            // [cwfm] v1.78：多欄改成瀑布流——每欄一個 .cwfm-masonry-col，
+            // 分組依序放進目前最短的那一欄（見 applyPanelAutoLayout），
+            // 塞不下時往下延伸、只上下捲動。
+            '.cwfm-fields-wrap { display: flex; align-items: flex-start; gap: 24px; padding: 0 18px 18px 18px; width: max-content; }',
+            '.cwfm-masonry-col { flex: 0 0 276px; width: 276px; min-width: 0; }',
+            '.cwfm-toc-view { padding: 0 18px 18px 18px; flex: 1 1 auto; min-height: 0; overflow: auto; }',
             '.cwfm-empty-hint { padding: 0 18px 18px 18px; }',
             // [cwfm] 分組卡片：把性質相同的欄位包在一起，用「陰影模擬
             // 邊界」取代一般的實線邊框——參考 Cal.com 設計規格
@@ -2165,7 +2224,7 @@
         disableLigatures: false, // 關閉連字（含詞彙替換字型的 ccmp 替換）
         flow: 'paginated',
         topBottomPadding: 48,  // px，對應 renderer 的 margin 屬性
-        leftRightPadding: 24,  // px，對應 renderer 的 gap 屬性（換算成百分比）
+        leftRightPadding: 120,  // v1.78：預設與點擊區預設寬度（tapZoneWidthPx）一致，文字不會被點擊區蓋到。px，對應 renderer 的 gap 屬性（換算成百分比）
         // [cwfm] 留白優先／內容優先——水平、垂直各自獨立的模式切換。
         // 'margin'(留白優先，預設，維持原本行為)：使用者設定留白 px
         // 值，內容區 = 可視範圍 − 留白 × 2。'content'(內容優先)：使用者
@@ -2235,12 +2294,14 @@
         // （例如 Ctrl+ArrowLeft），格式是 formatKeyCombo() 產生的字串，
         // 例如 'ArrowLeft'、'Ctrl+Shift+ArrowLeft'。預設維持跟改版前
         // 一樣的行為（左鍵往前、右鍵往後），使用者可以自己增減。
-        pagingKeys: { prev: ['ArrowLeft'], next: ['ArrowRight'] },
+        pagingKeys: { prev: ['ArrowLeft', 'PageUp'], next: ['ArrowRight', 'PageDown'] },
+        // v1.78：從書內連結（註解）跳過去之後「返回上一個位置」的快速鍵
+        linkBackKeys: ['Alt+ArrowLeft'],
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only、故意不
         // 存檔——當初這樣設計是因為功能還不穩定，怕存檔後下次開書直接
         // 卡住畫面沒辦法簡單復原。現在已經穩定到不會弄壞整個介面，改成
         // 正常存檔，跟其他設定一樣。
-        preciseAnchorAlign: false,
+        preciseAnchorAlign: true,
     };
 
     // [cwfm] 幾種常用配色，比照一般電子書閱讀器常見的預設主題：
@@ -2315,6 +2376,19 @@
             if (tc && tc.a > 0) return !cwfmRgbIsDark(tc);
         }
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    // v1.78：翻頁動畫顏色的 Auto＝書頁實際顯示的文字顏色（跟面板深淺判斷同一套讀法）；
+    // 讀不到時退回自訂文字顏色欄位的值。
+    function cwfmAutoTextColorHex(settings) {
+        try {
+            const doc = getBookIframeDocument();
+            const win = doc && doc.defaultView;
+            if (win) {
+                const c = cwfmParseCssColor(win.getComputedStyle(doc.body || doc.documentElement).color);
+                if (c && c.a > 0) return cwfmRgbToHex(c.r, c.g, c.b);
+            }
+        } catch (e) { /* 退回欄位值 */ }
+        return (settings && resolveThemeColors(settings).text) || '#000000';
     }
     function cwfmUpdatePanelScheme(settings, doc) {
         try {
@@ -3562,6 +3636,78 @@
         await view.goRight();
     }
 
+    // ============================================================
+    // [cwfm] v1.78 跳轉紀錄：三組各自獨立——link（書內連結/註解）、toc（目錄）、
+    // progress（拖進度條放開）。每組像瀏覽器的上一頁/下一頁：entries 是位置清單，
+    // idx 是目前所在；離開某個位置（跳走、上一步、下一步）時先把它更新成「當下
+    // 實際讀到的位置」，所以下一步會回到在目的地最後讀到的地方。
+    // 位置：精準定位開啟時用鎖定值（畫面第一個字、CFI 已略過標記），關閉時用
+    // 引擎的 lastLocation.cfi。回到某位置時，精準定位開啟就重新鎖定並對位。
+    // ============================================================
+    const cwfmNavHistories = {};
+    function cwfmNavPreciseOn() {
+        const st = window.__cwfm.settings;
+        return !!(st?.preciseAnchorAlign && st?.flow !== 'scrolled');
+    }
+    function cwfmNavCurrentPos() {
+        if (cwfmNavPreciseOn() && cwfmLockedAnchorCfi) return cwfmLockedAnchorCfi;
+        return view.lastLocation?.cfi || cwfmLockedAnchorCfi || null;
+    }
+    function cwfmNavHistory(kind) {
+        if (cwfmNavHistories[kind]) return cwfmNavHistories[kind];
+        const h = {
+            kind, entries: [], idx: -1, listeners: [],
+            get backCount() { return Math.max(0, this.idx); },
+            get forwardCount() { return this.idx < 0 ? 0 : this.entries.length - 1 - this.idx; },
+            changed() { this.listeners.forEach((fn) => { try { fn(this); } catch (e) { console.error(e); } }); },
+            // 跳走之前呼叫：記下目前位置，丟掉原本「下一步」那條路
+            record() {
+                const cur = cwfmNavCurrentPos();
+                if (!cur) return;
+                if (this.idx < 0) { this.entries = [cur]; this.idx = 0; }
+                else { this.entries[this.idx] = cur; this.entries.length = this.idx + 1; }
+                this.entries.push(null); // 目的地：離開時才填入實際讀到的位置
+                this.idx++;
+                cwfmDiag('NAV-RECORD', 'kind=' + kind + ' idx=' + this.idx + ' from=' + cwfmCfiText(cur));
+                this.changed();
+            },
+            async back() { if (this.idx > 0) await this.move(-1); },
+            async forward() { if (this.idx >= 0 && this.idx < this.entries.length - 1) await this.move(1); },
+            async move(dir) {
+                const cur = cwfmNavCurrentPos();
+                if (cur) this.entries[this.idx] = cur;
+                this.idx += dir;
+                const target = this.entries[this.idx];
+                // 書內連結：退回最初的位置就是看完了，自動清空並消失（不用確認）
+                if (kind === 'link' && this.idx === 0) { this.entries = []; this.idx = -1; }
+                this.changed();
+                cwfmDiag('NAV-MOVE', 'kind=' + kind + ' dir=' + dir + ' idx=' + this.idx + ' to=' + cwfmCfiText(target));
+                if (target) await cwfmNavGoToPos(target);
+            },
+            clear() { this.entries = []; this.idx = -1; this.changed(); },
+        };
+        cwfmNavHistories[kind] = h;
+        return h;
+    }
+    async function cwfmNavGoToPos(pos) {
+        cwfmNewCorr('NAVHIST');
+        const precise = cwfmNavPreciseOn();
+        try {
+            await view.goTo(pos); // 包裝過的 goTo 會先移除舊標記
+            if (precise && typeof view.renderer.render === 'function') {
+                // 引擎導覽後會把鎖定值設成新頁的頁首；等它結束後改回要回去的那個字，
+                // 再請引擎重新排版——重新排版的自動定位（reason=anchor）會回呼
+                // cwfmResolveAnchor，把那個字推回頁首（跟全螢幕切換同一套流程）。
+                await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+                cwfmLockedAnchorCfi = pos;
+                cwfmDiag('NAV-REALIGN', '鎖定 ' + cwfmCfiText(pos));
+                view.renderer.render();
+            }
+        } catch (e) { console.error('[cwfm:nav] 返回位置失敗', e); }
+    }
+    window.__cwfmNavRecord = (kind) => cwfmNavHistory(kind).record();
+    window.__cwfmNavBack = (kind) => cwfmNavHistory(kind).back();
+
     function applySettings(settings) {
         cwfmNewCorr('SET');
         cwfmDiag('APPLY-SETTINGS', 'flow=' + settings?.flow + ' maxColumnCount=' + settings?.maxColumnCount + ' preciseAnchorAlign=' + settings?.preciseAnchorAlign
@@ -3579,6 +3725,8 @@
         } catch (e) { console.error(t('err_apply_font_style'), e); }
         // 樣式套上書頁之後再看一次實際顏色決定面板深淺
         cwfmUpdatePanelScheme(settings);
+        // v1.78：翻頁動畫顏色在 Auto 時顯示的色碼跟著書頁實際文字顏色更新
+        try { window.__cwfm.pageFlipAnimRefresh?.(); } catch (e) { /* 面板尚未建立 */ }
         // [cwfm] 非同步、不 await——applySettings() 本身是同步函式，這裡
         // 只負責「檢查目前選用的字型是不是換成了不同的上傳字型，是的話
         // 去讀取、準備好之後再重新呼叫一次 applySettings()」。cwfmRefreshActiveFontFace
@@ -4116,7 +4264,11 @@
         // 欄位都塞進這個容器，多欄排版（column-count）只套用在這個容器上。
         const fieldsWrap = document.createElement('div');
         fieldsWrap.className = 'cwfm-fields-wrap';
-        panel.appendChild(fieldsWrap);
+        // v1.78：標題列以下包一層會捲動的內容區，標題列固定不動
+        const panelBody = document.createElement('div');
+        panelBody.className = 'cwfm-panel-body';
+        panelBody.appendChild(fieldsWrap);
+        panel.appendChild(panelBody);
         // [cwfm] panelTarget 改成可以依組別切換——beginGroup() 建立一個
         // 新的分組卡片（見上面 .cwfm-group CSS），並把 panelTarget 重新
         // 指向這個卡片內部的容器，接下來呼叫的 addXxxField() 就會塞進
@@ -4454,7 +4606,7 @@
         // 之前，要檢查新錄到的組合鍵有沒有跟 list 自己、或 otherList
         // 重複（同一組鍵不能同時是「往前」又是「往後」，也不能在同一個
         // 方向裡重複收兩次）。
-        function addKeyListField(labelText, list, otherList) {
+        function addKeyListField(labelText, list, otherLists) {
             const field = document.createElement('div');
             field.className = 'cwfm-field';
             const label = document.createElement('label');
@@ -4512,7 +4664,7 @@
                     if (e.key === 'Escape') { cleanup(); return; }
                     const combo = formatKeyCombo(e);
                     if (!combo) return; // 還在按修飾鍵，繼續等下一次 keydown
-                    if (list.includes(combo) || otherList.includes(combo)) {
+                    if (list.includes(combo) || otherLists.some((l) => l.includes(combo))) {
                         hintEl.textContent = '\u300c' + combo + '\u300d' + t('hint_key_used');
                         hintEl.style.display = 'block';
                         cleanup();
@@ -4615,7 +4767,14 @@
             // 取色器共用同一份 colorPickerModeByKey，但不同顏色欄位各自
             // 獨立記憶，不會互相連動。有 Auto 分頁的欄位，這裡也可能是
             // 'AUTO'。
+            // v1.78：有 Auto 分頁的欄位，分頁由實際值決定——值是 'AUTO' 就是
+            // Auto 分頁（全新設定預設就是 'AUTO'）；是色碼時沿用上次選的格式
+            // （記憶裡若是 AUTO，代表舊版把 Auto 凍結成了色碼，改顯示 HEX）。
             let mode = (settings.colorPickerModeByKey || {})[key] || 'RGB';
+            if (computeAutoValue) {
+                if (settings[key] === 'AUTO') mode = 'AUTO';
+                else if (mode === 'AUTO') mode = 'HEX';
+            }
             const tabNames = computeAutoValue ? ['AUTO', 'HEX', 'RGB', 'HSV'] : ['HEX', 'RGB', 'HSV'];
 
             function effectiveHex() {
@@ -4687,7 +4846,10 @@
                     mode = m;
                     modeTabs.querySelectorAll('.cwfm-color-mode-tab').forEach((t) => t.classList.remove('active'));
                     tab.classList.add('active');
-                    if (mode === 'AUTO') { settings[key] = effectiveHex(); saveSettings(settings); applySettings(settings); }
+                    // v1.78：選 Auto 時存 'AUTO' 本身（畫動畫時每次即時取色），不再
+                    // 凍結成當下的色碼；從 Auto 切到其他格式時，從目前實際顏色開始改。
+                    if (mode === 'AUTO') { settings[key] = 'AUTO'; saveSettings(settings); applySettings(settings); }
+                    else if (settings[key] === 'AUTO' && computeAutoValue) { settings[key] = computeAutoValue(); saveSettings(settings); applySettings(settings); }
                     refreshValueInput();
                     // [cwfm] 用 key（customTextColor／customBackgroundColor）
                     // 當索引分開存，不同顏色欄位各自獨立記憶自己的分頁，
@@ -4820,7 +4982,7 @@
             swatchBtn.cwfmRefresh = refreshValueInput;
             // 外部改了值或開關（例如點配色一鍵填入）後，整個欄位重新同步顯示
             swatchBtn.cwfmSync = () => {
-                swatchBtn.style.background = settings[key];
+                swatchBtn.style.background = effectiveHex();
                 if (toggleInput) { toggleInput.checked = !!settings[toggleKey]; updateToggleLock(); }
                 else refreshValueInput();
             };
@@ -5323,8 +5485,10 @@
         updateVerticalModeLock();
 
         beginGroup(t('group_keybindings'));
-        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, settings.pagingKeys.next);
-        addKeyListField(t('field_key_next'), settings.pagingKeys.next, settings.pagingKeys.prev);
+        if (!Array.isArray(settings.linkBackKeys)) settings.linkBackKeys = DEFAULT_SETTINGS.linkBackKeys.slice();
+        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next, settings.linkBackKeys]);
+        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev, settings.linkBackKeys]);
+        addKeyListField(t('field_key_link_back'), settings.linkBackKeys, [settings.pagingKeys.prev, settings.pagingKeys.next]);
         addNumberField(t('field_page_flip_debounce'), 'pageFlipDebounceMs', 0, 3000, 50, 'ms');
 
         beginGroup(t('group_reading_behavior'));
@@ -5376,9 +5540,10 @@
         // 「顯示視覺提示」開啟時，動畫整區 disable（取色器也一起停用）。
         const pageFlipAnimSwatchBtn = addColorField(t('field_page_flip_anim'), 'pageFlipAnimColor', {
             toggleKey: 'pageFlipAnimEnabled',
-            computeAutoValue: () => resolveThemeColors(settings).text,
+            computeAutoValue: () => cwfmAutoTextColorHex(settings),
         });
         const pageFlipAnimField = pageFlipAnimSwatchBtn.closest('.cwfm-field');
+        window.__cwfm.pageFlipAnimRefresh = () => pageFlipAnimSwatchBtn.cwfmRefresh?.();
 
         function updatePageFlipAnimDisabledState() {
             const scrolledMode = flowSelect.value === 'scrolled';
@@ -5454,119 +5619,83 @@
         // 一段沒用到的空間。掛在 panel 元素自己身上，讓不同作用域的
         // fullscreenchange 監聽器也能呼叫到，不用額外傳遞參數或共用
         // 變數。
+        // [cwfm] v1.78：瀑布流排版——
+        // 1. 欄數：從 1 欄開始試，取「所有分組放得進可用高度」的最少欄數；
+        //    寬度放不下更多欄時就停在上限，內容往下延伸、只上下捲動（不再左右捲）。
+        // 2. 放法：分組依原本順序，逐一放進「目前最短的那一欄」，由上往下
+        //    大致就是分組順序。
+        // 3. 量到的分組高度與欄數都沒變時不搬動 DOM（避免打斷使用者正在
+        //    操作的滑桿、輸入框）。
+        const MASONRY_COL_W = 276, MASONRY_GAP = 24, MASONRY_PAD = 18, GROUP_GAP = 20;
+        const allGroups = Array.from(fieldsWrap.children); // 建立順序＝顯示順序
+        let lastLayoutSig = '';
+        let layoutInProgress = false;
         function applyPanelAutoLayout() {
+            if (layoutInProgress) return;
+            layoutInProgress = true;
             try {
-                const headerHeight = header.getBoundingClientRect().height;
-                // [cwfm] 不再預留 88px 給工具列——面板本身的 z-index 已經比
-                // 工具列高(1000000 > 999999)，CSS 也已經是 top:0;bottom:0
-                // 貼滿全螢幕，之前這裡刻意扣掉 88px 反而讓面板故意縮小、
-                // 底下留一塊完全沒用到的空間。面板直接蓋過工具列，充分利用
-                // 整個畫面高度。
-                const availableHeight = window.innerHeight - headerHeight - 36; // 36 是面板自己的上下 padding
-                const COLUMN_WIDTH = 300;
-                const availableWidth = window.innerWidth - 40; // 40 是左右安全間距
-                const maxColumnsByWidth = Math.max(1, Math.min(8, Math.floor(availableWidth / COLUMN_WIDTH)));
-                fieldsWrap.style.columnCount = '1';
-                fieldsWrap.style.columnFill = 'auto';
-                fieldsWrap.style.width = COLUMN_WIDTH + 'px';
-                fieldsWrap.style.height = 'auto';
-                // [cwfm] 量每個分組(.cwfm-group，fieldsWrap 的直接子元素)
-                // 自己的高度——這個時間點還是單欄、高度 auto，量到的是每個
-                // 分組真正、乾淨的高度，不會受多欄樣式影響。
-                const groupHeights = Array.from(fieldsWrap.children).map((el) => el.offsetHeight);
-                // [cwfm] 找到之前用「平均值 × 1.3」預估欄數這個做法本身的
-                // 問題——瀏覽器實際排版是「依序把分組往下疊、滿了才換下
-                // 一欄」這種離散裝箱邏輯，平均值估計法本質上就不適合模擬
-                // 這種情況(分組大小差異大時尤其容易算錯，使用者已經拿
-                // 真實數字實際手動驗算過、也用 Console 直接跑過這個模擬
-                // 函式確認結果正確)。改成直接模擬這個真實排列過程，不再
-                // 是「猜」，是精準算出來的結果，也因此不再需要 1.3 這種
-                // 大倍數的安全係數去補償猜測的誤差。
-                function simulateColumns(heights, limit) {
-                    const columns = [0]; // 每一欄目前疊到的高度
-                    for (const h of heights) {
-                        const last = columns.length - 1;
-                        if (columns[last] > 0 && columns[last] + h > limit) {
-                            columns.push(h);
-                        } else {
-                            columns[last] += h;
-                        }
-                    }
-                    return columns;
+                const headerHeight = header.getBoundingClientRect().height + 12; // 12 = 標題列 margin-bottom
+                const availableHeight = window.innerHeight - headerHeight - MASONRY_PAD;
+                const maxPanelWidth = window.innerWidth - 40; // 左右安全間距
+                const maxColumnsByWidth = Math.max(1, Math.min(8,
+                    Math.floor((maxPanelWidth - MASONRY_PAD * 2 + MASONRY_GAP) / (MASONRY_COL_W + MASONRY_GAP))));
+                // 分組寬度固定（欄寬），所以在目前位置直接量高度即可，不用先搬回單欄
+                const heights = allGroups.map((g) => g.offsetHeight + GROUP_GAP);
+                function masonry(k) {
+                    const cols = Array.from({ length: k }, () => ({ h: 0, items: [] }));
+                    heights.forEach((h, i) => {
+                        let best = cols[0];
+                        for (const c of cols) if (c.h < best.h) best = c;
+                        best.items.push(i); best.h += h;
+                    });
+                    return cols;
                 }
-                let columnCount = 1;
-                let columns = simulateColumns(groupHeights, availableHeight);
-                // [cwfm] 欄數超過畫面寬度塞得下的上限時，用更高的高度限制
-                // 重新模擬一次，直到欄數壓進上限之內——高度限制每次都用
-                // 「目前這個模擬結果裡最高的那一欄」往上加一點點，不是
-                // 用倍數硬乘，一樣是精算、不是預估。
-                let heightLimit = availableHeight;
-                let heightLimitIter = 0;
-                while (columns.length > maxColumnsByWidth && heightLimitIter < 200) {
-                    heightLimitIter++;
-                    const tallestColumn = Math.max(...columns);
-                    // 如果 heightLimit 已經超過所有分組高度總和，不可能再壓縮欄數，直接停
-                    const totalHeight = groupHeights.reduce((a, b) => a + b, 0);
-                    if (heightLimit >= totalHeight) break;
-                    heightLimit = tallestColumn + 1;
-                    columns = simulateColumns(groupHeights, heightLimit);
+                let cols = null;
+                for (let k = 1; k <= maxColumnsByWidth; k++) {
+                    cols = masonry(k);
+                    if (Math.max(...cols.map((c) => c.h)) - GROUP_GAP <= availableHeight) break;
                 }
-                columnCount = Math.min(columns.length, maxColumnsByWidth);
-                // [cwfm] 最終每欄高度 = 模擬結果裡最高的那一欄，加一點點
-                // 緩衝(20px，理由跟之前一樣：offsetHeight 量測、瀏覽器
-                // 實際排版之間可能有像素等級的微小落差，不是大倍數的
-                // 預估係數)。
-                const perColumnHeight = Math.max(...columns) + 20;
-                fieldsWrap.style.columnCount = String(columnCount);
-                fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-                fieldsWrap.style.height = Math.max(availableHeight, perColumnHeight) + 'px';
-                // [cwfm] 最後用瀏覽器真實渲染結果驗證一次，不是只信我們
-                // 自己的 JS 模擬結果——JS 模擬跟瀏覽器 CSS 多欄引擎實際
-                // 排版之間，理論上可能有微小落差(邊界捨入、間距處理方式
-                // 不完全一樣)，導致 JS 算出「N 欄夠了」，但瀏覽器實際
-                // 排版時某個分組真的塞不進第 N 欄，又被我們寫死的欄數
-                // 上限擋住，內容就這樣不見了(這正是使用者截圖回報「翻頁
-                // 快速鍵整組消失」的疑點)。這裡直接量 fieldsWrap.scrollWidth
-                // (瀏覽器真正需要的總寬度，含任何溢出)，如果比我們設定
-                // 的寬度還寬，代表瀏覽器真的需要更多欄，直接加一欄重新
-                // 設定寬度，用真實量測結果反覆確認，不是只信一次模擬；
-                // 設一個安全上限次數，避免極端情況下無限迴圈。
-                let verifyAttempts = 0;
-                while (fieldsWrap.scrollWidth > fieldsWrap.offsetWidth + 2 && verifyAttempts < 8) {
-                    columnCount += 1;
-                    fieldsWrap.style.columnCount = String(columnCount);
-                    fieldsWrap.style.width = (COLUMN_WIDTH * columnCount) + 'px';
-                    verifyAttempts += 1;
+                const sig = cols.map((c) => c.items.join(',')).join('|');
+                if (sig !== lastLayoutSig) {
+                    lastLayoutSig = sig;
+                    const colEls = cols.map(() => {
+                        const el = document.createElement('div');
+                        el.className = 'cwfm-masonry-col';
+                        return el;
+                    });
+                    cols.forEach((c, ci) => c.items.forEach((i) => colEls[ci].appendChild(allGroups[i])));
+                    fieldsWrap.replaceChildren(...colEls);
                 }
-                panel.style.width = (COLUMN_WIDTH * columnCount + 36) + 'px';
-                panel.style.maxWidth = 'calc(100vw - 40px)';
-                panel.style.overflowX = 'auto';
-                // [cwfm] 內容真的比算出來的可用高度還多(欄數已經到上限、還是
-                // 塞不下)時，才讓面板本身垂直捲動；正常情況下面板高度就是
-                // 撐滿可用高度，不會刻意縮小。
-                if (fieldsWrap.scrollHeight > availableHeight) {
-                    panel.style.maxHeight = (availableHeight + headerHeight + 36) + 'px';
-                    panel.style.overflowY = 'auto';
-                } else {
-                    // [cwfm] 切回一般模式(從全螢幕縮小)時，如果之前設過
-                    // maxHeight/overflowY，要記得清掉，不然舊的限制會卡著
-                    // 不放，同一個「沒重新計算」類型的問題換個方向重演。
-                    panel.style.maxHeight = '';
-                    panel.style.overflowY = '';
-                }
-                // [cwfm] 色塊寬度在這裡才重新量測——欄寬到這裡已經真正
-                // 排定，色塊旁邊 HEX/RGB/HSV 那組元件的高度已經是最終
-                // 畫面會呈現的樣子，這時候量到的數字才準確。這個函式
-                // 本身會在每次真正需要重新排版時被呼叫(建立當下、全
-                // 螢幕切換)，色塊寬度也會跟著同步更新，不會卡在過期
-                // 的舊數字。
+                const k = cols.length;
+                panel.style.width = (k * MASONRY_COL_W + (k - 1) * MASONRY_GAP + MASONRY_PAD * 2) + 'px';
+                panel.style.maxWidth = 'calc(100vw - 20px)';
+                // [cwfm] 色塊寬度在欄寬排定之後才量（理由見原註解：旁邊
+                // HEX/RGB/HSV 元件的高度要等排版完成才是最終值）。
                 fieldsWrap.querySelectorAll('.cwfm-color-swatch-btn').forEach((swatchBtn) => {
                     swatchBtn.style.width = swatchBtn.offsetHeight + 'px';
                 });
             } catch (e) {
                 console.error(t('err_auto_layout'), e);
+            } finally {
+                if (layoutObserver) layoutObserver.takeRecords(); // 自己搬動 DOM 造成的變化不算
+                layoutInProgress = false;
             }
         }
+        // [cwfm] v1.78：內容有增減（新增/刪除/改名標籤、上傳字型、收合分組…）
+        // 就自動重算，不用每個動作各自記得呼叫。短時間多次變化只算一次；
+        // 拖曳排序進行中不算，放開後（drop 重繪）才算。
+        let layoutObserver = null;
+        let layoutTimer = null;
+        function scheduleRelayout() {
+            clearTimeout(layoutTimer);
+            layoutTimer = setTimeout(() => {
+                if (fieldsWrap.querySelector('.cwfm-dragging')) { scheduleRelayout(); return; }
+                applyPanelAutoLayout();
+            }, 120);
+        }
+        layoutObserver = new MutationObserver(scheduleRelayout);
+        layoutObserver.observe(fieldsWrap, { childList: true, subtree: true, characterData: true });
+        window.addEventListener('resize', scheduleRelayout);
         applyPanelAutoLayout();
         panel.cwfmRelayout = applyPanelAutoLayout;
 
@@ -5589,6 +5718,7 @@
         const title = document.createElement('h3');
         title.textContent = t('aria_toc2'); // 目錄
         header.appendChild(title);
+        header.appendChild(cwfmBuildNavGroup('toc'));
 
         const closeBtn = createCloseBtn(closeAllPanels);
         header.appendChild(closeBtn);
@@ -5617,6 +5747,7 @@
                     // 又跳回這一章，會對到一份少了一截內容的舊暫存。
                     cwfmNewCorr('TOC');
                     cwfmDiag('TOC-CLICK', 'href=' + JSON.stringify(href) + ' || ' + cwfmSnap());
+                    cwfmNavHistory('toc').record();
                     view.goTo(href);
                 } catch (e) {
                     console.error(t('err_toc_jump'), e);
@@ -5642,6 +5773,11 @@
     // [cwfm] 圖示：取自 Feather Icons（MIT 授權的通用幾何圖示集，不是任何
     // 品牌商標），比純文字按鈕更符合一般操作介面的慣例。
     const ICONS = {
+        navBack: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+        navForward: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
+        navClear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+        chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+        chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
         list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
         settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
         bookmarkOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
@@ -5650,13 +5786,59 @@
         minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
     };
 
+    // [cwfm] v1.78 跳轉紀錄按鈕組（↩ 上一步、↪ 下一步、✕ 清空）。三處共用同一個外觀；
+    // link 那組浮在右上角、有紀錄才出現，✕ 的意思是「清空並關閉」。
+    function cwfmBuildNavGroup(kind) {
+        const h = cwfmNavHistory(kind);
+        const group = document.createElement('div');
+        group.className = 'cwfm-nav-group';
+        group.dataset.navKind = kind;
+        function mk(icon, label, onClick) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'cwfm-nav-btn';
+            b.innerHTML = icon;
+            b.title = label;
+            b.setAttribute('aria-label', label);
+            const cnt = document.createElement('span');
+            cnt.className = 'cwfm-nav-count';
+            b.appendChild(cnt);
+            b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+            group.appendChild(b);
+            return { b, cnt };
+        }
+        const back = mk(ICONS.navBack, t('nav_back'), () => h.back());
+        const fwd = mk(ICONS.navForward, t('nav_forward'), () => h.forward());
+        const clr = mk(ICONS.navClear, t(kind === 'link' ? 'nav_clear_close' : 'nav_clear'), async () => {
+            const ok = await cwfmConfirmDialog(t('dlg_nav_clear_title'), t('dlg_nav_clear_msg'), t('btn_clear'));
+            if (ok) h.clear();
+        });
+        function update() {
+            back.b.disabled = h.backCount === 0;
+            fwd.b.disabled = h.forwardCount === 0;
+            clr.b.disabled = h.entries.length === 0;
+            back.cnt.textContent = h.backCount > 1 ? String(h.backCount) : '';
+            fwd.cnt.textContent = h.forwardCount > 1 ? String(h.forwardCount) : '';
+            if (kind === 'link') group.classList.toggle('cwfm-nav-visible', h.entries.length > 0);
+        }
+        h.listeners.push(update);
+        update();
+        return group;
+    }
+
     function buildToolbar(tocPanel, settingsPanel) {
         const bar = document.createElement('div');
         bar.className = 'cwfm-toolbar';
         bar.dataset.cwfmOwned = 'true';
 
+        // v1.78：最左邊放進度條跳轉紀錄的按鈕組，再來才是上一頁
+        const progressNav = cwfmBuildNavGroup('progress');
+        progressNav.classList.add('cwfm-nav-group-bottom');
+        bar.appendChild(progressNav);
+
         const prevBtn = document.createElement('button');
-        prevBtn.textContent = '\u2039';
+        prevBtn.className = 'cwfm-page-btn';
+        prevBtn.innerHTML = ICONS.chevronLeft;
         prevBtn.setAttribute('aria-label', 'Previous page');
         prevBtn.addEventListener('click', () => {
             try { cwfmGoLeft(); } catch (e) { console.error(t('err_go_left'), e); }
@@ -5682,7 +5864,7 @@
         slider.addEventListener('change', () => {
             cwfmNewCorr('SLIDER');
             cwfmDiag('SLIDER-CHANGE', 'value=' + slider.value + ' || ' + cwfmSnap());
-            try { view.goToFraction(parseFloat(slider.value)); }
+            try { cwfmNavHistory('progress').record(); view.goToFraction(parseFloat(slider.value)); }
             catch (e) { console.error(t('err_go_fraction'), e); }
             sliderDragging = false;
         });
@@ -5690,7 +5872,8 @@
         bar.appendChild(progressWrap);
 
         const nextBtn = document.createElement('button');
-        nextBtn.textContent = '\u203A';
+        nextBtn.className = 'cwfm-page-btn';
+        nextBtn.innerHTML = ICONS.chevronRight;
         nextBtn.setAttribute('aria-label', 'Next page');
         nextBtn.addEventListener('click', () => {
             try { cwfmGoRight(); } catch (e) { console.error(t('err_go_right'), e); }
@@ -6022,6 +6205,13 @@
     try { settingsPanel = buildSettingsPanel(); } catch (e) { console.error(t('err_build_settings'), e); }
     try { toolbar = buildToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_toolbar'), e); }
     try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_top_toolbar'), e); }
+    // v1.78：右上角的書內連結跳轉紀錄（有紀錄才出現）
+    try {
+        const linkNav = cwfmBuildNavGroup('link');
+        linkNav.classList.add('cwfm-nav-float');
+        linkNav.dataset.cwfmOwned = 'true';
+        document.body.appendChild(linkNav);
+    } catch (e) { console.error('[cwfm:nav] 建立返回按鈕失敗', e); }
 
     // ============================================================
     // [cwfm] 翻頁動畫（K16Pro chevron 風格完整移植）
@@ -6249,7 +6439,7 @@
         const _settings = window.__cwfm?.settings;
         const _rawColor = _settings?.pageFlipAnimColor;
         const color = (!_rawColor || _rawColor === 'AUTO')
-            ? (resolveThemeColors(_settings || {}).text || '#000000')
+            ? cwfmAutoTextColorHex(_settings || {})
             : _rawColor;
 
         // ── 3. 清畫布，畫每個 item，更新 done 狀態 ──
