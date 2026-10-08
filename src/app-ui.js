@@ -1239,7 +1239,7 @@
             // 分開，不影響按鈕位置。z-index 比按鈕層低，按鈕維持在上面
             // 正常接收點擊。
             '.cwfm-toolbar-bg {',
-            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); bottom: 0; height: 44px;',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); bottom: 0; height: 48px;',  // v1.78.3：與按鈕層（8+32+8）同高
             '  background: var(--cwfm-toolbar-bg); z-index: 999998; pointer-events: none;',
             '  transition: transform 0.3s ease;',
             '  box-shadow: 0 -2px 10px var(--cwfm-shadow-soft), 0 -1px 0 var(--cwfm-shadow-ring);',
@@ -1271,7 +1271,7 @@
             // [cwfm] 同樣右側留出捲軸寬度——這塊透明區塊雖然看不到，但
             // 沒有排除 pointer-events，一樣會攔截滑鼠事件，如果整條貼到
             // 最右邊，捲軸落在這 44px 範圍內的部分會連拖曳都點不到。
-            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); height: 44px; z-index: 999998;',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); height: 48px; z-index: 999998;',
             '}',
             '.cwfm-autohide-zone.cwfm-top { top: 0; }',
             '.cwfm-autohide-zone.cwfm-bottom { bottom: 0; }',
@@ -1363,7 +1363,7 @@
             '  transition: transform 0.3s ease;',
             '}',
             '.cwfm-toolbar-top-bg {',
-            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); top: 0; height: 44px;',
+            '  position: fixed; left: 0; right: var(--cwfm-scrollbar-w, 0px); top: 0; height: 48px;',
             '  background: var(--cwfm-toolbar-bg); z-index: 999998; pointer-events: none;',
             '  transition: transform 0.3s ease;',
             // [cwfm] 跟下方工具列同一套邏輯，方向對稱：往下投影（貼在
@@ -1390,32 +1390,26 @@
             // 外框改用分組卡片同一套淡邊界（陰影環），不再用對比高的實線。
             '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center;',
             '  width: 32px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 50%;',
-            '  border: none; box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft); }',
+            '  border: none; background: none; }',
             '.cwfm-toolbar button.cwfm-page-btn svg { width: 20px; height: 20px; display: block; }',
             // [cwfm] v1.78：跳轉紀錄按鈕組（三處共用）
-            '.cwfm-nav-group { display: inline-flex; align-items: stretch; flex: 0 0 auto; height: 32px; box-sizing: border-box;',
-            '  border-radius: 16px; overflow: hidden;',
-            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft); }',
+            // v1.78.3：去框，跟上方工具列的書籤/設定/全螢幕同一種樣式——平常只有圖示，
+            // hover 時圓形淡背景；組內靠緊、組與其他按鈕之間用較大間距分群。
+            '.cwfm-nav-group { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; height: 32px; }',
             '.cwfm-nav-group > button.cwfm-nav-btn { position: relative; display: flex; align-items: center; justify-content: center;',
-            '  background: none; border: none; border-radius: 0; box-sizing: border-box;',
+            '  background: none; border: none; border-radius: 50%; box-sizing: border-box;',
             '  color: var(--cwfm-text); width: 32px; height: 32px; padding: 0; margin: 0; cursor: pointer; }',
-            // 兩端在半圓弧裡，加寬並把圖示往內推，視覺上三個圖示平均分布
-            '.cwfm-nav-group > button.cwfm-nav-btn:first-child { width: 38px; padding-left: 6px; }',
-            '.cwfm-nav-group > button.cwfm-nav-btn:last-child { width: 38px; padding-right: 6px; }',
-            // 分隔線只畫中段（上下各留 8px）
-            '.cwfm-nav-group > button.cwfm-nav-btn + button.cwfm-nav-btn::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 1px; background: var(--cwfm-border-light); opacity: 0.6; }',
             '.cwfm-nav-group > button.cwfm-nav-btn:hover:not(:disabled) { background: var(--cwfm-surface-elevated); }',
             '.cwfm-nav-group > button.cwfm-nav-btn:disabled { opacity: 0.35; cursor: default; }',
             '.cwfm-nav-group > button.cwfm-nav-btn svg { width: 20px; height: 20px; display: block; }',
-            '.cwfm-nav-count { position: absolute; top: 3px; right: 4px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
-            '.cwfm-nav-group > button.cwfm-nav-btn:first-child .cwfm-nav-count { right: 3px; }',
-            '.cwfm-nav-group-bottom { margin-right: 10px; }',
+            '.cwfm-nav-count { position: absolute; top: 1px; right: 1px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
+            '.cwfm-nav-group-bottom { margin-right: 14px; }',
             '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
-            // 右上角那組：位置固定在工具列（高 44px、內距 8px 14px）下方，與工具列的上/右內距等距；
+            // 右上角那組：位置固定在工具列（高 48px、內距 8px 14px）下方，與工具列的上/右內距等距；
             // 工具列隱藏時照樣顯示；有紀錄才出現。
-            '.cwfm-nav-float { position: fixed; top: 52px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
+            '.cwfm-nav-float { position: fixed; top: 56px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
             '  z-index: 999999; display: none; background: var(--cwfm-toolbar-bg);',
-            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); border-radius: 16px; }',
+            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); border-radius: 18px; padding: 2px; height: 36px; box-sizing: border-box; }',
             '.cwfm-nav-float.cwfm-nav-visible { display: inline-flex; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
@@ -1458,14 +1452,15 @@
             // margin-bottom/border-bottom 已經負責跟內容的間隔。
             '.cwfm-panel-header {',
             '  display: flex; align-items: center; justify-content: space-between;',
-            '  margin-bottom: 12px; padding: 18px 18px 18px 18px;',
+            // v1.78.3：標題列與工具列同高（48px），分隔線與工具列下緣切齊
+            '  margin-bottom: 12px; padding: 8px 18px; height: 48px; box-sizing: border-box;',
             '  border-bottom: 1px solid var(--cwfm-border);',
             '  flex: 0 0 auto; gap: 8px;',
             '  background: var(--cwfm-bg);',
             '}',
             '.cwfm-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; }',
             '.cwfm-panel-header h3 {',
-            '  margin: 0; font-size: 15px; line-height: 28px; height: 28px;',
+            '  margin: 0; font-size: 15px; line-height: 32px; height: 32px;',
             '  color: var(--cwfm-text);',
             '}',
             // [cwfm] 內容區塊補回左/右/下的 padding（上面已經被標題列自己
