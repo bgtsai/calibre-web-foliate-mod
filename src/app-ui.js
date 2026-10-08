@@ -1190,6 +1190,9 @@
             // 幾乎看不出來。不動原本那組（分組卡片用，已確認效果沒問題），
             // 另外開一個更明顯的版本給小元件用。
             '  --cwfm-shadow-ring-strong: rgba(255,255,255,0.18);',
+            // v1.78.5：圓形按鈕（關閉、換頁）常態外圈與填色，hover 再加強
+            '  --cwfm-round-ring: rgba(255,255,255,0.30); --cwfm-round-ring-hover: rgba(255,255,255,0.60);',
+            '  --cwfm-round-fill: rgba(255,255,255,0.07); --cwfm-round-fill-hover: rgba(255,255,255,0.16);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.3); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.16);',
             '  --cwfm-toolbar-bg: rgb(10,10,10);',
@@ -1208,6 +1211,8 @@
             '  --cwfm-text-secondary: #898989; --cwfm-text-muted: #b0b0b0;',
             '  --cwfm-shadow-ring: rgba(0,0,0,0.08);',
             '  --cwfm-shadow-ring-strong: rgba(0,0,0,0.22);',
+            '  --cwfm-round-ring: rgba(0,0,0,0.28); --cwfm-round-ring-hover: rgba(0,0,0,0.55);',
+            '  --cwfm-round-fill: rgba(0,0,0,0.04); --cwfm-round-fill-hover: rgba(0,0,0,0.10);',
             '  --cwfm-shadow-soft: rgba(0,0,0,0.08); --cwfm-accent: #0099ff;',
             '  --cwfm-accent-bg: rgba(0,153,255,0.12);',
             '  --cwfm-toolbar-bg: rgb(255,255,255);',
@@ -1391,7 +1396,8 @@
             '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center;',
             '  width: 32px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 50%;',
             // v1.78.4：最常按的換頁鈕維持圓形外框，跟面板關閉鈕同一組設計
-            '  border: 1px solid var(--cwfm-border-light); background: none; }',
+            '  border: 1px solid var(--cwfm-round-ring); background: var(--cwfm-round-fill); }',
+            '.cwfm-toolbar button.cwfm-page-btn:hover { border-color: var(--cwfm-round-ring-hover); background: var(--cwfm-round-fill-hover); }',
             '.cwfm-toolbar button.cwfm-page-btn svg { width: 20px; height: 20px; display: block; }',
             // [cwfm] v1.78：跳轉紀錄按鈕組（三處共用）
             // v1.78.3：去框，跟上方工具列的書籤/設定/全螢幕同一種樣式——平常只有圖示，
@@ -1879,13 +1885,13 @@
             '  font-size: 13px;',
             '}',
             '.cwfm-close-btn {',
-            '  flex: 0 0 auto; background: none;',
-            '  border: 1px solid var(--cwfm-border-light); border-radius: 50%;',
+            '  flex: 0 0 auto; background: var(--cwfm-round-fill);',
+            '  border: 1px solid var(--cwfm-round-ring); border-radius: 50%;',
             '  width: 32px; height: 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;',
             '  color: var(--cwfm-text); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; border-radius: 50%;',
             '}',
             '.cwfm-close-btn svg { width: 20px; height: 20px; display: block; pointer-events: none; }',
-            '.cwfm-close-btn:hover { color: var(--cwfm-text); background: var(--cwfm-surface-elevated); }',
+            '.cwfm-close-btn:hover { color: var(--cwfm-text); background: var(--cwfm-round-fill-hover); border-color: var(--cwfm-round-ring-hover); }',
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
@@ -6150,6 +6156,8 @@
     }
     // v1.77：記住目前是否隱藏中（var：章節 load 監聽器可能比這行早被定義）
     var cwfmCursorHidden = false;
+    var cwfmCursorInExcluded = false; // 最近一次滑鼠移動是否在排除區域內（設定變更觸發的排程也要尊重）
+    var CWFM_CURSOR_EXCLUDE = '.cwfm-toolbar, .cwfm-toolbar-top, .cwfm-panel, .cwfm-nav-float, .cwfm-confirm-overlay, .cwfm-cp';
     var cwfmLastMouseScreenX = null, cwfmLastMouseScreenY = null;
     function cwfmApplyCursorVisibility(hidden) {
         cwfmCursorHidden = !!hidden;
@@ -6158,13 +6166,15 @@
     }
     function cwfmScheduleCursorHide() {
         clearTimeout(cwfmCursorHideTimer);
-        if (!cwfmCursorHideEnabled) return;
+        if (!cwfmCursorHideEnabled || cwfmCursorInExcluded) return;
         cwfmCursorHideTimer = setTimeout(() => cwfmApplyCursorVisibility(true), cwfmCursorHideDelayMs);
     }
     function cwfmWakeCursor(e) {
         if (!cwfmCursorHideEnabled) return;
-        // v1.78.2：游標停在右上角返回按鈕上時不自動隱藏（排除區域）
-        if (e && e.target && e.target.closest && e.target.closest('.cwfm-nav-float')) {
+        // v1.78.5：游標在操作介面上時不自動隱藏（排除區域）：上方工具列、底部進度條列、
+        // 目錄／設定面板、右上角跳轉按鈕，以及確認視窗、取色器
+        if (e && e.target) cwfmCursorInExcluded = !!(e.target.closest && e.target.closest(CWFM_CURSOR_EXCLUDE));
+        if (cwfmCursorInExcluded) {
             clearTimeout(cwfmCursorHideTimer);
             if (cwfmCursorHidden) cwfmApplyCursorVisibility(false);
             return;
