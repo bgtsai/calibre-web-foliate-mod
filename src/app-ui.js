@@ -45,7 +45,6 @@
             field_color_bg: '\u81ea\u8a02\u80cc\u666f\u984f\u8272',
             field_key_prev: '\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375',
             field_key_next: '\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375',
-            field_key_link_back: '從註解返回快速鍵',
             nav_back: '返回上一個位置',
             nav_forward: '前往下一個位置',
             nav_clear: '清空紀錄',
@@ -271,7 +270,6 @@
             field_color_bg: 'Custom Background Color',
             field_key_prev: 'Previous Page Shortcut',
             field_key_next: 'Next Page Shortcut',
-            field_key_link_back: 'Return from Note Shortcut',
             nav_back: 'Back',
             nav_forward: 'Forward',
             nav_clear: 'Clear history',
@@ -822,10 +820,8 @@
     // 六七成），換成 SVG 後若线画到接近边缘，墨跡量會明顯變多、看起來
     // 變大——這裡縮小端點範圍，讓墨跡量貼近舊版文字字元的視覺大小，同時
     // 保留 SVG 不受字型影響、精準置中的好處。
-    const CWFM_CLOSE_ICON_SVG = '<svg viewBox="0 0 14 14" width="14" height="14" style="display:block;pointer-events:none;">'
-        + '<line x1="3.5" y1="3.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
-        + '<line x1="10.5" y1="3.5" x2="3.5" y2="10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
-        + '</svg>';
+    // v1.78.1：改成跟其他圖示同一套（24 座標、線條 2、顯示 20px，按鈕 32×32 圓角方框）
+    const CWFM_CLOSE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
     function createCloseBtn(onClick) {
         const btn = document.createElement('button');
         btn.className = 'cwfm-close-btn';
@@ -1026,14 +1022,6 @@
             // 當下最新的設定，還沒套用完成前退回預設值，不會整個失效。
             const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
                 || DEFAULT_SETTINGS.pagingKeys;
-            const linkBackKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.linkBackKeys)
-                || DEFAULT_SETTINGS.linkBackKeys;
-            if (linkBackKeys.includes(combo)) {
-                // Alt+← 也是瀏覽器的「上一頁」，一定要擋下來，否則會離開閱讀頁
-                e.preventDefault();
-                if (typeof window.__cwfmNavBack === 'function') window.__cwfmNavBack('link');
-                return;
-            }
             const isPrev = pagingKeys.prev.includes(combo);
             const isNext = !isPrev && pagingKeys.next.includes(combo);
             if (!isPrev && !isNext) return;
@@ -1396,18 +1384,21 @@
             '.cwfm-toolbar-top button:hover { background: var(--cwfm-surface-elevated); }',
             '.cwfm-toolbar-top button svg { width: 20px; height: 20px; }',
             // [cwfm] v1.78：進度條兩側換頁按鈕改用向量箭頭（原本文字 ‹ › 在小螢幕上太細）
-            '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center; padding: 4px 10px; }',
-            '.cwfm-toolbar button.cwfm-page-btn svg { width: 18px; height: 18px; display: block; }',
+            // [cwfm] v1.78.1：所有圖示按鈕同一套規格——圖示 20px、線條 2、按鈕 32×32
+            // （上方工具列、底部換頁、三處跳轉紀錄按鈕組、面板關閉鈕）。
+            '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center;',
+            '  width: 32px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 6px; }',
+            '.cwfm-toolbar button.cwfm-page-btn svg { width: 20px; height: 20px; display: block; }',
             // [cwfm] v1.78：跳轉紀錄按鈕組（三處共用）
-            '.cwfm-nav-group { display: inline-flex; align-items: stretch; flex: 0 0 auto;',
+            '.cwfm-nav-group { display: inline-flex; align-items: stretch; flex: 0 0 auto; height: 32px; box-sizing: border-box;',
             '  border: 1px solid var(--cwfm-border-light); border-radius: 6px; overflow: hidden; }',
             '.cwfm-nav-group > button.cwfm-nav-btn { position: relative; display: flex; align-items: center; justify-content: center;',
-            '  background: none; border: none; border-left: 1px solid var(--cwfm-border-light); border-radius: 0;',
-            '  color: var(--cwfm-text); min-width: 30px; padding: 4px 7px; margin: 0; cursor: pointer; }',
+            '  background: none; border: none; border-left: 1px solid var(--cwfm-border-light); border-radius: 0; box-sizing: border-box;',
+            '  color: var(--cwfm-text); width: 32px; height: 30px; padding: 0; margin: 0; cursor: pointer; }',
             '.cwfm-nav-group > button.cwfm-nav-btn:first-child { border-left: none; }',
             '.cwfm-nav-group > button.cwfm-nav-btn:hover:not(:disabled) { background: var(--cwfm-surface-elevated); }',
             '.cwfm-nav-group > button.cwfm-nav-btn:disabled { opacity: 0.35; cursor: default; }',
-            '.cwfm-nav-group > button.cwfm-nav-btn svg { width: 16px; height: 16px; display: block; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn svg { width: 20px; height: 20px; display: block; }',
             '.cwfm-nav-count { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
             '.cwfm-nav-group-bottom { margin-right: 10px; }',
             '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
@@ -1417,7 +1408,6 @@
             '  z-index: 999999; display: none; background: var(--cwfm-toolbar-bg);',
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); }',
             '.cwfm-nav-float.cwfm-nav-visible { display: inline-flex; }',
-            '.cwfm-nav-float > button.cwfm-nav-btn { min-width: 36px; min-height: 32px; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
             // 直接沿用：WebKit 系瀏覽器（Chrome/Edge）用 -webkit-appearance
@@ -1478,9 +1468,8 @@
             // 區塊自己獨佔一欄，不會疊到另一個矮區塊底下——這正是「明明
             // 排得下卻被迫換行」的原因。改成 auto：依序把內容緊密塞滿
             // 當前欄，塞不下才換下一欄，矮的區塊會自然疊起來。
-            // [cwfm] v1.78：多欄改成瀑布流——每欄一個 .cwfm-masonry-col，
-            // 分組依序放進目前最短的那一欄（見 applyPanelAutoLayout），
-            // 塞不下時往下延伸、只上下捲動。
+            // [cwfm] v1.78.1：多欄由 JS 分配——每欄一個 .cwfm-masonry-col，分組順序固定、
+            // 換欄位置取最平均的切法（見 applyPanelAutoLayout），塞不下時只上下捲動。
             '.cwfm-fields-wrap { display: flex; align-items: flex-start; gap: 24px; padding: 0 18px 18px 18px; width: max-content; }',
             '.cwfm-masonry-col { flex: 0 0 276px; width: 276px; min-width: 0; }',
             '.cwfm-toc-view { padding: 0 18px 18px 18px; flex: 1 1 auto; min-height: 0; overflow: auto; }',
@@ -1887,9 +1876,10 @@
             '.cwfm-close-btn {',
             '  flex: 0 0 auto; background: none;',
             '  border: 1px solid var(--cwfm-border-light); border-radius: 50%;',
-            '  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;',
-            '  color: var(--cwfm-text-secondary); font-size: 14px; cursor: pointer; line-height: 1; padding: 0;',
+            '  width: 32px; height: 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;',
+            '  color: var(--cwfm-text); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; border-radius: 6px;',
             '}',
+            '.cwfm-close-btn svg { width: 20px; height: 20px; display: block; pointer-events: none; }',
             '.cwfm-close-btn:hover { color: var(--cwfm-text); border-color: var(--cwfm-text-secondary); }',
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
@@ -2295,8 +2285,6 @@
         // 例如 'ArrowLeft'、'Ctrl+Shift+ArrowLeft'。預設維持跟改版前
         // 一樣的行為（左鍵往前、右鍵往後），使用者可以自己增減。
         pagingKeys: { prev: ['ArrowLeft', 'PageUp'], next: ['ArrowRight', 'PageDown'] },
-        // v1.78：從書內連結（註解）跳過去之後「返回上一個位置」的快速鍵
-        linkBackKeys: ['Alt+ArrowLeft'],
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only、故意不
         // 存檔——當初這樣設計是因為功能還不穩定，怕存檔後下次開書直接
         // 卡住畫面沒辦法簡單復原。現在已經穩定到不會弄壞整個介面，改成
@@ -3706,7 +3694,7 @@
         } catch (e) { console.error('[cwfm:nav] 返回位置失敗', e); }
     }
     window.__cwfmNavRecord = (kind) => cwfmNavHistory(kind).record();
-    window.__cwfmNavBack = (kind) => cwfmNavHistory(kind).back();
+
 
     function applySettings(settings) {
         cwfmNewCorr('SET');
@@ -5485,10 +5473,8 @@
         updateVerticalModeLock();
 
         beginGroup(t('group_keybindings'));
-        if (!Array.isArray(settings.linkBackKeys)) settings.linkBackKeys = DEFAULT_SETTINGS.linkBackKeys.slice();
-        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next, settings.linkBackKeys]);
-        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev, settings.linkBackKeys]);
-        addKeyListField(t('field_key_link_back'), settings.linkBackKeys, [settings.pagingKeys.prev, settings.pagingKeys.next]);
+        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next]);
+        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev]);
         addNumberField(t('field_page_flip_debounce'), 'pageFlipDebounceMs', 0, 3000, 50, 'ms');
 
         beginGroup(t('group_reading_behavior'));
@@ -5619,13 +5605,10 @@
         // 一段沒用到的空間。掛在 panel 元素自己身上，讓不同作用域的
         // fullscreenchange 監聽器也能呼叫到，不用額外傳遞參數或共用
         // 變數。
-        // [cwfm] v1.78：瀑布流排版——
-        // 1. 欄數：從 1 欄開始試，取「所有分組放得進可用高度」的最少欄數；
-        //    寬度放不下更多欄時就停在上限，內容往下延伸、只上下捲動（不再左右捲）。
-        // 2. 放法：分組依原本順序，逐一放進「目前最短的那一欄」，由上往下
-        //    大致就是分組順序。
-        // 3. 量到的分組高度與欄數都沒變時不搬動 DOM（避免打斷使用者正在
-        //    操作的滑桿、輸入框）。
+        // [cwfm] v1.78.1 分欄排版（每欄一個 .cwfm-masonry-col 容器）：
+        // 1. 欄數：整個放得下的最少欄數；放不下時用寬度允許的最多欄數、只上下捲動。
+        // 2. 分組順序固定，一欄一欄往下排，換欄位置取「最高那一欄最矮」的切法。
+        // 3. 分組歸屬沒變時不搬動 DOM（避免打斷使用者正在操作的滑桿、輸入框）。
         const MASONRY_COL_W = 276, MASONRY_GAP = 24, MASONRY_PAD = 18, GROUP_GAP = 20;
         const allGroups = Array.from(fieldsWrap.children); // 建立順序＝顯示順序
         let lastLayoutSig = '';
@@ -5641,18 +5624,33 @@
                     Math.floor((maxPanelWidth - MASONRY_PAD * 2 + MASONRY_GAP) / (MASONRY_COL_W + MASONRY_GAP))));
                 // 分組寬度固定（欄寬），所以在目前位置直接量高度即可，不用先搬回單欄
                 const heights = allGroups.map((g) => g.offsetHeight + GROUP_GAP);
-                function masonry(k) {
-                    const cols = Array.from({ length: k }, () => ({ h: 0, items: [] }));
+                // [cwfm] v1.78.1：棄用瀑布流，改回「順序固定、一欄一欄往下排」，但換欄
+                // 位置用最佳切法：給定欄數 k，找出讓最高那一欄最矮的切法（分組順序不變，
+                // 每欄是連續的一段）。最小可行高度用二分搜尋，再依序填滿切開。
+                function partition(k) {
+                    const fits = (limit) => {
+                        let n = 1, cur = 0;
+                        for (const h of heights) {
+                            if (cur > 0 && cur + h > limit) { n++; cur = 0; }
+                            cur += h;
+                        }
+                        return n <= k;
+                    };
+                    let lo = Math.max(...heights), hi = heights.reduce((x, y) => x + y, 0);
+                    while (lo < hi) { const mid = Math.floor((lo + hi) / 2); if (fits(mid)) hi = mid; else lo = mid + 1; }
+                    const cols = [{ h: 0, items: [] }];
                     heights.forEach((h, i) => {
-                        let best = cols[0];
-                        for (const c of cols) if (c.h < best.h) best = c;
-                        best.items.push(i); best.h += h;
+                        let c = cols[cols.length - 1];
+                        if (c.items.length && c.h + h > lo) { c = { h: 0, items: [] }; cols.push(c); }
+                        c.items.push(i); c.h += h;
                     });
                     return cols;
                 }
+                // 欄數：整個放得下（不用捲動）的最少欄數；放不下就用寬度允許的最多欄數，
+                // 此時最高那一欄已是最矮的切法，面板上下捲動
                 let cols = null;
                 for (let k = 1; k <= maxColumnsByWidth; k++) {
-                    cols = masonry(k);
+                    cols = partition(k);
                     if (Math.max(...cols.map((c) => c.h)) - GROUP_GAP <= availableHeight) break;
                 }
                 const sig = cols.map((c) => c.items.join(',')).join('|');
@@ -5776,8 +5774,8 @@
         navBack: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
         navForward: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
         navClear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
-        chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
-        chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+        chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+        chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
         list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
         settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
         bookmarkOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
