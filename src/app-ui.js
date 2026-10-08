@@ -1378,7 +1378,7 @@
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
             '.cwfm-toolbar-top button {',
             '  background: none; border: none; color: var(--cwfm-text);',
-            '  border-radius: 4px; padding: 6px; cursor: pointer;',
+            '  border-radius: 50%; padding: 6px; cursor: pointer;',
             '  display: flex; align-items: center; justify-content: center;',
             '}',
             '.cwfm-toolbar-top button:hover { background: var(--cwfm-surface-elevated); }',
@@ -1386,27 +1386,36 @@
             // [cwfm] v1.78：進度條兩側換頁按鈕改用向量箭頭（原本文字 ‹ › 在小螢幕上太細）
             // [cwfm] v1.78.1：所有圖示按鈕同一套規格——圖示 20px、線條 2、按鈕 32×32
             // （上方工具列、底部換頁、三處跳轉紀錄按鈕組、面板關閉鈕）。
+            // v1.78.2 形狀規則：單顆按鈕＝圓形；按鈕組＝膠囊（圓形拉長，同一家族）。
+            // 外框改用分組卡片同一套淡邊界（陰影環），不再用對比高的實線。
             '.cwfm-toolbar button.cwfm-page-btn { display: flex; align-items: center; justify-content: center;',
-            '  width: 32px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 6px; }',
+            '  width: 32px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 50%;',
+            '  border: none; box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft); }',
             '.cwfm-toolbar button.cwfm-page-btn svg { width: 20px; height: 20px; display: block; }',
             // [cwfm] v1.78：跳轉紀錄按鈕組（三處共用）
             '.cwfm-nav-group { display: inline-flex; align-items: stretch; flex: 0 0 auto; height: 32px; box-sizing: border-box;',
-            '  border: 1px solid var(--cwfm-border-light); border-radius: 6px; overflow: hidden; }',
+            '  border-radius: 16px; overflow: hidden;',
+            '  box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft); }',
             '.cwfm-nav-group > button.cwfm-nav-btn { position: relative; display: flex; align-items: center; justify-content: center;',
-            '  background: none; border: none; border-left: 1px solid var(--cwfm-border-light); border-radius: 0; box-sizing: border-box;',
-            '  color: var(--cwfm-text); width: 32px; height: 30px; padding: 0; margin: 0; cursor: pointer; }',
-            '.cwfm-nav-group > button.cwfm-nav-btn:first-child { border-left: none; }',
+            '  background: none; border: none; border-radius: 0; box-sizing: border-box;',
+            '  color: var(--cwfm-text); width: 32px; height: 32px; padding: 0; margin: 0; cursor: pointer; }',
+            // 兩端在半圓弧裡，加寬並把圖示往內推，視覺上三個圖示平均分布
+            '.cwfm-nav-group > button.cwfm-nav-btn:first-child { width: 38px; padding-left: 6px; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn:last-child { width: 38px; padding-right: 6px; }',
+            // 分隔線只畫中段（上下各留 8px）
+            '.cwfm-nav-group > button.cwfm-nav-btn + button.cwfm-nav-btn::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 1px; background: var(--cwfm-border-light); opacity: 0.6; }',
             '.cwfm-nav-group > button.cwfm-nav-btn:hover:not(:disabled) { background: var(--cwfm-surface-elevated); }',
             '.cwfm-nav-group > button.cwfm-nav-btn:disabled { opacity: 0.35; cursor: default; }',
             '.cwfm-nav-group > button.cwfm-nav-btn svg { width: 20px; height: 20px; display: block; }',
-            '.cwfm-nav-count { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
+            '.cwfm-nav-count { position: absolute; top: 3px; right: 4px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
+            '.cwfm-nav-group > button.cwfm-nav-btn:first-child .cwfm-nav-count { right: 3px; }',
             '.cwfm-nav-group-bottom { margin-right: 10px; }',
             '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
             // 右上角那組：位置固定在工具列（高 44px、內距 8px 14px）下方，與工具列的上/右內距等距；
             // 工具列隱藏時照樣顯示；有紀錄才出現。
             '.cwfm-nav-float { position: fixed; top: 52px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
             '  z-index: 999999; display: none; background: var(--cwfm-toolbar-bg);',
-            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); }',
+            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); border-radius: 16px; }',
             '.cwfm-nav-float.cwfm-nav-visible { display: inline-flex; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
@@ -1875,12 +1884,12 @@
             '}',
             '.cwfm-close-btn {',
             '  flex: 0 0 auto; background: none;',
-            '  border: 1px solid var(--cwfm-border-light); border-radius: 50%;',
+            '  border: none; box-shadow: 0 0 0 1px var(--cwfm-shadow-ring), 0 1px 3px var(--cwfm-shadow-soft); border-radius: 50%;',
             '  width: 32px; height: 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;',
-            '  color: var(--cwfm-text); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; border-radius: 6px;',
+            '  color: var(--cwfm-text); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; border-radius: 50%;',
             '}',
             '.cwfm-close-btn svg { width: 20px; height: 20px; display: block; pointer-events: none; }',
-            '.cwfm-close-btn:hover { color: var(--cwfm-text); border-color: var(--cwfm-text-secondary); }',
+            '.cwfm-close-btn:hover { color: var(--cwfm-text); background: var(--cwfm-surface-elevated); }',
             // [cwfm] 色塊按鈕：取代原生 <input type="color">，點下去開啟
             // 自訂取色器。
             '.cwfm-color-swatch-btn {',
@@ -5750,7 +5759,7 @@
                 } catch (e) {
                     console.error(t('err_toc_jump'), e);
                 }
-                closeAllPanels();
+                // v1.78.2：切換章節後目錄維持開啟，只有按關閉鈕或點面板以外才關
             };
             const { element, setCurrentHref } = window.__cwfm.createTOCView(toc, onclick);
             element.classList.add('cwfm-toc-view');
@@ -5773,6 +5782,7 @@
     const ICONS = {
         navBack: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
         navForward: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
+        navTrash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>',
         navClear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
         chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
         chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
@@ -5807,7 +5817,8 @@
         }
         const back = mk(ICONS.navBack, t('nav_back'), () => h.back());
         const fwd = mk(ICONS.navForward, t('nav_forward'), () => h.forward());
-        const clr = mk(ICONS.navClear, t(kind === 'link' ? 'nav_clear_close' : 'nav_clear'), async () => {
+        // 清空紀錄用垃圾桶；右上角那組按下去整個關掉，維持 ✕（與面板關閉鈕的圓形 ✕ 分開）
+        const clr = mk(kind === 'link' ? ICONS.navClear : ICONS.navTrash, t(kind === 'link' ? 'nav_clear_close' : 'nav_clear'), async () => {
             const ok = await cwfmConfirmDialog(t('dlg_nav_clear_title'), t('dlg_nav_clear_msg'), t('btn_clear'));
             if (ok) h.clear();
         });
@@ -6152,6 +6163,12 @@
     }
     function cwfmWakeCursor(e) {
         if (!cwfmCursorHideEnabled) return;
+        // v1.78.2：游標停在右上角返回按鈕上時不自動隱藏（排除區域）
+        if (e && e.target && e.target.closest && e.target.closest('.cwfm-nav-float')) {
+            clearTimeout(cwfmCursorHideTimer);
+            if (cwfmCursorHidden) cwfmApplyCursorVisibility(false);
+            return;
+        }
         // 換章節時瀏覽器會補發座標沒變的 mousemove，不算使用者動滑鼠
         if (e && typeof e.screenX === 'number') {
             if (e.screenX === cwfmLastMouseScreenX && e.screenY === cwfmLastMouseScreenY) return;
