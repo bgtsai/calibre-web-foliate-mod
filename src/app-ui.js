@@ -6723,13 +6723,16 @@
         document.body.appendChild(topZone);
         document.body.appendChild(bottomZone);
         [topZone, bottomZone].forEach(zone => {
-            zone.addEventListener('mouseenter', cwfmWakeBars);
+            // [cwfm] 移入喚醒只認真正的滑鼠；觸控由下面的 click 喚醒（v1.78.7，理由同工具列）。
+            zone.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') cwfmWakeBars(); });
             zone.addEventListener('click', cwfmWakeBars);
         });
         [toolbar, topToolbar].forEach(bar => {
             if (!bar) return;
-            bar.addEventListener('mouseenter', () => { cwfmAutoHideHoveringBar = true; clearTimeout(cwfmAutoHideTimer); });
-            bar.addEventListener('mouseleave', () => { cwfmAutoHideHoveringBar = false; cwfmScheduleAutoHide(); });
+            // [cwfm] 只認真正的滑鼠：iOS 觸控點一下會模擬「滑鼠移入」卻不會移出，
+            // 點全螢幕等工具列按鈕後旗標卡在 true，自動隱藏就永遠不執行（v1.78.7）。
+            bar.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'mouse') return; cwfmAutoHideHoveringBar = true; clearTimeout(cwfmAutoHideTimer); });
+            bar.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse') return; cwfmAutoHideHoveringBar = false; cwfmScheduleAutoHide(); });
         });
         // [cwfm] 原本這裡掛 view.addEventListener('relocate', cwfmWakeBars)
         // ——翻頁（不分滑鼠或鍵盤）都會觸發 relocate，導致鍵盤連續翻頁時
@@ -6739,6 +6742,14 @@
         // 加上全螢幕切換（見上面 fullscreenchange 監聽器）這兩種明確的
         // 方式喚醒，翻頁不會再誤觸。
     } catch (e) { console.error(t('err_init_autohide'), e); }
+
+    // [cwfm] 開書完成後主動把焦點交給頁面／書本，讓實體鍵盤翻頁不用先點一下畫面。
+    // iOS Safari 沒有使用者觸碰時可能忽略（瀏覽器限制），PC 上無副作用（v1.78.7）。
+    try {
+        window.focus();
+        const _fdoc = getBookIframeDocument();
+        if (_fdoc && _fdoc.defaultView) _fdoc.defaultView.focus();
+    } catch (e) { /* 聚焦失敗不影響閱讀 */ }
 
     try {
         cwfmBuildTapZones();
