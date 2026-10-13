@@ -4030,7 +4030,7 @@
     window.__cwfmNavRecord = (kind) => cwfmNavHistory(kind).record();
     window.__cwfm.clearNavHistory = () => {
         cwfmBD.navhist = null;
-        for (const kind of ['toc', 'search', 'progress', 'link']) cwfmNavHistory(kind).clear();
+        for (const kind of ['toc', 'search', 'link']) cwfmNavHistory(kind).clear();
         try { cwfmToast(t('toast_navhist_cleared')); } catch (e) { /* 提示訊息還沒建立 */ }
     };
     // v1.79：保存用的快照——目前這一格補成當下位置（離開時才會填，存檔時先補上）
@@ -4044,7 +4044,7 @@
             out[kind] = { entries: entries.map((e) => e || cur || null), idx: h.idx };
         }
         // 還沒建立的組（例如還沒開過搜尋）沿用上次保存的內容
-        if (cwfmBD.navhist) for (const k of Object.keys(cwfmBD.navhist)) if (!out[k]) out[k] = cwfmBD.navhist[k];
+        if (cwfmBD.navhist) for (const k of Object.keys(cwfmBD.navhist)) if (!out[k] && k !== 'progress') out[k] = cwfmBD.navhist[k];
         return out;
     };
 
@@ -6226,9 +6226,7 @@
         bar.dataset.cwfmOwned = 'true';
 
         // v1.78：最左邊放進度條跳轉紀錄的按鈕組，再來才是上一頁
-        const progressNav = cwfmBuildNavGroup('progress');
-        progressNav.classList.add('cwfm-nav-group-bottom');
-        bar.appendChild(progressNav);
+        // v1.79.4：進度條左邊的 ↩ ↪ 拿掉，拖動進度條的跳轉併進右上角那組（頁面跳轉統一在那裡回去）
 
         const prevBtn = document.createElement('button');
         prevBtn.className = 'cwfm-page-btn';
@@ -6258,7 +6256,7 @@
         slider.addEventListener('change', () => {
             cwfmNewCorr('SLIDER');
             cwfmDiag('SLIDER-CHANGE', 'value=' + slider.value + ' || ' + cwfmSnap());
-            try { cwfmNavHistory('progress').record(); view.goToFraction(parseFloat(slider.value)); }
+            try { cwfmNavHistory('toc').record(); view.goToFraction(parseFloat(slider.value)); }
             catch (e) { console.error(t('err_go_fraction'), e); }
             sliderDragging = false;
         });
@@ -6622,9 +6620,7 @@
             '  flex: 0 0 auto; border-bottom: 1px solid var(--cwfm-border); }',
             '.cwfm-toc-filter .cwfm-chip-toggle[data-key] { padding: 0 8px; gap: 3px; min-width: 40px; justify-content: center; }',
             '.cwfm-toc-filter .cwfm-chip-toggle[data-key] svg { width: 15px; height: 15px; }',
-            '.cwfm-toc-filter .cwfm-chip-toggle[data-key="pos"][aria-pressed="true"] svg { color: #E24B4A; }',
-            '.cwfm-toc-filter .cwfm-chip-toggle[data-key="excerpt"][aria-pressed="true"] svg { color: #EF9F27; }',
-            '.cwfm-toc-filter .cwfm-chip-toggle[data-key="note"][aria-pressed="true"] svg { color: #1D9E75; }',
+            // v1.79.4：篩選圖示用跟目錄文字同一套顏色，不用類型色
             '.cwfm-toc-filter .cwfm-chip-toggle[data-key][aria-pressed="false"] { opacity: 0.45; border-style: dashed; }',
             '.cwfm-chip-toggle.cwfm-chip-action { margin-left: auto; color: var(--cwfm-text); padding: 0 12px; }',
             '.cwfm-chip-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
@@ -6649,8 +6645,10 @@
             '.cwfm-bm-flag svg { width: 15px; height: 15px; }',
             '.cwfm-bm-flag.cwfm-bm-flag-both { flex-direction: column; align-items: stretch; justify-content: stretch; padding-left: 0; }',
             '.cwfm-bm-flag-both > span { display: flex; align-items: center; justify-content: center; padding-left: 6px; }',
-            '.cwfm-bm-flag-both .cwfm-flag-top { flex: 3 1 0; }',
-            '.cwfm-bm-flag-both .cwfm-flag-bot { flex: 1 1 0; background: #FAC775; color: #633806; min-height: 10px; }',
+            '.cwfm-bm-flag-both .cwfm-flag-top { flex: 1 1 auto; }',
+            // 琥珀色那塊固定 12px 貼齊底部（分界落在整數像素上，虛線不會模糊）
+            '.cwfm-bm-flag-both .cwfm-flag-bot { flex: 0 0 12px; height: 12px; position: relative; background: #FAC775; color: #633806; }',
+            '.cwfm-bm-flag-both .cwfm-flag-bot svg.cwfm-flag-dash { position: absolute; left: 0; top: -1px; display: block; width: 100%; height: 2px; }',
             '.cwfm-bm-flag-both .cwfm-flag-bot svg { width: 10px; height: 10px; }',
             '.cwfm-bm-row .cwfm-bm-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
             // v1.79.3：定位改紅色（跟工具列「這頁有書籤」的紅色書籤圖示同色）；摘錄琥珀、備註青綠
@@ -7060,7 +7058,9 @@
         if (type === 'note' && bm.excerpt) {
             // v1.79.3：備註＋摘錄——旗頭大小不變，下方 1/4 切成琥珀色放引號
             flag.classList.add('cwfm-bm-flag-both');
-            flag.innerHTML = '<span class="cwfm-flag-top">' + ICONS.pencil + '</span><span class="cwfm-flag-bot">' + ICONS.quote + '</span>';
+            // 分隔虛線用 SVG：線寬 1.25px＝鉛筆圖示（24 單位畫布、線寬 2、顯示 15px）的實際線寬，虛線長度明確指定，各瀏覽器一致
+            flag.innerHTML = '<span class="cwfm-flag-top">' + ICONS.pencil + '</span><span class="cwfm-flag-bot">' + ICONS.quote
+                + '<svg class="cwfm-flag-dash" width="100%" height="2" preserveAspectRatio="none"><line x1="0" y1="1" x2="100%" y2="1" stroke="#085041" stroke-width="1.25" stroke-dasharray="3 2"/></svg></span>';
         } else flag.innerHTML = cwfmBmIcon(type);
         const body = document.createElement('div');
         body.className = 'cwfm-bm-body';
@@ -7399,7 +7399,13 @@
             + 'body{margin:0;background:#f4f4f5;color:#18181b;font:15px/1.6 -apple-system,"Segoe UI","Noto Sans TC",sans-serif}'
             + '.w{max-width:760px;margin:0 auto;padding:24px 16px 48px}header{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:16px 20px;margin-bottom:20px}'
             + 'h1{font-size:20px;margin:0 0 4px}.meta{color:#71717a;font-size:13px}h2{font-size:14px;color:#52525b;margin:24px 0 8px;font-weight:600}'
-            + '.card{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:4px 16px;margin:10px 0}'
+            + '.card{display:flex;align-items:stretch;background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin:10px 0;overflow:hidden}'
+            + '.flag{flex:0 0 34px;display:flex;flex-direction:column;clip-path:polygon(28% 0,100% 0,100% 100%,28% 100%,0 50%)}'
+            + '.flag>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding-left:8px}.flag svg{width:16px;height:16px}'
+            + '.flag .bot{flex:0 0 14px;position:relative;background:#FAC775;color:#633806}.flag .bot svg{width:11px;height:11px}'
+            + '.flag .bot svg.dash{position:absolute;left:0;top:-1px;width:100%;height:2px}'
+            + '.f-pos{background:#E24B4A;color:#fff}.f-excerpt{background:#FAC775;color:#633806}.f-note{background:#9FE1CB;color:#085041}'
+            + '.cb{flex:1 1 auto;min-width:0;padding:4px 16px}.tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}'
             + '.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f2;align-items:start}'
             + '.row:last-child{border-bottom:0}.lab{color:#71717a;font-size:13px}.tag{font-size:11px;padding:1px 8px;border-radius:6px;white-space:nowrap}'
             + 'blockquote{margin:0;padding-left:10px;border-left:3px solid #EF9F27;font-family:serif;white-space:pre-wrap}.note{white-space:pre-wrap}'
@@ -7416,8 +7422,13 @@
             const [bg, fg] = badge[type];
             const tag = (txt, c) => '<span class="tag" style="background:' + (c ? c[0] : '#f4f4f5') + ';color:' + (c ? c[1] : '#52525b') + '">' + cwfmEsc(txt) + '</span>';
             const row = (lab, val, right) => '<div class="row"><span class="lab">' + cwfmEsc(lab) + '</span><div>' + val + '</div><div>' + (right || '') + '</div></div>';
-            html += '<div class="card">';
-            html += row(t('bm_label_name'), cwfmEsc(cwfmBmName(bm)), tag(cwfmBmTypeLabel(type), [bg, fg]));
+            // 跟閱讀器目錄同一套：左側尖角旗頭（類型色＋圖示；備註＋摘錄上下雙色、中間虛線）
+            const both = type === 'note' && !!bm.excerpt;
+            const flag = '<div class="flag f-' + type + '"><span>' + cwfmBmIcon(type) + '</span>'
+                + (both ? '<span class="bot">' + ICONS.quote + '<svg class="dash" height="2" preserveAspectRatio="none"><line x1="0" y1="1" x2="100%" y2="1" stroke="#085041" stroke-width="1.25" stroke-dasharray="3 2"/></svg></span>' : '') + '</div>';
+            const tags = '<div class="tags">' + tag(cwfmBmTypeLabel(type), [bg, fg]) + (both ? tag(cwfmBmTypeLabel('excerpt'), badge.excerpt) : '') + '</div>';
+            html += '<div class="card">' + flag + '<div class="cb">';
+            html += row(t('bm_label_name'), cwfmEsc(cwfmBmName(bm)), tags);
             html += row(t('bm_position'), cwfmEsc(ch), tag(Math.round((bm.fraction || 0) * 100) + '%'));
             if (bm.excerpt) html += row(t('bm_label_excerpt'), '<blockquote>' + cwfmEsc(bm.excerpt) + '</blockquote>', '');
             if (bm.note) html += row(t('bm_label_note'), '<div class="note">' + cwfmEsc(bm.note) + '</div>', '');
@@ -7425,7 +7436,7 @@
                 + (bm.modified && bm.modified !== bm.created ? '<br>' + cwfmEsc(t('bm_modified') + ' ' + cwfmFmtTime(bm.modified)) : ''), '');
             const url = cwfmPositionUrl(bm.cfi);
             html += row(t('bm_link'), '<a href="' + cwfmEsc(url) + '" target="_blank" rel="noopener">' + cwfmEsc(cwfmPositionUrlText(bm.cfi)) + '</a>', '');
-            html += '</div>';
+            html += '</div></div>';
         }
         return html + '</div></body></html>';
     }
@@ -7437,7 +7448,7 @@
             const ch = cwfmChapterOf(bm);
             if (ch !== lastCh) { md += '\n## ' + ch + '\n'; lastCh = ch; }
             md += '\n### ' + cwfmBmName(bm) + '\n\n';
-            md += '- ' + cwfmBmTypeLabel(cwfmBmType(bm)) + ' · ' + Math.round((bm.fraction || 0) * 100) + '% · ' + cwfmFmtTime(bm.created) + '\n';
+            md += '- ' + cwfmBmTypeLabel(cwfmBmType(bm)) + (cwfmBmType(bm) === 'note' && bm.excerpt ? '＋' + cwfmBmTypeLabel('excerpt') : '') + ' · ' + Math.round((bm.fraction || 0) * 100) + '% · ' + cwfmFmtTime(bm.created) + '\n';
             md += '- ' + t('bm_link') + '：[' + cwfmPositionUrlText(bm.cfi).replace(/([\[\]])/g, '\\$1') + '](' + cwfmPositionUrl(bm.cfi) + ')\n';
             if (bm.excerpt) md += '\n' + bm.excerpt.split('\n').map((l) => '> ' + l).join('\n') + '\n';
             if (bm.note) md += '\n' + bm.note + '\n';
@@ -7449,7 +7460,7 @@
         const head = ['type', 'name', 'chapter', 'percent', 'excerpt', 'note', 'created', 'modified', 'link', 'cfi'];
         const lines = [head.join(',')];
         for (const bm of list) {
-            lines.push([cwfmBmType(bm), cwfmBmName(bm), cwfmChapterOf(bm), Math.round((bm.fraction || 0) * 100), bm.excerpt || '', bm.note || '',
+            lines.push([cwfmBmType(bm) + (cwfmBmType(bm) === 'note' && bm.excerpt ? '+excerpt' : ''), cwfmBmName(bm), cwfmChapterOf(bm), Math.round((bm.fraction || 0) * 100), bm.excerpt || '', bm.note || '',
                 cwfmFmtTime(bm.created), bm.modified ? cwfmFmtTime(bm.modified) : '', cwfmPositionUrlText(bm.cfi), bm.cfi].map(q).join(','));
         }
         return '﻿' + lines.join('\r\n'); // BOM：Excel 開中文不亂碼
