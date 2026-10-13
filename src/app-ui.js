@@ -285,6 +285,11 @@
             search_prev: "上一個",
             search_next: "下一個",
             search_clear: "清空搜尋",
+            bm_go: "前往",
+            field_clear_navhist: "清除這本書的跳轉紀錄",
+            btn_clear_navhist: "清除",
+            dlg_clear_navhist_msg: "清除目錄、搜尋、進度條、書內連結的上一步／下一步紀錄（只影響這本書）。",
+            toast_navhist_cleared: "已清除跳轉紀錄",
             err_search: "[cwfm:search] 搜尋失敗",
             err_bookdata_save: "[cwfm:bookdata] 儲存失敗",
             err_bookdata_load: "[cwfm:bookdata] 讀取失敗，改用本機資料",
@@ -568,6 +573,11 @@
             search_prev: "Previous",
             search_next: "Next",
             search_clear: "Clear search",
+            bm_go: "Go to",
+            field_clear_navhist: "Clear this book's jump history",
+            btn_clear_navhist: "Clear",
+            dlg_clear_navhist_msg: "Clears the back/forward history of contents, search, progress bar and in-book links (this book only).",
+            toast_navhist_cleared: "Jump history cleared",
             err_search: "[cwfm:search] Search failed",
             err_bookdata_save: "[cwfm:bookdata] Save failed",
             err_bookdata_load: "[cwfm:bookdata] Load failed, using local data",
@@ -1022,6 +1032,10 @@
     }
     function cwfmPositionUrl(cfi) {
         return location.origin + location.pathname + '#cfi=' + encodeURIComponent(wrapCfi(cfi));
+    }
+    // 給人看的版本（不編碼，沒有 %）；實際連結仍用編碼過的 cwfmPositionUrl
+    function cwfmPositionUrlText(cfi) {
+        return location.origin + location.pathname + '#cfi=' + wrapCfi(cfi);
     }
     function cwfmSetHashCfi(cfi) {
         try { history.replaceState(history.state, '', cfi ? '#cfi=' + encodeURIComponent(wrapCfi(cfi)) : location.pathname + location.search); }
@@ -1660,7 +1674,7 @@
             '.cwfm-nav-count { position: absolute; top: 1px; right: 1px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
             '.cwfm-nav-group-bottom { margin-right: 14px; }',
             '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
-            '.cwfm-toolbar-top .cwfm-nav-group:not(.cwfm-nav-visible) { display: none; }',
+            '.cwfm-toolbar-top .cwfm-nav-group:not(.cwfm-nav-visible), .cwfm-panel-header .cwfm-nav-group:not(.cwfm-nav-visible) { display: none; }',
             // 右上角那組：位置固定在工具列（高 48px、內距 8px 14px）下方，與工具列的上/右內距等距；
             // 工具列隱藏時照樣顯示；有紀錄才出現。
             '.cwfm-nav-float { position: fixed; top: 56px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
@@ -3953,6 +3967,9 @@
                 else { this.entries[this.idx] = cur; this.entries.length = this.idx + 1; }
                 this.entries.push(null); // 目的地：離開時才填入實際讀到的位置
                 this.idx++;
+                // v1.79.2：最多保留 50 筆，超過丟掉最舊的
+                const over = this.entries.length - 50;
+                if (over > 0) { this.entries.splice(0, over); this.idx -= over; }
                 cwfmDiag('NAV-RECORD', 'kind=' + kind + ' idx=' + this.idx + ' from=' + cwfmCfiText(cur));
                 this.changed();
             },
@@ -3997,6 +4014,11 @@
         } catch (e) { console.error('[cwfm:nav] 返回位置失敗', e); }
     }
     window.__cwfmNavRecord = (kind) => cwfmNavHistory(kind).record();
+    window.__cwfm.clearNavHistory = () => {
+        cwfmBD.navhist = null;
+        for (const kind of ['toc', 'search', 'progress', 'link']) cwfmNavHistory(kind).clear();
+        try { cwfmToast(t('toast_navhist_cleared')); } catch (e) { /* 提示訊息還沒建立 */ }
+    };
     // v1.79：保存用的快照——目前這一格補成當下位置（離開時才會填，存檔時先補上）
     window.__cwfm.navSnapshot = () => {
         const out = {};
@@ -5814,6 +5836,26 @@
             cloudFirstCheckbox.closest('.cwfm-field').appendChild(hint);
         }
         addCheckboxField(t('field_show_bm_highlight'), 'showBookmarkHighlights');
+        // v1.79.2：跳轉紀錄的清除不放工具列（跟瀏覽器上一頁一樣只有 ↩ ↪），改放這裡
+        {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const row = document.createElement('div');
+            row.className = 'cwfm-checkbox-row';
+            const label = document.createElement('label');
+            label.textContent = t('field_clear_navhist');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cwfm-confirm-cancel';
+            btn.textContent = t('btn_clear_navhist');
+            btn.addEventListener('click', async () => {
+                const ok = await cwfmConfirmDialog(t('field_clear_navhist'), t('dlg_clear_navhist_msg'), t('btn_clear_navhist'));
+                if (ok) window.__cwfm.clearNavHistory?.();
+            });
+            row.append(label, btn);
+            field.appendChild(row);
+            panelTarget.appendChild(field);
+        }
         const cursorAutoHideCheckbox = addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
         addNumberField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
         cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
@@ -6100,6 +6142,7 @@
         bookmarkOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
         bookmarkFilled: '<svg viewBox="0 0 24 24" fill="#e33" stroke="#e33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
         search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+        pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
         clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
         quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4-4 5"/><path d="M19 11h-4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4-4 5"/></svg>',
         pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
@@ -6136,7 +6179,9 @@
         const back = mk(ICONS.navBack, t('nav_back'), () => h.back());
         const fwd = mk(ICONS.navForward, t('nav_forward'), () => h.forward());
         // 清空紀錄用垃圾桶；右上角那組按下去整個關掉，維持 ✕（與面板關閉鈕的圓形 ✕ 分開）
-        const clr = mk(kind === 'link' ? ICONS.navClear : ICONS.navTrash, t(kind === 'link' ? 'nav_clear_close' : 'nav_clear'), async () => {
+        // v1.79.2：只有右上角書內連結那組保留 ✕（看完註解、關掉這組）；其他組跟瀏覽器上一頁一樣不放清除鈕，
+        // 每組最多保留 50 筆，要清除到設定面板「清除這本書的跳轉紀錄」。
+        const clr = kind !== 'link' ? null : mk(ICONS.navClear, t('nav_clear_close'), async () => {
             // v1.78.4：只有右上角那組（關掉整個跳轉按鈕）要確認；目錄、進度條直接清空
             if (kind === 'link') {
                 const ok = await cwfmConfirmDialog(t('dlg_nav_close_title'), t('dlg_nav_close_msg'), t('btn_close_nav'));
@@ -6147,7 +6192,7 @@
         function update() {
             back.b.disabled = h.backCount === 0;
             fwd.b.disabled = h.forwardCount === 0;
-            clr.b.disabled = h.entries.length === 0;
+            if (clr) clr.b.disabled = h.entries.length === 0;
             back.cnt.textContent = h.backCount > 1 ? String(h.backCount) : '';
             fwd.cnt.textContent = h.forwardCount > 1 ? String(h.forwardCount) : '';
             // 右上角（書內連結）與工具列上（目錄、搜尋）那幾組：沒有紀錄時整組不顯示
@@ -6258,21 +6303,19 @@
         tocBtn.setAttribute('aria-label', t('aria_toc'));
         tocBtn.addEventListener('click', () => togglePanel(tocPanel));
         bar.appendChild(tocBtn);
-        // v1.79.1：目錄的跳轉紀錄貼在目錄鈕右邊（原本在目錄面板標題列，跟搜尋那組放在面板裡容易誤會）
-        bar.appendChild(cwfmBuildNavGroup('toc'));
-
-        const spacer = document.createElement('div');
-        spacer.className = 'cwfm-toolbar-top-spacer';
-        bar.appendChild(spacer);
-
-        // v1.79：搜尋（結果顯示在工具列下方的面板）
-        // v1.79.1：搜尋的跳轉紀錄貼在放大鏡左邊
-        bar.appendChild(cwfmBuildNavGroup('search'));
+        // v1.79.2：搜尋鈕放在目錄鈕旁邊（兩個都是「打開面板」）；結果顯示在工具列下方的面板
         const searchBtn = document.createElement('button');
         searchBtn.innerHTML = ICONS.search;
         searchBtn.setAttribute('aria-label', t('search_aria'));
         searchBtn.addEventListener('click', () => window.__cwfm.toggleSearchPanel?.());
         bar.appendChild(searchBtn);
+
+        const spacer = document.createElement('div');
+        spacer.className = 'cwfm-toolbar-top-spacer';
+        bar.appendChild(spacer);
+
+        // v1.79.2：目錄的跳轉紀錄（↩ ↪）放右側——頁面跳轉的按鈕統一在右邊，跟看註解時右上角那組一致
+        bar.appendChild(cwfmBuildNavGroup('toc'));
 
         // v1.79：書籤鈕改成「加書籤」（閱讀進度改為自動同步，不再由這顆按鈕代表），固定空心。
         // pointerdown 先記時間：iOS 點工具列時書本裡的選取可能被取消，加書籤要沿用剛才的選取。
@@ -6551,9 +6594,14 @@
             '.cwfm-confirm-ok.cwfm-ok-primary { background: var(--cwfm-accent); border-color: var(--cwfm-accent); }',
             '.cwfm-confirm-box .cwfm-bm-dialog-buttons { margin-top: 14px; }',
             // 目錄頂端的篩選與匯出
-            '.cwfm-toc-filter { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 12px; margin-bottom: 10px; flex: 0 0 auto;',
-            '  border-bottom: 1px solid var(--cwfm-border); }',
-            '.cwfm-chip-toggle.cwfm-chip-action { margin-left: auto; color: var(--cwfm-text); }',
+            // v1.79.2：四個篩選等寬排成一排、匯出單獨一行靠右——原本 flex 自動換行，寬度不一、斷行位置亂
+            '.cwfm-toc-filter { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0 18px 12px; margin-bottom: 10px;',
+            '  flex: 0 0 auto; border-bottom: 1px solid var(--cwfm-border); }',
+            '.cwfm-toc-filter .cwfm-chip-toggle { justify-content: center; padding: 0 6px; min-width: 0; white-space: nowrap; overflow: hidden; gap: 3px; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle svg { flex: 0 0 auto; }',
+            '.cwfm-toc-filter .cwfm-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
+            '.cwfm-toc-filter .cwfm-chip-count { flex: 0 0 auto; }',
+            '.cwfm-chip-toggle.cwfm-chip-action { grid-column: 1 / -1; justify-self: end; color: var(--cwfm-text); padding: 0 12px; }',
             '.cwfm-chip-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text-secondary); font: 12px sans-serif; }',
             '.cwfm-chip-toggle svg { width: 14px; height: 14px; }',
@@ -6593,9 +6641,49 @@
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
             '.cwfm-bm-actions button svg { width: 14px; height: 14px; }',
             '.cwfm-bm-flash { outline: 2px solid var(--cwfm-accent); outline-offset: 1px; }',
-            // v1.79.1：書籤展開時目錄面板加寬——PC 約半個畫面，觸控裝置或窄螢幕接近全寬
-            '.cwfm-panel.cwfm-panel-wide { width: min(640px, 50vw); max-width: none; transition: transform 0.2s ease, width 0.2s ease; }',
-            '@media (max-width: 1024px), (pointer: coarse) { .cwfm-panel.cwfm-panel-wide { width: calc(100vw - 32px); } }',
+            '.cwfm-bm-row.cwfm-bm-active { box-shadow: inset 0 0 0 1.5px var(--cwfm-bm-c, #B4B2A9); }',
+            '.cwfm-bm-row[data-type="pos"] { --cwfm-bm-c: #B4B2A9; } .cwfm-bm-row[data-type="excerpt"] { --cwfm-bm-c: #EF9F27; } .cwfm-bm-row[data-type="note"] { --cwfm-bm-c: #5DCAA5; }',
+            '.cwfm-bm-row.cwfm-bm-active .cwfm-bm-exp { color: var(--cwfm-text); }',
+            // v1.79.2 彈出卡片：頂端類型色帶、左上類型徽章、摘錄（色條＋襯線）、備註、時間、操作列
+            '.cwfm-bm-card { position: fixed; z-index: 1000001; display: flex; flex-direction: column; box-sizing: border-box;',
+            '  background: var(--cwfm-bg); color: var(--cwfm-text); border-radius: 12px; font: 13px/1.6 sans-serif;',
+            '  border-top: 4px solid var(--cwfm-card-c); box-shadow: 0 10px 30px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring);',
+            '  animation: cwfm-card-in 0.14s ease-out; }',
+            '@keyframes cwfm-card-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }',
+            '.cwfm-bm-card.cwfm-card-below { animation-name: cwfm-card-in-y; }',
+            '@keyframes cwfm-card-in-y { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }',
+            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #B4B2A9; --cwfm-card-bg: #F1EFE8; --cwfm-card-fg: #444441; }',
+            '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #EF9F27; --cwfm-card-bg: #FAEEDA; --cwfm-card-fg: #633806; }',
+            '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #5DCAA5; --cwfm-card-bg: #E1F5EE; --cwfm-card-fg: #085041; }',
+            '.cwfm-card-arrow { position: absolute; width: 14px; height: 14px; background: var(--cwfm-bg); transform: rotate(45deg);',
+            '  box-shadow: -1px 1px 0 var(--cwfm-shadow-ring); }',
+            '.cwfm-card-side .cwfm-card-arrow { left: -7px; }',
+            '.cwfm-card-below .cwfm-card-arrow { top: -11px !important; box-shadow: none; background: var(--cwfm-card-c); }',
+            '.cwfm-card-below.cwfm-card-above .cwfm-card-arrow { top: auto !important; bottom: -7px; background: var(--cwfm-bg); box-shadow: 1px 1px 0 var(--cwfm-shadow-ring); }',
+            '.cwfm-card-head { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 8px 14px; flex: 0 0 auto; }',
+            '.cwfm-card-badge { flex: 0 0 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;',
+            '  background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); }',
+            '.cwfm-card-badge svg { width: 16px; height: 16px; }',
+            '.cwfm-card-titles { flex: 1 1 auto; min-width: 0; }',
+            '.cwfm-card-name { font-size: 15px; font-weight: 600; line-height: 1.4; word-break: break-word; }',
+            '.cwfm-card-sub { font-size: 12px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-card-close { flex: 0 0 28px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--cwfm-text-secondary); cursor: pointer;',
+            '  display: flex; align-items: center; justify-content: center; }',
+            '.cwfm-card-close:hover { background: var(--cwfm-surface-elevated); color: var(--cwfm-text); }',
+            '.cwfm-card-close svg { width: 16px; height: 16px; }',
+            '.cwfm-card-body { padding: 0 16px 10px 54px; overflow: auto; min-height: 0; flex: 1 1 auto; }',
+            '.cwfm-card-body blockquote { margin: 4px 0 10px; padding: 8px 12px; border-left: 3px solid #EF9F27; border-radius: 0 6px 6px 0;',
+            '  background: var(--cwfm-surface-elevated); font: 15px/1.75 serif; white-space: pre-wrap; }',
+            '.cwfm-card-note { margin: 0 0 10px; white-space: pre-wrap; font-size: 14px; }',
+            '.cwfm-card-times { font-size: 11px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-card-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 12px 54px; border-top: 1px solid var(--cwfm-border); flex: 0 0 auto; }',
+            '.cwfm-card-actions button { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 12px; border-radius: 14px; cursor: pointer;',
+            '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
+            '.cwfm-card-actions button svg { width: 14px; height: 14px; }',
+            '.cwfm-card-actions button:hover { background: var(--cwfm-surface-elevated); }',
+            '.cwfm-card-actions .cwfm-card-primary { background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); border-color: transparent; }',
+            '.cwfm-card-actions .cwfm-card-danger { margin-left: auto; color: #c0392b; }',
+            '@media (max-width: 520px) { .cwfm-card-body, .cwfm-card-actions { padding-left: 14px; } }',
             // 搜尋面板
             '.cwfm-search-top { padding: 0 18px 8px; flex: 0 0 auto; }',
             '.cwfm-search-row { display: flex; align-items: center; gap: 4px; }',
@@ -6699,7 +6787,7 @@
     function cwfmBmType(bm) { return bm.note ? 'note' : bm.excerpt ? 'excerpt' : 'pos'; }
     function cwfmBmClip(s, n) { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n) + '…' : s; }
     function cwfmBmName(bm) { return bm.name || cwfmBmClip(bm.note, 20) || cwfmBmClip(bm.excerpt, 20) || cwfmFmtTime(bm.created); }
-    function cwfmBmIcon(type) { return type === 'note' ? ICONS.pencil : type === 'excerpt' ? ICONS.quote : ICONS.clock; }
+    function cwfmBmIcon(type) { return type === 'note' ? ICONS.pencil : type === 'excerpt' ? ICONS.quote : ICONS.pin; }
     function cwfmBmTypeLabel(type) { return t(type === 'note' ? 'bm_type_note' : type === 'excerpt' ? 'bm_type_excerpt' : 'bm_type_pos'); }
     function cwfmBmIndex(bm) { return cwfmSafe(() => view.resolveCFI(bm.cfi).index, -1); }
     function cwfmBmSorted(list) {
@@ -6890,7 +6978,7 @@
     });
 
     // ---- 目錄：篩選列、匯出鈕、書籤混排 ----
-    const cwfmTocState = { view: null, hrefIndex: null, expanded: new Set() };
+    const cwfmTocState = { view: null, hrefIndex: null };
     function cwfmTocFilter() {
         const st = window.__cwfm.settings;
         const f = (st && st.tocFilter) || DEFAULT_SETTINGS.tocFilter;
@@ -6946,41 +7034,12 @@
         exp.type = 'button';
         exp.className = 'cwfm-bm-exp';
         exp.setAttribute('aria-label', t('bm_expand'));
-        const open = cwfmTocState.expanded.has(bm.id);
-        exp.innerHTML = open ? ICONS.chevronUp : ICONS.chevronDown;
+        exp.innerHTML = ICONS.chevronRight;
+        if (cwfmCard.id === bm.id) row.classList.add('cwfm-bm-active');
         exp.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (cwfmTocState.expanded.has(bm.id)) cwfmTocState.expanded.delete(bm.id); else cwfmTocState.expanded.add(bm.id);
-            row.replaceWith(cwfmBuildBmRow(bm));
-            cwfmUpdatePanelWide();
+            if (cwfmCard.id === bm.id) cwfmCloseCard(); else cwfmOpenCard(bm.id);
         });
-        if (open) {
-            const det = document.createElement('div');
-            det.className = 'cwfm-bm-detail';
-            det.addEventListener('click', (e) => e.stopPropagation());
-            if (bm.excerpt) { const q = document.createElement('blockquote'); q.textContent = bm.excerpt; det.appendChild(q); }
-            if (bm.note) { const n = document.createElement('div'); n.className = 'cwfm-bm-note'; n.textContent = bm.note; det.appendChild(n); }
-            const tm = document.createElement('div');
-            tm.className = 'cwfm-bm-times';
-            tm.textContent = t('bm_created') + ' ' + cwfmFmtTime(bm.created)
-                + (bm.modified && bm.modified !== bm.created ? '　' + t('bm_modified') + ' ' + cwfmFmtTime(bm.modified) : '');
-            det.appendChild(tm);
-            const acts = document.createElement('div');
-            acts.className = 'cwfm-bm-actions';
-            const mk = (icon, label, fn) => {
-                const b = document.createElement('button');
-                b.type = 'button';
-                b.innerHTML = icon;
-                b.appendChild(document.createTextNode(label));
-                b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
-                acts.appendChild(b);
-            };
-            mk(ICONS.edit, t('bm_edit'), () => cwfmEditBookmark(bm));
-            mk(ICONS.link, t('bm_copy_link'), () => cwfmCopyLink(bm.cfi));
-            mk(ICONS.navTrash, t('bm_delete'), () => cwfmDeleteBookmark(bm));
-            det.appendChild(acts);
-            body.appendChild(det);
-        }
         row.append(flag, body, exp);
         // 點旗頭或本體：直接跳過去（算正式閱讀，記進目錄那組跳轉紀錄）
         row.addEventListener('click', () => {
@@ -7027,18 +7086,132 @@
             else tocView.insertBefore(box, tocView.firstChild);
         }
         cwfmApplyTocFilter();
-        cwfmUpdatePanelWide();
+        if (cwfmCard.id) { if (cwfmBD.bookmarks.some((b) => b.id === cwfmCard.id)) cwfmOpenCard(cwfmCard.id, true); else cwfmCloseCard(); }
     }
-    // v1.79.1：有書籤展開時目錄面板加寬（CSS .cwfm-panel-wide），全部收合恢復
-    function cwfmUpdatePanelWide() {
-        if (!tocPanel) return;
-        const ids = new Set(cwfmBD.bookmarks.map((b) => b.id));
-        for (const id of Array.from(cwfmTocState.expanded)) if (!ids.has(id)) cwfmTocState.expanded.delete(id);
-        tocPanel.classList.toggle('cwfm-panel-wide', cwfmTocState.expanded.size > 0);
+    // ---- v1.79.2 書籤彈出卡片：目錄寬度不動，選中的書籤往右彈出一張卡片（窄螢幕改成蓋在目錄上）----
+    const cwfmCard = { id: null, el: null };
+    function cwfmCardRow() { return cwfmCard.id && tocPanel ? tocPanel.querySelector('.cwfm-bm-row[data-id="' + cwfmCard.id + '"]') : null; }
+    function cwfmCloseCard() {
+        cwfmCard.el?.remove();
+        cwfmCard.el = null;
+        cwfmCard.id = null;
+        tocPanel?.querySelectorAll('.cwfm-bm-row.cwfm-bm-active').forEach((r) => r.classList.remove('cwfm-bm-active'));
     }
+    function cwfmOpenCard(id, keepScroll) {
+        const bm = cwfmBD.bookmarks.find((b) => b.id === id);
+        if (!bm) { cwfmCloseCard(); return; }
+        const prevScroll = keepScroll && cwfmCard.el ? cwfmCard.el.querySelector('.cwfm-card-body')?.scrollTop : 0;
+        cwfmCard.el?.remove();
+        cwfmCard.id = id;
+        tocPanel?.querySelectorAll('.cwfm-bm-row').forEach((r) => r.classList.toggle('cwfm-bm-active', r.dataset.id === id));
+        const type = cwfmBmType(bm);
+        const card = document.createElement('div');
+        card.className = 'cwfm-bm-card';
+        card.dataset.type = type;
+        card.dataset.cwfmOwned = 'true';
+        const arrow = document.createElement('div');
+        arrow.className = 'cwfm-card-arrow';
+        const head = document.createElement('div');
+        head.className = 'cwfm-card-head';
+        const badge = document.createElement('span');
+        badge.className = 'cwfm-card-badge';
+        badge.innerHTML = cwfmBmIcon(type);
+        const titles = document.createElement('div');
+        titles.className = 'cwfm-card-titles';
+        const nm = document.createElement('div');
+        nm.className = 'cwfm-card-name';
+        nm.textContent = cwfmBmName(bm);
+        const sub = document.createElement('div');
+        sub.className = 'cwfm-card-sub';
+        sub.textContent = [cwfmBmTypeLabel(type) + (type === 'note' && bm.excerpt ? '・' + t('bm_with_excerpt') : ''), bm.chapter, Math.round((bm.fraction || 0) * 100) + '%'].filter(Boolean).join(' · ');
+        titles.append(nm, sub);
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'cwfm-card-close';
+        x.innerHTML = CWFM_CLOSE_ICON_SVG;
+        x.setAttribute('aria-label', t('dlg_cancel'));
+        x.addEventListener('click', cwfmCloseCard);
+        head.append(badge, titles, x);
+        const body = document.createElement('div');
+        body.className = 'cwfm-card-body';
+        if (bm.excerpt) { const q = document.createElement('blockquote'); q.textContent = bm.excerpt; body.appendChild(q); }
+        if (bm.note) { const n = document.createElement('div'); n.className = 'cwfm-card-note'; n.textContent = bm.note; body.appendChild(n); }
+        const tm = document.createElement('div');
+        tm.className = 'cwfm-card-times';
+        tm.textContent = t('bm_created') + ' ' + cwfmFmtTime(bm.created)
+            + (bm.modified && bm.modified !== bm.created ? '　' + t('bm_modified') + ' ' + cwfmFmtTime(bm.modified) : '');
+        body.appendChild(tm);
+        const acts = document.createElement('div');
+        acts.className = 'cwfm-card-actions';
+        const mk = (icon, label, fn, cls) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            if (cls) b.className = cls;
+            b.innerHTML = icon;
+            b.appendChild(document.createTextNode(label));
+            b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+            acts.appendChild(b);
+        };
+        mk(ICONS.chevronRight, t('bm_go'), () => { cwfmNavHistory('toc').record(); cwfmGoToBookmark(bm); }, 'cwfm-card-primary');
+        mk(ICONS.edit, t('bm_edit'), () => cwfmEditBookmark(bm));
+        mk(ICONS.link, t('bm_copy_link'), () => cwfmCopyLink(bm.cfi));
+        mk(ICONS.navTrash, t('bm_delete'), () => cwfmDeleteBookmark(bm), 'cwfm-card-danger');
+        card.append(arrow, head, body, acts);
+        document.body.appendChild(card);
+        cwfmCard.el = card;
+        if (prevScroll) body.scrollTop = prevScroll;
+        cwfmPlaceCard();
+    }
+    // 位置：右邊放得下（PC）就貼在目錄右側、上緣對齊那一列；放不下（iPad、窄螢幕）就蓋在目錄上、從那一列下方展開
+    function cwfmPlaceCard() {
+        const card = cwfmCard.el, row = cwfmCardRow();
+        if (!card) return;
+        if (!row || !tocPanel || !tocPanel.classList.contains('cwfm-open')) { cwfmCloseCard(); return; }
+        const tv = tocPanel.querySelector('.cwfm-toc-view');
+        const vr = tv ? tv.getBoundingClientRect() : tocPanel.getBoundingClientRect();
+        const rr = row.getBoundingClientRect();
+        if (rr.bottom < vr.top + 4 || rr.top > vr.bottom - 4) { cwfmCloseCard(); return; } // 那一列捲出可視範圍
+        const pr = tocPanel.getBoundingClientRect();
+        const W = window.innerWidth, H = window.innerHeight, TOP = 56, PAD = 12;
+        const side = W - pr.right >= 380;
+        card.classList.toggle('cwfm-card-side', side);
+        card.classList.toggle('cwfm-card-below', !side);
+        const arrow = card.querySelector('.cwfm-card-arrow');
+        if (side) {
+            const left = pr.right + 12;
+            card.style.left = left + 'px';
+            card.style.width = Math.min(560, W - left - 16) + 'px';
+            card.style.maxHeight = (H - TOP - PAD) + 'px';
+            const h = card.offsetHeight;
+            const top = Math.max(TOP, Math.min(rr.top - 6, H - PAD - h));
+            card.style.top = top + 'px';
+            const ay = Math.max(14, Math.min(rr.top + rr.height / 2 - top, h - 14));
+            arrow.style.top = (ay - 7) + 'px';
+            arrow.style.left = '';
+        } else {
+            card.style.left = '16px';
+            card.style.width = (W - 32) + 'px';
+            let top = rr.bottom + 10;
+            let room = H - PAD - top;
+            const above = room < 220 && rr.top - TOP > room;
+            card.classList.toggle('cwfm-card-above', above);
+            if (above) { room = rr.top - 10 - TOP; card.style.maxHeight = room + 'px'; top = rr.top - 10 - card.offsetHeight; }
+            else card.style.maxHeight = room + 'px';
+            card.style.top = Math.max(TOP, top) + 'px';
+            arrow.style.left = Math.max(18, Math.min(rr.left + 40 - 16, W - 60)) + 'px';
+            arrow.style.top = '';
+        }
+    }
+    document.addEventListener('pointerdown', (e) => {
+        if (!cwfmCard.el) return;
+        if (cwfmCard.el.contains(e.target)) return;
+        if (e.target.closest && (e.target.closest('.cwfm-bm-exp') || e.target.closest('.cwfm-confirm-overlay'))) return;
+        cwfmCloseCard();
+    }, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && cwfmCard.el && !document.querySelector('.cwfm-confirm-overlay')) cwfmCloseCard(); });
+    window.addEventListener('resize', () => { if (cwfmCard.el) cwfmPlaceCard(); });
     function cwfmRevealBookmarkInToc(id) {
         if (!tocPanel) return;
-        cwfmTocState.expanded.add(id);
         const st = window.__cwfm.settings;
         if (st) { const f = cwfmTocFilter(); const bm = cwfmBD.bookmarks.find((b) => b.id === id); if (bm && !f[cwfmBmType(bm)]) cwfmSetTocFilter(cwfmBmType(bm), true); }
         cwfmRenderTocBookmarks();
@@ -7052,6 +7225,7 @@
             row.scrollIntoView({ block: 'center' });
             row.classList.add('cwfm-bm-flash');
             setTimeout(() => row.classList.remove('cwfm-bm-flash'), 1200);
+            setTimeout(() => cwfmOpenCard(id), 50);
         }
     }
     try {
@@ -7059,14 +7233,18 @@
             const header = tocPanel.querySelector('.cwfm-panel-header');
             cwfmTocFilterBar = document.createElement('div');
             cwfmTocFilterBar.className = 'cwfm-toc-filter';
-            for (const [key, label, icon] of [['chapters', t('toc_filter_chapters'), ICONS.list], ['pos', t('bm_type_pos'), ICONS.clock],
+            for (const [key, label, icon] of [['chapters', t('toc_filter_chapters'), ICONS.list], ['pos', t('bm_type_pos'), ICONS.pin],
                 ['excerpt', t('bm_type_excerpt'), ICONS.quote], ['note', t('bm_type_note'), ICONS.pencil]]) {
                 const b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'cwfm-chip-toggle';
                 b.dataset.key = key;
                 b.innerHTML = icon;
-                b.appendChild(document.createTextNode(label));
+                b.title = label;
+                const lt = document.createElement('span');
+                lt.className = 'cwfm-chip-label';
+                lt.textContent = label;
+                b.appendChild(lt);
                 const c = document.createElement('span');
                 c.className = 'cwfm-chip-count';
                 b.appendChild(c);
@@ -7083,6 +7261,8 @@
             cwfmTocFilterBar.appendChild(exportBtn);
             header.insertAdjacentElement('afterend', cwfmTocFilterBar);
             cwfmRenderTocBookmarks();
+            // 目錄捲動時卡片跟著那一列移動，那一列捲出可視範圍就關閉
+            tocPanel.querySelector('.cwfm-toc-view')?.addEventListener('scroll', () => { if (cwfmCard.el) cwfmPlaceCard(); }, { passive: true });
         }
     } catch (e) { console.error('[cwfm:bookmarks] 目錄書籤建立失敗', e); }
     window.__cwfm.onBookmarksChanged = () => {
@@ -7165,7 +7345,7 @@
             html += row(t('bm_time'), cwfmEsc(t('bm_created') + ' ' + cwfmFmtTime(bm.created))
                 + (bm.modified && bm.modified !== bm.created ? '<br>' + cwfmEsc(t('bm_modified') + ' ' + cwfmFmtTime(bm.modified)) : ''), '');
             const url = cwfmPositionUrl(bm.cfi);
-            html += row(t('bm_link'), '<a href="' + cwfmEsc(url) + '" target="_blank" rel="noopener">' + cwfmEsc(url) + '</a>', '');
+            html += row(t('bm_link'), '<a href="' + cwfmEsc(url) + '" target="_blank" rel="noopener">' + cwfmEsc(cwfmPositionUrlText(bm.cfi)) + '</a>', '');
             html += '</div>';
         }
         return html + '</div></body></html>';
@@ -7179,7 +7359,7 @@
             if (ch !== lastCh) { md += '\n## ' + ch + '\n'; lastCh = ch; }
             md += '\n### ' + cwfmBmName(bm) + '\n\n';
             md += '- ' + cwfmBmTypeLabel(cwfmBmType(bm)) + ' · ' + Math.round((bm.fraction || 0) * 100) + '% · ' + cwfmFmtTime(bm.created) + '\n';
-            md += '- ' + t('bm_link') + '：<' + cwfmPositionUrl(bm.cfi) + '>\n';
+            md += '- ' + t('bm_link') + '：[' + cwfmPositionUrlText(bm.cfi).replace(/([\[\]])/g, '\\$1') + '](' + cwfmPositionUrl(bm.cfi) + ')\n';
             if (bm.excerpt) md += '\n' + bm.excerpt.split('\n').map((l) => '> ' + l).join('\n') + '\n';
             if (bm.note) md += '\n' + bm.note + '\n';
         }
@@ -7191,7 +7371,7 @@
         const lines = [head.join(',')];
         for (const bm of list) {
             lines.push([cwfmBmType(bm), cwfmBmName(bm), cwfmChapterOf(bm), Math.round((bm.fraction || 0) * 100), bm.excerpt || '', bm.note || '',
-                cwfmFmtTime(bm.created), bm.modified ? cwfmFmtTime(bm.modified) : '', cwfmPositionUrl(bm.cfi), bm.cfi].map(q).join(','));
+                cwfmFmtTime(bm.created), bm.modified ? cwfmFmtTime(bm.modified) : '', cwfmPositionUrlText(bm.cfi), bm.cfi].map(q).join(','));
         }
         return '﻿' + lines.join('\r\n'); // BOM：Excel 開中文不亂碼
     }
@@ -7288,6 +7468,8 @@
         const h3 = document.createElement('h3');
         h3.textContent = t('search_title');
         header.appendChild(h3);
+        // v1.79.2：搜尋的跳轉紀錄放在標題列（跟搜尋框旁的 ↑↓「上一個／下一個結果」分開兩排）
+        header.appendChild(cwfmBuildNavGroup('search'));
         header.appendChild(createCloseBtn(closeAllPanels));
         panel.appendChild(header);
         const top = document.createElement('div');
@@ -7501,6 +7683,7 @@
     }
     // v1.79.1：搜尋面板關掉時隱藏內文的搜尋標示（結果保留）；再打開時重新搜一次把標示畫回來
     window.__cwfm.onPanelsClosed = () => {
+        try { cwfmCloseCard(); } catch (e) { /* ignore */ }
         const s = cwfmSearch;
         if (s.panel && s.query && !s.hlHidden) { s.hlHidden = true; s.token++; cwfmSafe(() => view.clearSearch()); }
     };
