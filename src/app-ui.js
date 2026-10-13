@@ -6641,16 +6641,17 @@
             '.cwfm-hide-bm-note .cwfm-bm-row[data-type="note"] { display: none; }',
             // 書籤列：橫躺小書籤（左側尖角旗頭）＋本體＋右側展開區
             '.cwfm-bm-list { margin: 2px 12px 6px 0; }',
-            // v1.79.5：整列裁成書籤形狀（左側尖角），選中時外層填書籤色、內縮 1.5px，露出的那圈就是沿尖角走的框線
+            // v1.79.5：整列裁成書籤形狀（左側尖角），每列保留 2px 透明內距（文字不位移），選中時外層填書籤色，露出的那圈就是沿尖角走的框線
             '.cwfm-bm-row { display: flex; align-items: stretch; margin: 4px 0; cursor: pointer; background: var(--cwfm-surface-elevated);',
             '  clip-path: polygon(8.4px 0, 100% 0, 100% 100%, 8.4px 100%, 0 50%); }',
-            '.cwfm-bm-row.cwfm-bm-active { padding: 1.5px; background: var(--cwfm-bm-c); }',
+            '.cwfm-bm-row { padding: 2px; }',
+            '.cwfm-bm-row.cwfm-bm-active { background: var(--cwfm-bm-c); }',
             '.cwfm-bm-row.cwfm-bm-active .cwfm-bm-body, .cwfm-bm-row.cwfm-bm-active .cwfm-bm-exp { background: var(--cwfm-surface-elevated); }',
             '.cwfm-bm-flag { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; padding-left: 6px; box-sizing: border-box;',
             '  clip-path: polygon(28% 0, 100% 0, 100% 100%, 28% 100%, 0 50%); }',
             '.cwfm-bm-flag svg { width: 15px; height: 15px; }',
             // v1.79.5：備註＋摘錄——青綠旗頭右側切一條 4px 琥珀色（不放圖示、不要虛線）
-            '.cwfm-bm-flag.cwfm-bm-flag-both { box-shadow: inset -4px 0 0 #FAC775; padding-right: 4px; }',
+            '.cwfm-bm-flag.cwfm-bm-flag-both { box-shadow: inset -4px 0 0 #FAC775; }',
             '.cwfm-bm-row .cwfm-bm-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
             // v1.79.3：定位改紅色（跟工具列「這頁有書籤」的紅色書籤圖示同色）；摘錄琥珀、備註青綠
             '.cwfm-bm-row[data-type="pos"] .cwfm-bm-flag { background: #E24B4A; color: #fff; }',
@@ -6686,7 +6687,9 @@
             '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #E24B4A; --cwfm-card-fg: #ffffff; }',
             '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #FAC775; --cwfm-card-bg: #FAC775; --cwfm-card-fg: #633806; }',
             '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #9FE1CB; --cwfm-card-bg: #9FE1CB; --cwfm-card-fg: #085041; }',
-            '.cwfm-card-badge.cwfm-badge-both { box-shadow: inset -4px 0 0 #FAC775; }',
+            '.cwfm-card-badge-mini { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%;',
+            '  background: #FAC775; color: #633806; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--cwfm-bg); }',
+            '.cwfm-card-badge .cwfm-card-badge-mini svg { width: 9px; height: 9px; }',
             '.cwfm-card-arrow { position: absolute; width: 14px; height: 14px; background: var(--cwfm-bg); transform: rotate(45deg);',
             '  box-shadow: -1px 1px 0 var(--cwfm-shadow-ring); }',
             '.cwfm-card-side .cwfm-card-arrow { left: -7px; }',
@@ -7154,7 +7157,7 @@
         const badge = document.createElement('span');
         badge.className = 'cwfm-card-badge';
         badge.innerHTML = cwfmBmIcon(type);
-        if (type === 'note' && bm.excerpt) badge.classList.add('cwfm-badge-both');
+        if (type === 'note' && bm.excerpt) { const mini = document.createElement('span'); mini.className = 'cwfm-card-badge-mini'; mini.innerHTML = ICONS.quote; badge.appendChild(mini); }
         const titles = document.createElement('div');
         titles.className = 'cwfm-card-titles';
         const nm = document.createElement('div');
@@ -7391,15 +7394,14 @@
             + 'body{margin:0;background:#f4f4f5;color:#18181b;font:15px/1.6 -apple-system,"Segoe UI","Noto Sans TC",sans-serif}'
             + '.w{max-width:760px;margin:0 auto;padding:24px 16px 48px}header{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:16px 20px;margin-bottom:20px}'
             + 'h1{font-size:20px;margin:0 0 4px}.meta{color:#71717a;font-size:13px}h2{font-size:14px;color:#52525b;margin:24px 0 8px;font-weight:600}'
-            // v1.79.5：旗頭只放在名稱那一列（固定大小、尖角凸出卡片左緣）；卡片最右側是類型色豎線（備註＋摘錄＝青綠、最右琥珀）
-            + '.card{position:relative;background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin:10px 0 10px 8px}'
-            + '.cb{padding:4px 22px 4px 40px}.cb.both{padding-right:24px}'
+            // v1.79.6：卡片左側整條類型色塊（上到下、左側圓角），圖示對齊名稱列；備註＋摘錄＝青綠色塊右側 4px 琥珀
+            + '.card{position:relative;background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin:10px 0}'
+            + '.side{position:absolute;left:0;top:0;bottom:0;width:36px;border-radius:11px 0 0 11px}.side.both{box-shadow:inset -4px 0 0 #FAC775}'
+            + '.cb{padding:4px 20px 4px 50px}'
             + '.row.title{position:relative}'
-            + '.flag{position:absolute;left:-49px;top:50%;margin-top:-15px;width:36px;height:30px;display:flex;align-items:center;justify-content:center;'
-            + 'padding-left:8px;box-sizing:border-box;clip-path:polygon(28% 0,100% 0,100% 100%,28% 100%,0 50%)}.flag svg{width:16px;height:16px}'
-            + '.flag.both{box-shadow:inset -4px 0 0 #FAC775;padding-right:4px}'
+            + '.ico{position:absolute;left:-50px;top:0;bottom:0;width:36px;display:flex;align-items:center;justify-content:center}.ico.both{width:32px}.ico svg{width:16px;height:16px}'
             + '.f-pos{background:#E24B4A;color:#fff}.f-excerpt{background:#FAC775;color:#633806}.f-note{background:#9FE1CB;color:#085041}'
-            + '.bars{position:absolute;top:0;right:0;bottom:0;display:flex;border-radius:0 11px 11px 0;overflow:hidden}.bars span{display:block;width:4px}.bars.both span{width:3px}'
+            + '.c-pos{color:#fff}.c-excerpt{color:#633806}.c-note{color:#085041}'
             + '.tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}'
             + '.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f2;align-items:start}'
             + '.row:last-child{border-bottom:0}.lab{color:#71717a;font-size:13px}.tag{font-size:11px;padding:1px 8px;border-radius:6px;white-space:nowrap}'
@@ -7417,15 +7419,12 @@
             const [bg, fg] = badge[type];
             const tag = (txt, c) => '<span class="tag" style="background:' + (c ? c[0] : '#f4f4f5') + ';color:' + (c ? c[1] : '#52525b') + '">' + cwfmEsc(txt) + '</span>';
             const row = (lab, val, right) => '<div class="row"><span class="lab">' + cwfmEsc(lab) + '</span><div>' + val + '</div><div>' + (right || '') + '</div></div>';
-            // 跟閱讀器目錄同一套：名稱列左側尖角旗頭（備註＋摘錄＝青綠右側一條琥珀），右側類型色豎線
+            // 左側整條類型色塊；圖示放在名稱列高度
             const both = type === 'note' && !!bm.excerpt;
-            const flag = '<div class="flag f-' + type + (both ? ' both' : '') + '">' + cwfmBmIcon(type) + '</div>';
-            const barColor = { pos: '#E24B4A', excerpt: '#FAC775', note: '#9FE1CB' };
-            const bars = '<div class="bars' + (both ? ' both' : '') + '">'
-                + (both ? '<span style="background:' + barColor.note + '"></span><span style="background:' + barColor.excerpt + '"></span>'
-                    : '<span style="background:' + barColor[type] + '"></span>') + '</div>';
+            const side = '<div class="side f-' + type + (both ? ' both' : '') + '"></div>';
+            const flag = '<div class="ico c-' + type + (both ? ' both' : '') + '">' + cwfmBmIcon(type) + '</div>';
             const tags = '<div class="tags">' + tag(cwfmBmTypeLabel(type), [bg, fg]) + (both ? tag(cwfmBmTypeLabel('excerpt'), badge.excerpt) : '') + '</div>';
-            html += '<div class="card">' + bars + '<div class="cb' + (both ? ' both' : '') + '">';
+            html += '<div class="card">' + side + '<div class="cb">';
             html += row(t('bm_label_name'), cwfmEsc(cwfmBmName(bm)), tags).replace('<div class="row">', '<div class="row title">' + flag);
             html += row(t('bm_position'), cwfmEsc(ch), tag(Math.round((bm.fraction || 0) * 100) + '%'));
             if (bm.excerpt) html += row(t('bm_label_excerpt'), '<blockquote>' + cwfmEsc(bm.excerpt) + '</blockquote>', '');
