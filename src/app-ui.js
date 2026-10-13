@@ -2193,6 +2193,8 @@
     // ============================================================
     // 設定選單：字體、字級、字距、行距、對齊、斷字、翻頁模式、上下/左右留白、欄數
     // ============================================================
+    // 段落類區塊的「最外層」（外面沒有再被同類區塊包住）——字級只套在這一層，見 getTypographyCSS
+    const CWFM_TEXT_BLOCK_OUTER = ':is(p, li, blockquote, dd, div):not(:is(p, li, blockquote, dd, div) *)';
     const DEFAULT_SETTINGS = {
         fontFamily: '',
         // [cwfm] 字型名稱記憶：手動輸入過、確定生效的名稱（change 事件才
@@ -3069,8 +3071,11 @@
             universalColorRule,
             cwfmActiveFontFaceCSS,
             fontFamilyRule,
+            // [cwfm] v1.78.6：字級只套在「最外層」的段落類區塊——百分比是相對外層，
+            // 原本套在每一層，書本把 div/p 一層包一層時會被乘好幾次（標題、內文異常放大）。
+            // 內層區塊照書本自己的設定相對外層縮放（保留書本的大小比例）。
+            CWFM_TEXT_BLOCK_OUTER + ' { font-size: ' + settings.fontSize + '% !important; }',
             'p, li, blockquote, dd, div {',
-            '  font-size: ' + settings.fontSize + '% !important;',
             '  letter-spacing: ' + settings.letterSpacing + 'em !important;',
             '  line-height: ' + settings.lineSpacing + ' !important;',
             '  text-align: ' + (settings.justify ? 'justify' : 'start') + ' !important;',
@@ -3228,6 +3233,19 @@
     // desiredGapPx 是「總共想要的間距空間」（已經乘過欄數-1，不是單一
     // 欄縫的寬度），size 是渲染器目前的寬度/高度。desiredGapPx <= 0 時
     // 直接回傳 0%，不用跑公式（1 欄或使用者把間距設 0 的情況）。
+    // [cwfm] v1.78.6：頁與頁之間的緩衝（px，整數）——至少一個字寬。原本單欄時欄間距為 0，
+    // 字形凸出（如「——」）或某行超出欄寬時，會直接畫進隔壁頁。字寬取設定字級換算值與
+    // 目前章節實際量到的內文字級中較大者，無條件進位成整數。
+    function cwfmPageBufferPx(settings) {
+        let px = 16 * (settings.fontSize || 100) / 100;
+        try {
+            const doc = getBookIframeDocument();
+            const el = doc && doc.body && Array.from(doc.body.querySelectorAll(CWFM_TEXT_BLOCK_OUTER)).find((e) => (e.textContent || '').trim());
+            const m = el ? parseFloat(doc.defaultView.getComputedStyle(el).fontSize) : 0;
+            if (m > px) px = m;
+        } catch (e) { /* 還沒有章節時用設定值 */ }
+        return Math.ceil(px);
+    }
     function computeCompensatedGapPercent(desiredGapPx, size) {
         if (desiredGapPx <= 0 || size <= 0) return 0;
         const x = desiredGapPx / (desiredGapPx + size);
@@ -3240,34 +3258,33 @@
         const totalWidth = rect.width || 1;
         const cols = Math.max(1, columnCount || 1);
 
-        // [cwfm] gap 現在完全獨立，用使用者自己設定的 columnGapPx（單一
-        // 欄縫的寬度）× (欄數-1) 算出「總共要留的欄間距空間」，套用上面
-        // 驗證過的補償公式，不管幾欄、不管留白優先或內容優先，都不受
-        // 影響——只有欄數本身才會改變這個值。1 欄時 (cols-1)=0，總間距
-        // 空間天生就是 0，補償公式也會正確回傳 0%，不用另外特別判斷。
-        const totalGapSpace = (settings.columnGapPx || 0) * (cols - 1);
-        const gapPercent = computeCompensatedGapPercent(totalGapSpace, totalWidth);
-        view.renderer.setAttribute('gap', gapPercent.toFixed(3) + '%');
-
-        // [cwfm] 留白優先／內容優先——決定 effectiveMarginPx 這個「實際
-        // 套用的左右留白」怎麼算。留白優先：使用者設的就是留白本身，
-        // 照舊。內容優先：使用者設的是「整個內容區塊的總寬度」（扣掉
-        // 左右留白之後、螢幕上那一整塊，不是每一欄各自的寬度）——不管
-        // 分幾欄，都要一起塞進這個固定的總寬度裡面，用這個總寬度反推
-        // 留白，再把這個總寬度扣掉欄間距空間後平分給每一欄，才是真正
-        // 餵給 paginator.js 的每欄寬度。
+        // [cwfm] v1.78.6：全部改成整數像素，避免小數累積——
+        // 引擎每頁寬 r = 欄數 ×（欄寬 + 間距），欄寬取整（Math.trunc），翻第 N 頁捲動 N × r；
+        // 只要「欄寬 + 間距」不是剛好整數，每翻一頁就偏一點，翻到後面字會被切在兩頁之間。
+        // 做法：間距 d（整數）直接用 --cwfm-gap-px 交給引擎（bundle 已改為優先讀它）；
+        // 每欄上限 max-inline-size = 文字欄寬 W + d（整數），引擎算出的欄寬剛好是 W。
+        // d 同時是頁與頁之間的緩衝：每頁左右各留 d/2 空白，從畫面左右留白借來，文字位置不變。
+        const buffer = cwfmPageBufferPx(settings);
+        // 捲動模式沒有分頁，不需要緩衝（引擎在捲動模式下把 max-inline-size 直接當文字寬度）
+        const gapPx = settings.flow === 'scrolled' ? 0 : cols > 1 ? Math.max(Math.round(settings.columnGapPx || 0), buffer) : buffer;
+        const totalGapSpace = gapPx * (cols - 1);
         let effectiveMarginPx;
         let maxInlineSizePx;
+        let textColumnPx;
         if (settings.horizontalSizeMode === 'content') {
             const targetTotalContentWidth = Math.max(50, settings.targetContentWidthPx || 700);
             effectiveMarginPx = Math.max(0, (totalWidth - targetTotalContentWidth) / 2);
-            const perColumnWidth = Math.max(50, (targetTotalContentWidth - totalGapSpace) / cols);
-            maxInlineSizePx = Math.round(perColumnWidth);
+            textColumnPx = Math.max(50, Math.floor((targetTotalContentWidth - totalGapSpace) / cols));
         } else {
             effectiveMarginPx = settings.leftRightPadding;
-            const contentWidth = Math.max(100, totalWidth - effectiveMarginPx * 2);
-            maxInlineSizePx = Math.round(contentWidth / cols);
+            textColumnPx = Math.max(50, Math.floor((totalWidth - effectiveMarginPx * 2 - totalGapSpace) / cols));
         }
+        maxInlineSizePx = textColumnPx + gapPx;
+        // 外框網格的 --_gap 也直接給整數像素（原本是百分比，換算出的小數會讓頁寬變成 988.98 這種值）；
+        // 引擎的 JS 讀 --cwfm-gap-px，不再解析 --_gap 的百分比。
+        const gapPercent = gapPx / totalWidth * 100; // 只供下面的診斷 log
+        view.renderer.style.setProperty('--cwfm-gap-px', String(gapPx));
+        view.renderer.setAttribute('gap', gapPx + 'px');
 
         dlog('[cwfm:node] applyHorizontalPadding() mode=' + settings.horizontalSizeMode + ' effectiveMarginPx=' + effectiveMarginPx + ' columnCount=' + cols + ' totalWidth=' + totalWidth + ' maxInlineSize=' + maxInlineSizePx + ' gapPercent=' + gapPercent.toFixed(3));
         dlog('[cwfm:align] applyHorizontalPadding 即將設 max-inline-size=' + maxInlineSizePx + 'px t=' + performance.now().toFixed(1));

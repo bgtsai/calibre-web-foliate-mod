@@ -26143,8 +26143,10 @@ class md extends HTMLElement {
       l = parseInt(a.getPropertyValue("--_max-column-count-spread")),
       c = parseFloat(a.getPropertyValue("--_margin"));
     this.#Dd = c;
+    // [cwfm] v1.78.6：app 以 --cwfm-gap-px 直接給整數像素間距（避免百分比換算出小數，欄寬取整後每頁累積偏移）
     const h = parseFloat(a.getPropertyValue("--_gap")) / 100,
-      d = (-h / (h - 1)) * r,
+      _cwfmGap = parseFloat(a.getPropertyValue("--cwfm-gap-px")),
+      d = _cwfmGap >= 0 ? _cwfmGap : (-h / (h - 1)) * r,
       u = this.getAttribute("flow");
     if ("scrolled" === u) {
       (this.setAttribute("dir", t ? "rtl" : "ltr"), (this.#nl.style.padding = "0"));
