@@ -43,6 +43,7 @@
             field_color_bg: '\u81ea\u8a02\u80cc\u666f\u984f\u8272',
             field_key_prev: '\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375',
             field_key_next: '\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375',
+            field_key_bookmark: '加入書籤快速鍵',
             nav_back: '返回上一個位置',
             nav_forward: '前往下一個位置',
             nav_clear: '清空紀錄',
@@ -285,6 +286,8 @@
             search_prev: "上一個",
             search_next: "下一個",
             search_clear: "清空搜尋",
+            toast_filter_shown: "已顯示：{x}",
+            toast_filter_hidden: "已隱藏：{x}",
             bm_go: "前往",
             field_clear_navhist: "清除這本書的跳轉紀錄",
             btn_clear_navhist: "清除",
@@ -331,6 +334,7 @@
             field_color_bg: 'Custom Background Color',
             field_key_prev: 'Previous Page Shortcut',
             field_key_next: 'Next Page Shortcut',
+            field_key_bookmark: 'Add Bookmark Shortcut',
             nav_back: 'Back',
             nav_forward: 'Forward',
             nav_clear: 'Clear history',
@@ -573,6 +577,8 @@
             search_prev: "Previous",
             search_next: "Next",
             search_clear: "Clear search",
+            toast_filter_shown: "Showing: {x}",
+            toast_filter_hidden: "Hidden: {x}",
             bm_go: "Go to",
             field_clear_navhist: "Clear this book's jump history",
             btn_clear_navhist: "Clear",
@@ -1282,6 +1288,13 @@
             // 物件真正存在之前就已經註冊監聽了，兩者不在同一個函式作用
             // 域裡，直接引用會找不到變數；用全域共用狀態才能保證讀到
             // 當下最新的設定，還沒套用完成前退回預設值，不會整個失效。
+            // v1.79.3：加入書籤快速鍵（設定面板開著時上面已經 return）
+            const bmKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.bookmarkKeys) || DEFAULT_SETTINGS.bookmarkKeys;
+            if (bmKeys.includes(combo)) {
+                e.preventDefault();
+                if (!document.querySelector('.cwfm-confirm-overlay')) window.__cwfm.openBookmarkDialog?.();
+                return;
+            }
             const pagingKeys = (window.__cwfm && window.__cwfm.settings && window.__cwfm.settings.pagingKeys)
                 || DEFAULT_SETTINGS.pagingKeys;
             const isPrev = pagingKeys.prev.includes(combo);
@@ -2575,6 +2588,7 @@
         // 例如 'ArrowLeft'、'Ctrl+Shift+ArrowLeft'。預設維持跟改版前
         // 一樣的行為（左鍵往前、右鍵往後），使用者可以自己增減。
         pagingKeys: { prev: ['ArrowLeft', 'PageUp'], next: ['ArrowRight', 'PageDown'] },
+        bookmarkKeys: ['Ctrl+m'], // v1.79.3：加入書籤快速鍵（等同按工具列書籤鈕）
         // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only、故意不
         // 存檔——當初這樣設計是因為功能還不穩定，怕存檔後下次開書直接
         // 卡住畫面沒辦法簡單復原。現在已經穩定到不會弄壞整個介面，改成
@@ -5814,8 +5828,11 @@
         updateVerticalModeLock();
 
         beginGroup(t('group_keybindings'));
-        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next]);
-        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev]);
+        if (!Array.isArray(settings.bookmarkKeys)) settings.bookmarkKeys = DEFAULT_SETTINGS.bookmarkKeys.slice();
+        else if (settings.bookmarkKeys === DEFAULT_SETTINGS.bookmarkKeys) settings.bookmarkKeys = settings.bookmarkKeys.slice();
+        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next, settings.bookmarkKeys]);
+        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev, settings.bookmarkKeys]);
+        addKeyListField(t('field_key_bookmark'), settings.bookmarkKeys, [settings.pagingKeys.prev, settings.pagingKeys.next]);
         addNumberField(t('field_page_flip_debounce'), 'pageFlipDebounceMs', 0, 3000, 50, 'ms');
 
         beginGroup(t('group_reading_behavior'));
@@ -6140,7 +6157,7 @@
         list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
         settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
         bookmarkOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
-        bookmarkFilled: '<svg viewBox="0 0 24 24" fill="#e33" stroke="#e33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+        bookmarkFilled: '<svg viewBox="0 0 24 24" fill="#E24B4A" stroke="#E24B4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
         search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
         pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
         clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -6325,6 +6342,12 @@
         bookmarkBtn.addEventListener('pointerdown', () => { window.__cwfm.bmPressAt = Date.now(); });
         bookmarkBtn.addEventListener('click', () => window.__cwfm.openBookmarkDialog?.());
         bar.appendChild(bookmarkBtn);
+        // v1.79.3：目前畫面這一頁有書籤時變成實心紅色（判斷在書籤模組 cwfmUpdateBookmarkBtn）
+        window.__cwfm.setBookmarkBtnFilled = (on) => {
+            if (bookmarkBtn.dataset.filled === String(!!on)) return;
+            bookmarkBtn.dataset.filled = String(!!on);
+            bookmarkBtn.innerHTML = on ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
+        };
 
         const settingsBtn = document.createElement('button');
         settingsBtn.innerHTML = ICONS.settings;
@@ -6594,14 +6617,16 @@
             '.cwfm-confirm-ok.cwfm-ok-primary { background: var(--cwfm-accent); border-color: var(--cwfm-accent); }',
             '.cwfm-confirm-box .cwfm-bm-dialog-buttons { margin-top: 14px; }',
             // 目錄頂端的篩選與匯出
-            // v1.79.2：四個篩選等寬排成一排、匯出單獨一行靠右——原本 flex 自動換行，寬度不一、斷行位置亂
-            '.cwfm-toc-filter { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0 18px 12px; margin-bottom: 10px;',
+            // v1.79.3：篩選只放「類型色圖示＋數量」（跟下面書籤列的旗頭同色同圖示，本身就是圖例），一排放得下；匯出同排靠右、保留文字
+            '.cwfm-toc-filter { display: flex; align-items: center; gap: 4px; padding: 0 18px 12px; margin-bottom: 10px;',
             '  flex: 0 0 auto; border-bottom: 1px solid var(--cwfm-border); }',
-            '.cwfm-toc-filter .cwfm-chip-toggle { justify-content: center; padding: 0 6px; min-width: 0; white-space: nowrap; overflow: hidden; gap: 3px; }',
-            '.cwfm-toc-filter .cwfm-chip-toggle svg { flex: 0 0 auto; }',
-            '.cwfm-toc-filter .cwfm-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
-            '.cwfm-toc-filter .cwfm-chip-count { flex: 0 0 auto; }',
-            '.cwfm-chip-toggle.cwfm-chip-action { grid-column: 1 / -1; justify-self: end; color: var(--cwfm-text); padding: 0 12px; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle[data-key] { padding: 0 8px; gap: 3px; min-width: 40px; justify-content: center; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle[data-key] svg { width: 15px; height: 15px; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle[data-key="pos"][aria-pressed="true"] svg { color: #E24B4A; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle[data-key="excerpt"][aria-pressed="true"] svg { color: #EF9F27; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle[data-key="note"][aria-pressed="true"] svg { color: #1D9E75; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle[data-key][aria-pressed="false"] { opacity: 0.45; border-style: dashed; }',
+            '.cwfm-chip-toggle.cwfm-chip-action { margin-left: auto; color: var(--cwfm-text); padding: 0 12px; }',
             '.cwfm-chip-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text-secondary); font: 12px sans-serif; }',
             '.cwfm-chip-toggle svg { width: 14px; height: 14px; }',
@@ -6622,7 +6647,14 @@
             '.cwfm-bm-flag { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; padding-left: 6px; box-sizing: border-box;',
             '  clip-path: polygon(28% 0, 100% 0, 100% 100%, 28% 100%, 0 50%); }',
             '.cwfm-bm-flag svg { width: 15px; height: 15px; }',
-            '.cwfm-bm-row[data-type="pos"] .cwfm-bm-flag { background: #B4B2A9; color: #2C2C2A; }',
+            '.cwfm-bm-flag.cwfm-bm-flag-both { flex-direction: column; align-items: stretch; justify-content: stretch; padding-left: 0; }',
+            '.cwfm-bm-flag-both > span { display: flex; align-items: center; justify-content: center; padding-left: 6px; }',
+            '.cwfm-bm-flag-both .cwfm-flag-top { flex: 3 1 0; }',
+            '.cwfm-bm-flag-both .cwfm-flag-bot { flex: 1 1 0; background: #FAC775; color: #633806; min-height: 10px; }',
+            '.cwfm-bm-flag-both .cwfm-flag-bot svg { width: 10px; height: 10px; }',
+            '.cwfm-bm-row .cwfm-bm-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+            // v1.79.3：定位改紅色（跟工具列「這頁有書籤」的紅色書籤圖示同色）；摘錄琥珀、備註青綠
+            '.cwfm-bm-row[data-type="pos"] .cwfm-bm-flag { background: #E24B4A; color: #fff; }',
             '.cwfm-bm-row[data-type="excerpt"] .cwfm-bm-flag { background: #FAC775; color: #633806; }',
             '.cwfm-bm-row[data-type="note"] .cwfm-bm-flag { background: #9FE1CB; color: #085041; }',
             '.cwfm-bm-body { flex: 1 1 auto; min-width: 0; padding: 6px 8px; font-size: 13px; line-height: 1.45; }',
@@ -6641,8 +6673,8 @@
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
             '.cwfm-bm-actions button svg { width: 14px; height: 14px; }',
             '.cwfm-bm-flash { outline: 2px solid var(--cwfm-accent); outline-offset: 1px; }',
-            '.cwfm-bm-row.cwfm-bm-active { box-shadow: inset 0 0 0 1.5px var(--cwfm-bm-c, #B4B2A9); }',
-            '.cwfm-bm-row[data-type="pos"] { --cwfm-bm-c: #B4B2A9; } .cwfm-bm-row[data-type="excerpt"] { --cwfm-bm-c: #EF9F27; } .cwfm-bm-row[data-type="note"] { --cwfm-bm-c: #5DCAA5; }',
+            '.cwfm-bm-row.cwfm-bm-active { box-shadow: inset 0 0 0 1.5px var(--cwfm-bm-c, #E24B4A); }',
+            '.cwfm-bm-row[data-type="pos"] { --cwfm-bm-c: #E24B4A; } .cwfm-bm-row[data-type="excerpt"] { --cwfm-bm-c: #EF9F27; } .cwfm-bm-row[data-type="note"] { --cwfm-bm-c: #5DCAA5; }',
             '.cwfm-bm-row.cwfm-bm-active .cwfm-bm-exp { color: var(--cwfm-text); }',
             // v1.79.2 彈出卡片：頂端類型色帶、左上類型徽章、摘錄（色條＋襯線）、備註、時間、操作列
             '.cwfm-bm-card { position: fixed; z-index: 1000001; display: flex; flex-direction: column; box-sizing: border-box;',
@@ -6652,7 +6684,7 @@
             '@keyframes cwfm-card-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }',
             '.cwfm-bm-card.cwfm-card-below { animation-name: cwfm-card-in-y; }',
             '@keyframes cwfm-card-in-y { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }',
-            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #B4B2A9; --cwfm-card-bg: #F1EFE8; --cwfm-card-fg: #444441; }',
+            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #FCEBEB; --cwfm-card-fg: #A32D2D; }',
             '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #EF9F27; --cwfm-card-bg: #FAEEDA; --cwfm-card-fg: #633806; }',
             '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #5DCAA5; --cwfm-card-bg: #E1F5EE; --cwfm-card-fg: #085041; }',
             '.cwfm-card-arrow { position: absolute; width: 14px; height: 14px; background: var(--cwfm-bg); transform: rotate(45deg);',
@@ -6663,7 +6695,11 @@
             '.cwfm-card-head { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 8px 14px; flex: 0 0 auto; }',
             '.cwfm-card-badge { flex: 0 0 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;',
             '  background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); }',
+            '.cwfm-card-badge { position: relative; }',
             '.cwfm-card-badge svg { width: 16px; height: 16px; }',
+            '.cwfm-card-badge-mini { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%;',
+            '  background: #FAC775; color: #633806; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--cwfm-bg); }',
+            '.cwfm-card-badge .cwfm-card-badge-mini svg { width: 9px; height: 9px; }',
             '.cwfm-card-titles { flex: 1 1 auto; min-width: 0; }',
             '.cwfm-card-name { font-size: 15px; font-weight: 600; line-height: 1.4; word-break: break-word; }',
             '.cwfm-card-sub { font-size: 12px; color: var(--cwfm-text-secondary); }',
@@ -6710,6 +6746,7 @@
             '.cwfm-search-hit .cwfm-hit-icon { display: inline-flex; vertical-align: -2px; margin-right: 4px; }',
             '.cwfm-search-hit .cwfm-hit-icon svg { width: 14px; height: 14px; }',
             '.cwfm-search-hit[data-type="excerpt"] .cwfm-hit-icon { color: #BA7517; }',
+            '.cwfm-search-hit[data-type="pos"] .cwfm-hit-icon { color: #E24B4A; }',
             '.cwfm-search-hit[data-type="note"] .cwfm-hit-icon { color: #0F6E56; }',
             '.cwfm-search-hide-text .cwfm-sr-text, .cwfm-search-hide-bm .cwfm-sr-bm { display: none; }',
             // 匯出選格式
@@ -7020,7 +7057,11 @@
         row.dataset.id = bm.id;
         const flag = document.createElement('div');
         flag.className = 'cwfm-bm-flag';
-        flag.innerHTML = cwfmBmIcon(type);
+        if (type === 'note' && bm.excerpt) {
+            // v1.79.3：備註＋摘錄——旗頭大小不變，下方 1/4 切成琥珀色放引號
+            flag.classList.add('cwfm-bm-flag-both');
+            flag.innerHTML = '<span class="cwfm-flag-top">' + ICONS.pencil + '</span><span class="cwfm-flag-bot">' + ICONS.quote + '</span>';
+        } else flag.innerHTML = cwfmBmIcon(type);
         const body = document.createElement('div');
         body.className = 'cwfm-bm-body';
         const nm = document.createElement('div');
@@ -7028,7 +7069,7 @@
         nm.textContent = type === 'excerpt' && !bm.name ? '「' + cwfmBmClip(bm.excerpt, 40) + '」' : cwfmBmName(bm);
         const sub = document.createElement('div');
         sub.className = 'cwfm-bm-sub';
-        sub.textContent = (type === 'note' && bm.excerpt ? t('bm_with_excerpt') + ' · ' : '') + cwfmFmtTime(bm.created);
+        sub.textContent = cwfmFmtTime(bm.created);
         body.append(nm, sub);
         const exp = document.createElement('button');
         exp.type = 'button';
@@ -7116,6 +7157,12 @@
         const badge = document.createElement('span');
         badge.className = 'cwfm-card-badge';
         badge.innerHTML = cwfmBmIcon(type);
+        if (type === 'note' && bm.excerpt) {
+            const mini = document.createElement('span');
+            mini.className = 'cwfm-card-badge-mini';
+            mini.innerHTML = ICONS.quote;
+            badge.appendChild(mini);
+        }
         const titles = document.createElement('div');
         titles.className = 'cwfm-card-titles';
         const nm = document.createElement('div');
@@ -7123,7 +7170,7 @@
         nm.textContent = cwfmBmName(bm);
         const sub = document.createElement('div');
         sub.className = 'cwfm-card-sub';
-        sub.textContent = [cwfmBmTypeLabel(type) + (type === 'note' && bm.excerpt ? '・' + t('bm_with_excerpt') : ''), bm.chapter, Math.round((bm.fraction || 0) * 100) + '%'].filter(Boolean).join(' · ');
+        sub.textContent = [cwfmBmTypeLabel(type), bm.chapter, Math.round((bm.fraction || 0) * 100) + '%'].filter(Boolean).join(' · ');
         titles.append(nm, sub);
         const x = document.createElement('button');
         x.type = 'button';
@@ -7240,15 +7287,16 @@
                 b.className = 'cwfm-chip-toggle';
                 b.dataset.key = key;
                 b.innerHTML = icon;
-                b.title = label;
-                const lt = document.createElement('span');
-                lt.className = 'cwfm-chip-label';
-                lt.textContent = label;
-                b.appendChild(lt);
+                b.title = label; // PC 上滑鼠移入顯示名稱；觸控裝置按下時跳提示（見下面 click）
+                b.setAttribute('aria-label', label);
                 const c = document.createElement('span');
                 c.className = 'cwfm-chip-count';
                 b.appendChild(c);
-                b.addEventListener('click', () => cwfmSetTocFilter(key, !cwfmTocFilter()[key]));
+                b.addEventListener('click', () => {
+                    const on = !cwfmTocFilter()[key];
+                    cwfmSetTocFilter(key, on);
+                    cwfmToast(t(on ? 'toast_filter_shown' : 'toast_filter_hidden').replace('{x}', label));
+                });
                 cwfmTocFilterBar.appendChild(b);
             }
             // v1.79.1：匯出跟篩選放同一排（匯出套用目前的篩選），同一種膠囊樣式，靠右
@@ -7265,7 +7313,38 @@
             tocPanel.querySelector('.cwfm-toc-view')?.addEventListener('scroll', () => { if (cwfmCard.el) cwfmPlaceCard(); }, { passive: true });
         }
     } catch (e) { console.error('[cwfm:bookmarks] 目錄書籤建立失敗', e); }
+    // v1.79.3：目前畫面這一頁有沒有任何書籤（書籤範圍跟可見範圍有交集）→ 工具列書籤鈕變紅
+    function cwfmUpdateBookmarkBtn() {
+        let on = false;
+        try {
+            const vis = view.renderer.getVisibleRange();
+            const cur = view.renderer.getContents()[0];
+            if (vis && cur) {
+                for (const bm of cwfmBD.bookmarks) {
+                    if (cwfmBmIndex(bm) !== cur.index) continue;
+                    let r = cwfmSafe(() => view.resolveCFI(bm.cfi).anchor(cur.doc), null);
+                    // 書本在 iframe 裡，Range 來自另一個視窗，不能用 instanceof Range 判斷
+                    if (r && !('startContainer' in r)) { const rr = cur.doc.createRange(); rr.selectNode(r); r = rr; }
+                    if (!r) continue;
+                    // 定位書籤是一個點，可能落在元素邊界（段落前）：換成它後面的第一個字再比
+                    if (r.collapsed) {
+                        const ft = cwfmFirstTextFrom(cur.doc, r.startContainer, r.startOffset);
+                        if (ft) { r = cur.doc.createRange(); r.setStart(ft.node, ft.offset); r.collapse(true); }
+                    }
+                    const endBefore = vis.comparePoint(r.endContainer, r.endOffset) < 0;
+                    const startAfter = vis.comparePoint(r.startContainer, r.startOffset) > 0;
+                    // 定位書籤剛好落在可見範圍的結尾（＝下一頁第一個字）不算這一頁
+                    const atEnd = r.collapsed && r.startContainer === vis.endContainer && r.startOffset === vis.endOffset;
+                    if (!endBefore && !startAfter && !atEnd) { on = true; break; }
+                }
+            }
+        } catch (e) { /* 判斷失敗就當作沒有 */ }
+        window.__cwfm.setBookmarkBtnFilled?.(on);
+    }
+    view.addEventListener('relocate', () => setTimeout(cwfmUpdateBookmarkBtn, 0));
+    setTimeout(cwfmUpdateBookmarkBtn, 0);
     window.__cwfm.onBookmarksChanged = () => {
+        try { cwfmUpdateBookmarkBtn(); } catch (e) { console.error(e); }
         try { cwfmRenderTocBookmarks(); } catch (e) { console.error(e); }
         try { cwfmRefreshHighlights(); } catch (e) { console.error(e); }
         try { cwfmSearchBookmarksOnly(); } catch (e) { console.error(e); }
@@ -7314,7 +7393,7 @@
         const { title, authors } = cwfmBookMeta();
         const counts = { pos: 0, excerpt: 0, note: 0 };
         list.forEach((b) => counts[cwfmBmType(b)]++);
-        const badge = { pos: ['#F1EFE8', '#444441'], excerpt: ['#FAEEDA', '#633806'], note: ['#E1F5EE', '#085041'] };
+        const badge = { pos: ['#FCEBEB', '#A32D2D'], excerpt: ['#FAEEDA', '#633806'], note: ['#E1F5EE', '#085041'] }; // 跟閱讀器同一套顏色
         let html = '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             + '<title>' + cwfmEsc(title) + ' — ' + cwfmEsc(t('export_title')) + '</title><style>'
             + 'body{margin:0;background:#f4f4f5;color:#18181b;font:15px/1.6 -apple-system,"Segoe UI","Noto Sans TC",sans-serif}'
