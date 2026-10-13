@@ -6161,7 +6161,8 @@
         search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
         pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
         clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-        quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4-4 5"/><path d="M19 11h-4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4-4 5"/></svg>',
+        // v1.79.5：實心引號（圓頭填滿）——線條版在小尺寸看起來像數字 9
+        quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="9" r="3.2" fill="currentColor" stroke="none"/><path d="M10.1 9.3c0 4.3-2.3 7.1-5.6 8.4"/><circle cx="17" cy="9" r="3.2" fill="currentColor" stroke="none"/><path d="M20.1 9.3c0 4.3-2.3 7.1-5.6 8.4"/></svg>',
         pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
         chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
         chevronUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
@@ -6623,6 +6624,7 @@
             // v1.79.4：篩選圖示用跟目錄文字同一套顏色，不用類型色
             '.cwfm-toc-filter .cwfm-chip-toggle[data-key][aria-pressed="false"] { opacity: 0.45; border-style: dashed; }',
             '.cwfm-chip-toggle.cwfm-chip-action { margin-left: auto; color: var(--cwfm-text); padding: 0 12px; }',
+            '.cwfm-toc-filter .cwfm-chip-toggle .cwfm-chip-count { color: inherit; }', // v1.79.5：數字跟圖示同色同亮度
             '.cwfm-chip-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text-secondary); font: 12px sans-serif; }',
             '.cwfm-chip-toggle svg { width: 14px; height: 14px; }',
@@ -6639,17 +6641,16 @@
             '.cwfm-hide-bm-note .cwfm-bm-row[data-type="note"] { display: none; }',
             // 書籤列：橫躺小書籤（左側尖角旗頭）＋本體＋右側展開區
             '.cwfm-bm-list { margin: 2px 12px 6px 0; }',
-            '.cwfm-bm-row { display: flex; align-items: stretch; margin: 4px 0; border-radius: 0 6px 6px 0; background: var(--cwfm-surface-elevated); cursor: pointer; }',
+            // v1.79.5：整列裁成書籤形狀（左側尖角），選中時外層填書籤色、內縮 1.5px，露出的那圈就是沿尖角走的框線
+            '.cwfm-bm-row { display: flex; align-items: stretch; margin: 4px 0; cursor: pointer; background: var(--cwfm-surface-elevated);',
+            '  clip-path: polygon(8.4px 0, 100% 0, 100% 100%, 8.4px 100%, 0 50%); }',
+            '.cwfm-bm-row.cwfm-bm-active { padding: 1.5px; background: var(--cwfm-bm-c); }',
+            '.cwfm-bm-row.cwfm-bm-active .cwfm-bm-body, .cwfm-bm-row.cwfm-bm-active .cwfm-bm-exp { background: var(--cwfm-surface-elevated); }',
             '.cwfm-bm-flag { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; padding-left: 6px; box-sizing: border-box;',
             '  clip-path: polygon(28% 0, 100% 0, 100% 100%, 28% 100%, 0 50%); }',
             '.cwfm-bm-flag svg { width: 15px; height: 15px; }',
-            '.cwfm-bm-flag.cwfm-bm-flag-both { flex-direction: column; align-items: stretch; justify-content: stretch; padding-left: 0; }',
-            '.cwfm-bm-flag-both > span { display: flex; align-items: center; justify-content: center; padding-left: 6px; }',
-            '.cwfm-bm-flag-both .cwfm-flag-top { flex: 1 1 auto; }',
-            // 琥珀色那塊固定 12px 貼齊底部（分界落在整數像素上，虛線不會模糊）
-            '.cwfm-bm-flag-both .cwfm-flag-bot { flex: 0 0 12px; height: 12px; position: relative; background: #FAC775; color: #633806; }',
-            '.cwfm-bm-flag-both .cwfm-flag-bot svg.cwfm-flag-dash { position: absolute; left: 0; top: -1px; display: block; width: 100%; height: 2px; }',
-            '.cwfm-bm-flag-both .cwfm-flag-bot svg { width: 10px; height: 10px; }',
+            // v1.79.5：備註＋摘錄——青綠旗頭右側切一條 4px 琥珀色（不放圖示、不要虛線）
+            '.cwfm-bm-flag.cwfm-bm-flag-both { box-shadow: inset -4px 0 0 #FAC775; padding-right: 4px; }',
             '.cwfm-bm-row .cwfm-bm-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
             // v1.79.3：定位改紅色（跟工具列「這頁有書籤」的紅色書籤圖示同色）；摘錄琥珀、備註青綠
             '.cwfm-bm-row[data-type="pos"] .cwfm-bm-flag { background: #E24B4A; color: #fff; }',
@@ -6671,8 +6672,7 @@
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
             '.cwfm-bm-actions button svg { width: 14px; height: 14px; }',
             '.cwfm-bm-flash { outline: 2px solid var(--cwfm-accent); outline-offset: 1px; }',
-            '.cwfm-bm-row.cwfm-bm-active { box-shadow: inset 0 0 0 1.5px var(--cwfm-bm-c, #E24B4A); }',
-            '.cwfm-bm-row[data-type="pos"] { --cwfm-bm-c: #E24B4A; } .cwfm-bm-row[data-type="excerpt"] { --cwfm-bm-c: #EF9F27; } .cwfm-bm-row[data-type="note"] { --cwfm-bm-c: #5DCAA5; }',
+            '.cwfm-bm-row[data-type="pos"] { --cwfm-bm-c: #E24B4A; } .cwfm-bm-row[data-type="excerpt"] { --cwfm-bm-c: #FAC775; } .cwfm-bm-row[data-type="note"] { --cwfm-bm-c: #9FE1CB; }',
             '.cwfm-bm-row.cwfm-bm-active .cwfm-bm-exp { color: var(--cwfm-text); }',
             // v1.79.2 彈出卡片：頂端類型色帶、左上類型徽章、摘錄（色條＋襯線）、備註、時間、操作列
             '.cwfm-bm-card { position: fixed; z-index: 1000001; display: flex; flex-direction: column; box-sizing: border-box;',
@@ -6682,9 +6682,11 @@
             '@keyframes cwfm-card-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }',
             '.cwfm-bm-card.cwfm-card-below { animation-name: cwfm-card-in-y; }',
             '@keyframes cwfm-card-in-y { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }',
-            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #FCEBEB; --cwfm-card-fg: #A32D2D; }',
-            '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #EF9F27; --cwfm-card-bg: #FAEEDA; --cwfm-card-fg: #633806; }',
-            '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #5DCAA5; --cwfm-card-bg: #E1F5EE; --cwfm-card-fg: #085041; }',
+            // v1.79.5：卡片的色帶、徽章、〔前往〕跟目錄旗頭同一組顏色（定位紅底白字、摘錄琥珀底深棕、備註青綠底深綠）
+            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #E24B4A; --cwfm-card-fg: #ffffff; }',
+            '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #FAC775; --cwfm-card-bg: #FAC775; --cwfm-card-fg: #633806; }',
+            '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #9FE1CB; --cwfm-card-bg: #9FE1CB; --cwfm-card-fg: #085041; }',
+            '.cwfm-card-badge.cwfm-badge-both { box-shadow: inset -4px 0 0 #FAC775; }',
             '.cwfm-card-arrow { position: absolute; width: 14px; height: 14px; background: var(--cwfm-bg); transform: rotate(45deg);',
             '  box-shadow: -1px 1px 0 var(--cwfm-shadow-ring); }',
             '.cwfm-card-side .cwfm-card-arrow { left: -7px; }',
@@ -6695,9 +6697,6 @@
             '  background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); }',
             '.cwfm-card-badge { position: relative; }',
             '.cwfm-card-badge svg { width: 16px; height: 16px; }',
-            '.cwfm-card-badge-mini { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%;',
-            '  background: #FAC775; color: #633806; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--cwfm-bg); }',
-            '.cwfm-card-badge .cwfm-card-badge-mini svg { width: 9px; height: 9px; }',
             '.cwfm-card-titles { flex: 1 1 auto; min-width: 0; }',
             '.cwfm-card-name { font-size: 15px; font-weight: 600; line-height: 1.4; word-break: break-word; }',
             '.cwfm-card-sub { font-size: 12px; color: var(--cwfm-text-secondary); }',
@@ -6715,7 +6714,8 @@
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
             '.cwfm-card-actions button svg { width: 14px; height: 14px; }',
             '.cwfm-card-actions button:hover { background: var(--cwfm-surface-elevated); }',
-            '.cwfm-card-actions .cwfm-card-primary { background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); border-color: transparent; }',
+            '.cwfm-card-actions .cwfm-card-primary { background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); border-color: transparent; font-weight: 600; }',
+            '.cwfm-card-actions .cwfm-card-primary:hover { background: var(--cwfm-card-bg); filter: brightness(0.95); }',
             '.cwfm-card-actions .cwfm-card-danger { margin-left: auto; color: #c0392b; }',
             '@media (max-width: 520px) { .cwfm-card-body, .cwfm-card-actions { padding-left: 14px; } }',
             // 搜尋面板
@@ -7056,12 +7056,9 @@
         const flag = document.createElement('div');
         flag.className = 'cwfm-bm-flag';
         if (type === 'note' && bm.excerpt) {
-            // v1.79.3：備註＋摘錄——旗頭大小不變，下方 1/4 切成琥珀色放引號
             flag.classList.add('cwfm-bm-flag-both');
-            // 分隔虛線用 SVG：線寬 1.25px＝鉛筆圖示（24 單位畫布、線寬 2、顯示 15px）的實際線寬，虛線長度明確指定，各瀏覽器一致
-            flag.innerHTML = '<span class="cwfm-flag-top">' + ICONS.pencil + '</span><span class="cwfm-flag-bot">' + ICONS.quote
-                + '<svg class="cwfm-flag-dash" width="100%" height="2" preserveAspectRatio="none"><line x1="0" y1="1" x2="100%" y2="1" stroke="#085041" stroke-width="1.25" stroke-dasharray="3 2"/></svg></span>';
-        } else flag.innerHTML = cwfmBmIcon(type);
+        }
+        flag.innerHTML = cwfmBmIcon(type);
         const body = document.createElement('div');
         body.className = 'cwfm-bm-body';
         const nm = document.createElement('div');
@@ -7157,12 +7154,7 @@
         const badge = document.createElement('span');
         badge.className = 'cwfm-card-badge';
         badge.innerHTML = cwfmBmIcon(type);
-        if (type === 'note' && bm.excerpt) {
-            const mini = document.createElement('span');
-            mini.className = 'cwfm-card-badge-mini';
-            mini.innerHTML = ICONS.quote;
-            badge.appendChild(mini);
-        }
+        if (type === 'note' && bm.excerpt) badge.classList.add('cwfm-badge-both');
         const titles = document.createElement('div');
         titles.className = 'cwfm-card-titles';
         const nm = document.createElement('div');
@@ -7399,13 +7391,16 @@
             + 'body{margin:0;background:#f4f4f5;color:#18181b;font:15px/1.6 -apple-system,"Segoe UI","Noto Sans TC",sans-serif}'
             + '.w{max-width:760px;margin:0 auto;padding:24px 16px 48px}header{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:16px 20px;margin-bottom:20px}'
             + 'h1{font-size:20px;margin:0 0 4px}.meta{color:#71717a;font-size:13px}h2{font-size:14px;color:#52525b;margin:24px 0 8px;font-weight:600}'
-            + '.card{display:flex;align-items:stretch;background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin:10px 0;overflow:hidden}'
-            + '.flag{flex:0 0 34px;display:flex;flex-direction:column;clip-path:polygon(28% 0,100% 0,100% 100%,28% 100%,0 50%)}'
-            + '.flag>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding-left:8px}.flag svg{width:16px;height:16px}'
-            + '.flag .bot{flex:0 0 14px;position:relative;background:#FAC775;color:#633806}.flag .bot svg{width:11px;height:11px}'
-            + '.flag .bot svg.dash{position:absolute;left:0;top:-1px;width:100%;height:2px}'
+            // v1.79.5：旗頭只放在名稱那一列（固定大小、尖角凸出卡片左緣）；卡片最右側是類型色豎線（備註＋摘錄＝青綠、最右琥珀）
+            + '.card{position:relative;background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin:10px 0 10px 8px}'
+            + '.cb{padding:4px 22px 4px 40px}.cb.both{padding-right:24px}'
+            + '.row.title{position:relative}'
+            + '.flag{position:absolute;left:-49px;top:50%;margin-top:-15px;width:36px;height:30px;display:flex;align-items:center;justify-content:center;'
+            + 'padding-left:8px;box-sizing:border-box;clip-path:polygon(28% 0,100% 0,100% 100%,28% 100%,0 50%)}.flag svg{width:16px;height:16px}'
+            + '.flag.both{box-shadow:inset -4px 0 0 #FAC775;padding-right:4px}'
             + '.f-pos{background:#E24B4A;color:#fff}.f-excerpt{background:#FAC775;color:#633806}.f-note{background:#9FE1CB;color:#085041}'
-            + '.cb{flex:1 1 auto;min-width:0;padding:4px 16px}.tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}'
+            + '.bars{position:absolute;top:0;right:0;bottom:0;display:flex;border-radius:0 11px 11px 0;overflow:hidden}.bars span{display:block;width:4px}.bars.both span{width:3px}'
+            + '.tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}'
             + '.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f2;align-items:start}'
             + '.row:last-child{border-bottom:0}.lab{color:#71717a;font-size:13px}.tag{font-size:11px;padding:1px 8px;border-radius:6px;white-space:nowrap}'
             + 'blockquote{margin:0;padding-left:10px;border-left:3px solid #EF9F27;font-family:serif;white-space:pre-wrap}.note{white-space:pre-wrap}'
@@ -7422,13 +7417,16 @@
             const [bg, fg] = badge[type];
             const tag = (txt, c) => '<span class="tag" style="background:' + (c ? c[0] : '#f4f4f5') + ';color:' + (c ? c[1] : '#52525b') + '">' + cwfmEsc(txt) + '</span>';
             const row = (lab, val, right) => '<div class="row"><span class="lab">' + cwfmEsc(lab) + '</span><div>' + val + '</div><div>' + (right || '') + '</div></div>';
-            // 跟閱讀器目錄同一套：左側尖角旗頭（類型色＋圖示；備註＋摘錄上下雙色、中間虛線）
+            // 跟閱讀器目錄同一套：名稱列左側尖角旗頭（備註＋摘錄＝青綠右側一條琥珀），右側類型色豎線
             const both = type === 'note' && !!bm.excerpt;
-            const flag = '<div class="flag f-' + type + '"><span>' + cwfmBmIcon(type) + '</span>'
-                + (both ? '<span class="bot">' + ICONS.quote + '<svg class="dash" height="2" preserveAspectRatio="none"><line x1="0" y1="1" x2="100%" y2="1" stroke="#085041" stroke-width="1.25" stroke-dasharray="3 2"/></svg></span>' : '') + '</div>';
+            const flag = '<div class="flag f-' + type + (both ? ' both' : '') + '">' + cwfmBmIcon(type) + '</div>';
+            const barColor = { pos: '#E24B4A', excerpt: '#FAC775', note: '#9FE1CB' };
+            const bars = '<div class="bars' + (both ? ' both' : '') + '">'
+                + (both ? '<span style="background:' + barColor.note + '"></span><span style="background:' + barColor.excerpt + '"></span>'
+                    : '<span style="background:' + barColor[type] + '"></span>') + '</div>';
             const tags = '<div class="tags">' + tag(cwfmBmTypeLabel(type), [bg, fg]) + (both ? tag(cwfmBmTypeLabel('excerpt'), badge.excerpt) : '') + '</div>';
-            html += '<div class="card">' + flag + '<div class="cb">';
-            html += row(t('bm_label_name'), cwfmEsc(cwfmBmName(bm)), tags);
+            html += '<div class="card">' + bars + '<div class="cb' + (both ? ' both' : '') + '">';
+            html += row(t('bm_label_name'), cwfmEsc(cwfmBmName(bm)), tags).replace('<div class="row">', '<div class="row title">' + flag);
             html += row(t('bm_position'), cwfmEsc(ch), tag(Math.round((bm.fraction || 0) * 100) + '%'));
             if (bm.excerpt) html += row(t('bm_label_excerpt'), '<blockquote>' + cwfmEsc(bm.excerpt) + '</blockquote>', '');
             if (bm.note) html += row(t('bm_label_note'), '<div class="note">' + cwfmEsc(bm.note) + '</div>', '');
