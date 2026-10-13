@@ -265,7 +265,7 @@
             err_bm_jump: "找不到這個書籤的位置（書檔可能已變更）",
             toc_filter_chapters: "章節",
             toc_bm_only_hint: "這本書還沒有書籤",
-            export_btn: "匯出書籤",
+            export_btn: "匯出",
             export_title: "匯出書籤",
             export_format: "格式",
             export_go: "匯出",
@@ -284,6 +284,7 @@
             search_current: "目前位置",
             search_prev: "上一個",
             search_next: "下一個",
+            search_clear: "清空搜尋",
             err_search: "[cwfm:search] 搜尋失敗",
             err_bookdata_save: "[cwfm:bookdata] 儲存失敗",
             err_bookdata_load: "[cwfm:bookdata] 讀取失敗，改用本機資料",
@@ -547,7 +548,7 @@
             err_bm_jump: "Couldn't find this bookmark's position (the book file may have changed)",
             toc_filter_chapters: "Chapters",
             toc_bm_only_hint: "No bookmarks in this book yet",
-            export_btn: "Export bookmarks",
+            export_btn: "Export",
             export_title: "Export bookmarks",
             export_format: "Format",
             export_go: "Export",
@@ -566,6 +567,7 @@
             search_current: "Current",
             search_prev: "Previous",
             search_next: "Next",
+            search_clear: "Clear search",
             err_search: "[cwfm:search] Search failed",
             err_bookdata_save: "[cwfm:bookdata] Save failed",
             err_bookdata_load: "[cwfm:bookdata] Load failed, using local data",
@@ -1658,6 +1660,7 @@
             '.cwfm-nav-count { position: absolute; top: 1px; right: 1px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
             '.cwfm-nav-group-bottom { margin-right: 14px; }',
             '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
+            '.cwfm-toolbar-top .cwfm-nav-group:not(.cwfm-nav-visible) { display: none; }',
             // 右上角那組：位置固定在工具列（高 48px、內距 8px 14px）下方，與工具列的上/右內距等距；
             // 工具列隱藏時照樣顯示；有紀錄才出現。
             '.cwfm-nav-float { position: fixed; top: 56px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
@@ -2430,6 +2433,7 @@
     function closeAllPanels() {
         document.querySelectorAll('.cwfm-panel.cwfm-open').forEach(p => p.classList.remove('cwfm-open'));
         if (dimming) dimming.classList.remove('cwfm-show');
+        try { window.__cwfm.onPanelsClosed?.(); } catch (e) { console.error(e); }
         try { cwfmScheduleAutoHide(); } catch (e) { /* 工具列還沒建好 */ }
     }
     function openPanel(panel) {
@@ -3714,8 +3718,11 @@
         try {
             if (m.el.isConnected) m.el.remove();
             if (m.split && m.head?.isConnected && m.rest?.isConnected) {
-                m.head.appendData(m.rest.data);
-                m.rest.remove();
+                // v1.79.1：用 normalize() 接回切開的文字——規格保證這樣合併時，落在後半段的 Range（書籤標示、
+                // 搜尋標示、選取）會一起移到合併後的節點；原本 appendData＋remove 會讓那些 Range 的端點跑掉。
+                const par = m.head.parentNode;
+                if (par && m.head.nextSibling === m.rest) par.normalize();
+                else { m.head.appendData(m.rest.data); m.rest.remove(); }
             }
         } catch (e) { console.error('[cwfm:marker] 移除標記失敗', e); }
         cwfmDiag('MARKER-REMOVE', 'why=' + why + ' sec=' + m.sectionIndex + ' h=' + m.h);
@@ -5930,7 +5937,7 @@
             layoutInProgress = true;
             try {
                 const headerHeight = header.getBoundingClientRect().height + 12; // 12 = 標題列 margin-bottom
-                const availableHeight = window.innerHeight - headerHeight - MASONRY_PAD;
+                const availableHeight = window.innerHeight - 48 - headerHeight - MASONRY_PAD; // v1.79.1：面板在工具列（48px）下方
                 const maxPanelWidth = window.innerWidth - 40; // 左右安全間距
                 const maxColumnsByWidth = Math.max(1, Math.min(8,
                     Math.floor((maxPanelWidth - MASONRY_PAD * 2 + MASONRY_GAP) / (MASONRY_COL_W + MASONRY_GAP))));
@@ -6028,7 +6035,6 @@
         const title = document.createElement('h3');
         title.textContent = t('aria_toc2'); // 目錄
         header.appendChild(title);
-        header.appendChild(cwfmBuildNavGroup('toc'));
 
         const closeBtn = createCloseBtn(closeAllPanels);
         header.appendChild(closeBtn);
@@ -6144,7 +6150,8 @@
             clr.b.disabled = h.entries.length === 0;
             back.cnt.textContent = h.backCount > 1 ? String(h.backCount) : '';
             fwd.cnt.textContent = h.forwardCount > 1 ? String(h.forwardCount) : '';
-            if (kind === 'link') group.classList.toggle('cwfm-nav-visible', h.entries.length > 0);
+            // 右上角（書內連結）與工具列上（目錄、搜尋）那幾組：沒有紀錄時整組不顯示
+            group.classList.toggle('cwfm-nav-visible', h.entries.length > 0);
         }
         h.listeners.push(update);
         update();
@@ -6251,12 +6258,16 @@
         tocBtn.setAttribute('aria-label', t('aria_toc'));
         tocBtn.addEventListener('click', () => togglePanel(tocPanel));
         bar.appendChild(tocBtn);
+        // v1.79.1：目錄的跳轉紀錄貼在目錄鈕右邊（原本在目錄面板標題列，跟搜尋那組放在面板裡容易誤會）
+        bar.appendChild(cwfmBuildNavGroup('toc'));
 
         const spacer = document.createElement('div');
         spacer.className = 'cwfm-toolbar-top-spacer';
         bar.appendChild(spacer);
 
         // v1.79：搜尋（結果顯示在工具列下方的面板）
+        // v1.79.1：搜尋的跳轉紀錄貼在放大鏡左邊
+        bar.appendChild(cwfmBuildNavGroup('search'));
         const searchBtn = document.createElement('button');
         searchBtn.innerHTML = ICONS.search;
         searchBtn.setAttribute('aria-label', t('search_aria'));
@@ -6510,12 +6521,13 @@
         style.dataset.cwfmOwned = 'true';
         style.textContent = [
             // 預覽模式提示條：工具列下方一行；工具列隱藏時貼到畫面頂端
-            '.cwfm-preview-bar { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); z-index: 999999;',
+            // v1.79.1：放進工具列中間的空白處（工具列高 48px），工具列隱藏時位置不變、留在畫面頂端
+            '.cwfm-preview-bar { position: fixed; top: 9px; left: 50%; transform: translateX(-50%); z-index: 1000001;',
             '  display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); box-sizing: border-box;',
             '  padding: 3px 4px 3px 12px; border-radius: 16px; font: 13px/1.4 sans-serif; white-space: nowrap;',
             '  background: var(--cwfm-toolbar-bg); color: var(--cwfm-text);',
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); transition: top 0.3s ease; }',
-            '.cwfm-bars-hidden .cwfm-preview-bar { top: 8px; }',
+            '@media (max-width: 760px) { .cwfm-preview-bar span { display: none; } .cwfm-preview-bar { padding-left: 4px; } }',
             '.cwfm-preview-bar span { overflow: hidden; text-overflow: ellipsis; }',
             '.cwfm-preview-bar button { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 4px 12px; cursor: pointer;',
             '  background: var(--cwfm-accent); color: #fff; font: inherit; }',
@@ -6539,7 +6551,9 @@
             '.cwfm-confirm-ok.cwfm-ok-primary { background: var(--cwfm-accent); border-color: var(--cwfm-accent); }',
             '.cwfm-confirm-box .cwfm-bm-dialog-buttons { margin-top: 14px; }',
             // 目錄頂端的篩選與匯出
-            '.cwfm-toc-filter { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 10px; flex: 0 0 auto; }',
+            '.cwfm-toc-filter { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 12px; margin-bottom: 10px; flex: 0 0 auto;',
+            '  border-bottom: 1px solid var(--cwfm-border); }',
+            '.cwfm-chip-toggle.cwfm-chip-action { margin-left: auto; color: var(--cwfm-text); }',
             '.cwfm-chip-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text-secondary); font: 12px sans-serif; }',
             '.cwfm-chip-toggle svg { width: 14px; height: 14px; }',
@@ -6555,7 +6569,7 @@
             '.cwfm-hide-bm-pos .cwfm-bm-row[data-type="pos"], .cwfm-hide-bm-excerpt .cwfm-bm-row[data-type="excerpt"],',
             '.cwfm-hide-bm-note .cwfm-bm-row[data-type="note"] { display: none; }',
             // 書籤列：橫躺小書籤（左側尖角旗頭）＋本體＋右側展開區
-            '.cwfm-bm-list { margin: 2px 0 6px; }',
+            '.cwfm-bm-list { margin: 2px 12px 6px 0; }',
             '.cwfm-bm-row { display: flex; align-items: stretch; margin: 4px 0; border-radius: 0 6px 6px 0; background: var(--cwfm-surface-elevated); cursor: pointer; }',
             '.cwfm-bm-flag { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; padding-left: 6px; box-sizing: border-box;',
             '  clip-path: polygon(28% 0, 100% 0, 100% 100%, 28% 100%, 0 50%); }',
@@ -6579,10 +6593,18 @@
             '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
             '.cwfm-bm-actions button svg { width: 14px; height: 14px; }',
             '.cwfm-bm-flash { outline: 2px solid var(--cwfm-accent); outline-offset: 1px; }',
+            // v1.79.1：書籤展開時目錄面板加寬——PC 約半個畫面，觸控裝置或窄螢幕接近全寬
+            '.cwfm-panel.cwfm-panel-wide { width: min(640px, 50vw); max-width: none; transition: transform 0.2s ease, width 0.2s ease; }',
+            '@media (max-width: 1024px), (pointer: coarse) { .cwfm-panel.cwfm-panel-wide { width: calc(100vw - 32px); } }',
             // 搜尋面板
             '.cwfm-search-top { padding: 0 18px 8px; flex: 0 0 auto; }',
             '.cwfm-search-row { display: flex; align-items: center; gap: 4px; }',
-            '.cwfm-panel .cwfm-search-row input[type="text"] { flex: 1 1 auto; min-width: 0; }',
+            '.cwfm-search-inputwrap { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }',
+            '.cwfm-panel .cwfm-search-row input[type="text"] { flex: 1 1 auto; min-width: 0; padding-right: 28px; }',
+            '.cwfm-search-row button.cwfm-search-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px;',
+            '  border-radius: 50%; background: var(--cwfm-surface-elevated); color: var(--cwfm-text-secondary); }',
+            '.cwfm-search-row button.cwfm-search-clear svg { width: 12px; height: 12px; }',
+            '.cwfm-search-row button.cwfm-search-clear[hidden] { display: none; }',
             '.cwfm-search-row button { width: 30px; height: 30px; flex: 0 0 auto; border: 0; border-radius: 50%; background: none; color: var(--cwfm-text);',
             '  display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }',
             '.cwfm-search-row button:disabled { opacity: 0.35; cursor: default; }',
@@ -6828,20 +6850,26 @@
     }
 
     // ---- 內文標示（引擎的註記圖層，不改書本內容）----
-    const cwfmHlDrawn = new Set();
+    // 每個圖層（章節載入一次就是一個新圖層）各自記住畫過哪些書籤；圖層換新就全部重畫，
+    // 不依賴事件先後順序（v1.79.0 用全域集合記錄，章節重新載入時可能記成「畫過」卻沒畫上去）。
+    const cwfmHlByOverlayer = new WeakMap();
     function cwfmHlOn() { return window.__cwfm.settings ? window.__cwfm.settings.showBookmarkHighlights !== false : true; }
     function cwfmBmByCfi(cfi) { return cwfmBD.bookmarks.find((b) => b.cfi === cfi && b.excerpt); }
     function cwfmRefreshHighlights() {
-        for (const v of Array.from(cwfmHlDrawn)) {
-            if (!cwfmHlOn() || !cwfmBmByCfi(v)) { cwfmHlDrawn.delete(v); cwfmSafe(() => view.deleteAnnotation({ value: v })); }
-        }
-        if (!cwfmHlOn()) return;
-        const loaded = new Set(cwfmSafe(() => view.renderer.getContents().map((c) => c.index), []));
-        for (const bm of cwfmBD.bookmarks) {
-            if (!bm.excerpt || cwfmHlDrawn.has(bm.cfi)) continue;
-            if (!loaded.has(cwfmBmIndex(bm))) continue;
-            cwfmHlDrawn.add(bm.cfi);
-            Promise.resolve(view.addAnnotation({ value: bm.cfi })).catch(() => cwfmHlDrawn.delete(bm.cfi));
+        for (const c of cwfmSafe(() => view.renderer.getContents(), [])) {
+            const ov = c.overlayer;
+            if (!ov) continue;
+            let drawn = cwfmHlByOverlayer.get(ov);
+            if (!drawn) { drawn = new Set(); cwfmHlByOverlayer.set(ov, drawn); }
+            for (const v of Array.from(drawn)) {
+                if (!cwfmHlOn() || !cwfmBmByCfi(v)) { drawn.delete(v); try { ov.remove(v); } catch (e) { /* ignore */ } }
+            }
+            if (!cwfmHlOn()) continue;
+            for (const bm of cwfmBD.bookmarks) {
+                if (!bm.excerpt || drawn.has(bm.cfi) || cwfmBmIndex(bm) !== c.index) continue;
+                drawn.add(bm.cfi);
+                Promise.resolve(view.addAnnotation({ value: bm.cfi })).catch(() => drawn.delete(bm.cfi));
+            }
         }
     }
     view.addEventListener('draw-annotation', (e) => {
@@ -6850,11 +6878,11 @@
         const O = window.__cwfm.Overlayer;
         if (O && O.highlight) draw(O.highlight, { color: '#EF9F27' });
     });
-    view.addEventListener('create-overlay', (e) => {
-        // 章節重新載入時圖層是新的：該章的標示要重畫
-        const idx = e.detail?.index;
-        for (const v of Array.from(cwfmHlDrawn)) if (cwfmSafe(() => view.resolveCFI(v).index, -1) === idx) cwfmHlDrawn.delete(v);
+    view.addEventListener('create-overlay', () => setTimeout(cwfmRefreshHighlights, 0));
+    view.addEventListener('load', (e) => {
         setTimeout(cwfmRefreshHighlights, 0);
+        // 自訂字型晚一點才載入完成時，字寬改變、排版跟著變，標示要重量
+        try { e.detail.doc.fonts?.ready?.then(() => setTimeout(cwfmRedrawOverlays, 50)); } catch (err) { /* ignore */ }
     });
     view.addEventListener('show-annotation', (e) => {
         const bm = cwfmBmByCfi(e.detail?.value);
@@ -6889,6 +6917,7 @@
             for (const b of cwfmBD.bookmarks) counts[cwfmBmType(b)]++;
             for (const btn of cwfmTocFilterBar.children) {
                 const k = btn.dataset.key;
+                if (!k) continue;
                 btn.setAttribute('aria-pressed', String(f[k]));
                 const c = btn.querySelector('.cwfm-chip-count');
                 if (c) c.textContent = counts[k] ? String(counts[k]) : '';
@@ -6923,6 +6952,7 @@
             e.stopPropagation();
             if (cwfmTocState.expanded.has(bm.id)) cwfmTocState.expanded.delete(bm.id); else cwfmTocState.expanded.add(bm.id);
             row.replaceWith(cwfmBuildBmRow(bm));
+            cwfmUpdatePanelWide();
         });
         if (open) {
             const det = document.createElement('div');
@@ -6997,6 +7027,14 @@
             else tocView.insertBefore(box, tocView.firstChild);
         }
         cwfmApplyTocFilter();
+        cwfmUpdatePanelWide();
+    }
+    // v1.79.1：有書籤展開時目錄面板加寬（CSS .cwfm-panel-wide），全部收合恢復
+    function cwfmUpdatePanelWide() {
+        if (!tocPanel) return;
+        const ids = new Set(cwfmBD.bookmarks.map((b) => b.id));
+        for (const id of Array.from(cwfmTocState.expanded)) if (!ids.has(id)) cwfmTocState.expanded.delete(id);
+        tocPanel.classList.toggle('cwfm-panel-wide', cwfmTocState.expanded.size > 0);
     }
     function cwfmRevealBookmarkInToc(id) {
         if (!tocPanel) return;
@@ -7019,17 +7057,6 @@
     try {
         if (tocPanel) {
             const header = tocPanel.querySelector('.cwfm-panel-header');
-            const exportBtn = document.createElement('button');
-            exportBtn.type = 'button';
-            exportBtn.className = 'cwfm-hdr-btn';
-            exportBtn.innerHTML = ICONS.download;
-            exportBtn.title = t('export_btn');
-            exportBtn.setAttribute('aria-label', t('export_btn'));
-            exportBtn.addEventListener('click', () => cwfmExportDialog());
-            const navGroup = header && header.querySelector('.cwfm-nav-group');
-            if (navGroup) header.insertBefore(exportBtn, navGroup);
-            else if (header) header.insertBefore(exportBtn, header.lastChild);
-            exportBtn.style.marginLeft = 'auto';
             cwfmTocFilterBar = document.createElement('div');
             cwfmTocFilterBar.className = 'cwfm-toc-filter';
             for (const [key, label, icon] of [['chapters', t('toc_filter_chapters'), ICONS.list], ['pos', t('bm_type_pos'), ICONS.clock],
@@ -7046,6 +7073,14 @@
                 b.addEventListener('click', () => cwfmSetTocFilter(key, !cwfmTocFilter()[key]));
                 cwfmTocFilterBar.appendChild(b);
             }
+            // v1.79.1：匯出跟篩選放同一排（匯出套用目前的篩選），同一種膠囊樣式，靠右
+            const exportBtn = document.createElement('button');
+            exportBtn.type = 'button';
+            exportBtn.className = 'cwfm-chip-toggle cwfm-chip-action';
+            exportBtn.innerHTML = ICONS.download;
+            exportBtn.appendChild(document.createTextNode(t('export_btn')));
+            exportBtn.addEventListener('click', () => cwfmExportDialog());
+            cwfmTocFilterBar.appendChild(exportBtn);
             header.insertAdjacentElement('afterend', cwfmTocFilterBar);
             cwfmRenderTocBookmarks();
         }
@@ -7060,6 +7095,19 @@
         try { cwfmApplyTocFilter(); } catch (e) { console.error(e); }
     };
     view.addEventListener('relocate', () => { try { cwfmRefreshHighlights(); } catch (e) { /* ignore */ } });
+    // v1.79.1：排版一有變動（精準對位插入標記、全螢幕、視窗大小、字級、留白…）就重量標示位置。
+    // 標示保存的是文字範圍，重畫只是重新問瀏覽器那些字現在在哪裡；只有目前載入的章節有圖層，成本很低。
+    function cwfmRedrawOverlays() {
+        for (const c of cwfmSafe(() => view.renderer.getContents(), [])) {
+            if (!c.overlayer) continue;
+            try { c.overlayer.redraw(); } catch (e) { /* ignore */ }
+            // 書籤標示從 CFI 重新解析位置再畫（不沿用舊的 Range，對位標記插入／移除後也一定正確）
+            cwfmHlByOverlayer.delete(c.overlayer);
+        }
+        cwfmRefreshHighlights();
+    }
+    view.renderer.addEventListener('relocate', () => requestAnimationFrame(cwfmRedrawOverlays));
+    window.addEventListener('resize', () => setTimeout(cwfmRedrawOverlays, 350));
     setTimeout(() => { try { cwfmRefreshHighlights(); } catch (e) { console.error(e); } }, 0);
 
     // ---- 匯出（目前這本書、套用目錄篩選）----
@@ -7117,7 +7165,7 @@
             html += row(t('bm_time'), cwfmEsc(t('bm_created') + ' ' + cwfmFmtTime(bm.created))
                 + (bm.modified && bm.modified !== bm.created ? '<br>' + cwfmEsc(t('bm_modified') + ' ' + cwfmFmtTime(bm.modified)) : ''), '');
             const url = cwfmPositionUrl(bm.cfi);
-            html += row(t('bm_link'), '<a href="' + cwfmEsc(url) + '">' + cwfmEsc(url) + '</a>', '');
+            html += row(t('bm_link'), '<a href="' + cwfmEsc(url) + '" target="_blank" rel="noopener">' + cwfmEsc(url) + '</a>', '');
             html += '</div>';
         }
         return html + '</div></body></html>';
@@ -7240,7 +7288,6 @@
         const h3 = document.createElement('h3');
         h3.textContent = t('search_title');
         header.appendChild(h3);
-        header.appendChild(cwfmBuildNavGroup('search'));
         header.appendChild(createCloseBtn(closeAllPanels));
         panel.appendChild(header);
         const top = document.createElement('div');
@@ -7261,7 +7308,20 @@
         next.type = 'button';
         next.innerHTML = ICONS.chevronDown;
         next.setAttribute('aria-label', t('search_next'));
-        row.append(input, prev, count, next);
+        // v1.79.1：框內 ⓧ 清空文字、結果與內文標示（有字才出現）；面板 ✕ 只關面板
+        const inputWrap = document.createElement('span');
+        inputWrap.className = 'cwfm-search-inputwrap';
+        const clr = document.createElement('button');
+        clr.type = 'button';
+        clr.className = 'cwfm-search-clear';
+        clr.innerHTML = CWFM_CLOSE_ICON_SVG;
+        clr.setAttribute('aria-label', t('search_clear'));
+        clr.title = t('search_clear');
+        clr.addEventListener('click', () => { input.value = ''; clr.hidden = true; cwfmRunSearch(''); input.focus(); });
+        clr.hidden = true;
+        input.addEventListener('input', () => { clr.hidden = !input.value; });
+        inputWrap.append(input, clr);
+        row.append(inputWrap, prev, count, next);
         const scope = document.createElement('div');
         scope.className = 'cwfm-search-scope';
         const scopeBtns = {};
@@ -7366,21 +7426,22 @@
         }
         cwfmSearchRenderScope();
     }
-    async function cwfmRunSearch(q) {
+    async function cwfmRunSearch(q, keepCurrent) {
         const s = cwfmSearch;
         const token = ++s.token;
+        const prevCurrent = s.current;
         q = String(q || '').trim();
         s.query = q;
+        s.hlHidden = false;
         s.hits = [];
         s.bmHits = [];
-        s.current = -1;
+        s.current = keepCurrent ? prevCurrent : -1;
         s.results.textContent = '';
         s.status.textContent = '';
         cwfmSafe(() => view.clearSearch());
         if (!q) { cwfmSearchRenderScope(); cwfmSearchUpdateCount(); return; }
         cwfmSearchBookmarksOnly();
         const total = cwfmSafe(() => book.sections.length, 0);
-        const fractions = cwfmSafe(() => view.getSectionFractions(), []);
         try {
             const O = window.__cwfm.Overlayer;
             const it = view.search({ query: q, normalize: cwfmNormalize, draw: O && O.highlight, drawOptions: { color: '#FAC775' } });
@@ -7394,12 +7455,12 @@
                     continue;
                 }
                 if (r.subitems && r.subitems.length) {
-                    const idx = cwfmSafe(() => view.resolveCFI(r.subitems[0].cfi).index, -1);
                     const g = document.createElement('div');
                     g.className = 'cwfm-search-group cwfm-sr-text';
                     g.textContent = (r.label || '') + '（' + r.subitems.length + '）';
                     s.results.appendChild(g);
-                    const pct = idx >= 0 && fractions[idx] != null ? Math.round(fractions[idx] * 100) + '%' : '';
+                    // 章節起點的百分比對同一章的每一筆都一樣、沒有參考價值，不顯示；章節名稱已在分組標題
+                    const pct = '';
                     for (const sub of r.subitems) {
                         const i = s.hits.length;
                         s.hits.push(sub.cfi);
@@ -7438,16 +7499,19 @@
         const n = s.current < 0 ? (d > 0 ? 0 : s.hits.length - 1) : (s.current + d + s.hits.length) % s.hits.length;
         cwfmSearchGo(n);
     }
+    // v1.79.1：搜尋面板關掉時隱藏內文的搜尋標示（結果保留）；再打開時重新搜一次把標示畫回來
+    window.__cwfm.onPanelsClosed = () => {
+        const s = cwfmSearch;
+        if (s.panel && s.query && !s.hlHidden) { s.hlHidden = true; s.token++; cwfmSafe(() => view.clearSearch()); }
+    };
     window.__cwfm.toggleSearchPanel = () => {
         try {
             if (!cwfmSearch.panel) cwfmBuildSearchPanel();
             togglePanel(cwfmSearch.panel);
+            if (cwfmSearch.panel.classList.contains('cwfm-open') && cwfmSearch.hlHidden && cwfmSearch.query) cwfmRunSearch(cwfmSearch.query, true);
             if (cwfmSearch.panel.classList.contains('cwfm-open')) setTimeout(() => { try { cwfmSearch.input.focus(); cwfmSearch.input.select(); } catch (e) { /* ignore */ } }, 50);
         } catch (e) { console.error(t('err_search'), e); }
     };
-    // 開書時讀回的搜尋跳轉紀錄有內容時，先把面板建好（按鈕組才有地方顯示）
-    try { if (cwfmBD.navhist && cwfmBD.navhist.search && cwfmBD.navhist.search.entries && cwfmBD.navhist.search.entries.length) cwfmBuildSearchPanel(); }
-    catch (e) { console.error(t('err_search'), e); }
 
     // ============================================================
     // [cwfm] 翻頁動畫（K16Pro chevron 風格完整移植）
