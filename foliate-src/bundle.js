@@ -1195,6 +1195,8 @@ const V = (t) => document.createElementNS("http://www.w3.org/2000/svg", t),
     }),
       (window.__cwfm.shadowMap = t));
   })(),
+  // [cwfm] v1.79：書籤標示要用引擎的註記圖層畫法（Overlayer.highlight）
+  (window.__cwfm.Overlayer = k),
   (() => {
     const t = new Map(),
       e = URL.createObjectURL.bind(URL);
@@ -26652,7 +26654,8 @@ const bd = (t) => t.replace(/\s+/g, " "),
   },
   yd = (t, e, i) => {
     const { granularity: s = "grapheme", sensitivity: n = "base" } = i;
-    return Intl?.Segmenter && ("grapheme" !== s || ("variant" !== n && "accent" !== n))
+    // [cwfm] v1.79：有 normalize（逐字等長對照，例如簡繁互通）時固定走 indexOf 路線
+    return !i.normalize && Intl?.Segmenter && ("grapheme" !== s || ("variant" !== n && "accent" !== n))
       ? (function* (t, e, i = {}) {
           const { locales: s = "en", granularity: n = "word", sensitivity: r = "base" } = i;
           let a, o;
@@ -26705,8 +26708,8 @@ const bd = (t) => t.replace(/\s+/g, " "),
           const { locales: s = "en", sensitivity: n } = i,
             r = "variant" === n,
             a = t.join(""),
-            o = r ? a : a.toLocaleLowerCase(s),
-            l = r ? e : e.toLocaleLowerCase(s),
+            o = i.normalize ? i.normalize(r ? a : a.toLocaleLowerCase(s)) : r ? a : a.toLocaleLowerCase(s),
+            l = i.normalize ? i.normalize(r ? e : e.toLocaleLowerCase(s)) : r ? e : e.toLocaleLowerCase(s),
             c = l.length;
           let h = -1,
             d = -1,
@@ -26739,6 +26742,7 @@ var vd = Object.freeze({
       matchDiacritics: n,
       matchWholeWords: r,
       acceptNode: a,
+      normalize: N,
     } = e;
     return function* (e, o) {
       const l = t(
@@ -26748,6 +26752,7 @@ var vd = Object.freeze({
             locales: e.body.lang || e.documentElement.lang || i || "en",
             granularity: r ? "word" : "grapheme",
             sensitivity: n && s ? "variant" : n && !s ? "accent" : !n && s ? "case" : "base",
+            normalize: N,
           })) {
             const { startIndex: t, startOffset: e, endIndex: i, endOffset: s } = l.range;
             ((l.range = a(t, e, i, s)), yield l);

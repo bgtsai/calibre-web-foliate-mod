@@ -26,9 +26,7 @@
             field_left_right_padding: '\u5de6\u53f3\u7559\u767d',
             field_max_column_count: '\u6700\u5927\u6b04\u6578',
             field_precise_anchor_align: '翻頁精準定位：切換全螢幕、縮放視窗或調整排版後，讓目前頁面的第一個字維持在頁首',
-            field_local_auto_remember: '\u672c\u6a5f\u81ea\u52d5\u8a18\u61b6\u95b1\u8b80\u9032\u5ea6\uff08\u7ffb\u9801\u5373\u6642\u5b58\u9032\u9019\u53f0\u700f\u89bd\u5668\uff0c\u4e0d\u540c\u88dd\u7f6e\u4e0d\u6703\u540c\u6b65\uff09',
-            field_auto_sync_enabled: '停留頁面自動加入書籤（跨裝置可用）',
-            field_auto_sync_delay: '停留幾秒後加入書籤',
+            field_auto_sync_enabled: "閱讀進度同步至雲端（換頁就同步，跨裝置接續閱讀）",
             field_auto_hide_toolbar: '\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09',
             field_tap_zone_enabled: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd',
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
@@ -66,17 +64,17 @@
             hint_key_used: '\u5df2\u7d93\u88ab\u4f7f\u7528\u4e86\uff0c\u63db\u4e00\u7d44\u770b\u770b',
             err_no_viewer2: '[cwfm] 找不到 #viewer 容器',
             err_no_current_pos2: '沒有目前位置可以同步',
-            log_bookmark_synced2: '[cwfm:bookmark] 已同步到伺服器：',
-            log_bookmark_removed2: '[cwfm:bookmark] 已從伺服器移除書籤',
+            log_bookmark_synced2: "[cwfm:progress] 閱讀進度已同步到伺服器：",
+            log_bookmark_removed2: "[cwfm:progress] 已從伺服器移除閱讀進度",
             err_download_failed2: '下載 epub 失敗：HTTP ',
-            log_restore_local2: '[cwfm:bookmark] 已還原本機記憶的閱讀位置：',
-            err_restore_local2: '[cwfm:bookmark] 還原本機記憶位置失敗',
-            log_restore_server2: '[cwfm:bookmark] 已還原伺服器書籤位置：',
-            err_restore_server2: '[cwfm:bookmark] 還原伺服器書籤位置失敗，改從頭開始',
+            log_restore_local2: "[cwfm:progress] 已還原本機的閱讀進度：",
+            err_restore_local2: "[cwfm:progress] 還原本機閱讀進度失敗",
+            log_restore_server2: "[cwfm:progress] 已還原雲端的閱讀進度：",
+            err_restore_server2: "[cwfm:progress] 還原雲端閱讀進度失敗",
             err_open_book2: '[cwfm] 開啟書籍失敗：',
             err_book_load_ui2: '（Calibre-Web Foliate Reader Mod）書籍載入失敗，詳見主控台錯誤訊息。',
-            err_local_write2: '[cwfm:bookmark] 本機記憶寫入失敗',
-            err_auto_sync2: '[cwfm:bookmark] 停留自動同步失敗',
+            err_local_write2: "[cwfm:progress] 本機閱讀進度寫入失敗",
+            err_auto_sync2: "[cwfm:progress] 閱讀進度同步失敗",
             err_keydown2: '[cwfm:keydown] 翻頁失敗',
             err_divider_create2: '[cwfm:divider] 建立分隔線失敗',
             err_divider_update2: '[cwfm:divider] 更新分隔線位置失敗',
@@ -191,10 +189,10 @@
             err_go_left: '[cwfm:toolbar] goLeft 失敗',
             err_go_fraction: '[cwfm:toolbar] goToFraction 失敗',
             err_go_right: '[cwfm:toolbar] goRight 失敗',
-            aria_bookmark: '書籤',
-            err_no_pos_to_sync: '[cwfm:toolbar] 還沒有可同步的位置',
-            err_remove_bookmark: '[cwfm:toolbar] 移除書籤失敗',
-            err_sync_bookmark: '[cwfm:toolbar] 書籤同步失敗',
+            aria_bookmark: "加入書籤",
+            err_no_pos_to_sync: "[cwfm:toolbar] 還沒有可用的位置",
+            err_remove_bookmark: "[cwfm:bookmarks] 刪除書籤失敗",
+            err_sync_bookmark: "[cwfm:bookmarks] 書籤儲存失敗",
             aria_settings: '設定',
             aria_fullscreen: '全螢幕',
             err_fullscreen_toggle: '[cwfm:toolbar] 全螢幕切換失敗',
@@ -230,6 +228,65 @@
             field_cursor_auto_hide_delay: '閒置幾秒後隱藏',
             field_page_flip_debounce: '翻頁防彈跳（這段時間內防止重複觸發）',
             mode_auto: 'Auto',
+            field_cloud_first: "雲端紀錄優先（開書時先用雲端的閱讀進度，沒有才用本機）",
+            hint_cloud_first: "沒開「閱讀進度同步至雲端」時，雲端紀錄只會由其他有同步的裝置更新，可能比這台的本機紀錄舊。",
+            field_show_bm_highlight: "在內文標示書籤摘錄",
+            preview_text: "預覽模式・閱讀進度不會儲存",
+            preview_btn: "正式閱讀",
+            bm_dialog_add: "加入書籤",
+            bm_dialog_edit: "編輯書籤",
+            bm_label_excerpt: "摘錄",
+            bm_label_name: "名稱",
+            bm_label_note: "備註",
+            bm_placeholder_name: "留空就自動命名",
+            bm_placeholder_note: "可留空",
+            bm_remove_excerpt: "移除摘錄",
+            bm_save: "儲存",
+            bm_type_pos: "定位",
+            bm_type_excerpt: "摘錄",
+            bm_type_note: "備註",
+            bm_with_excerpt: "附摘錄",
+            bm_edit: "編輯",
+            bm_copy_link: "複製連結",
+            bm_delete: "刪除",
+            bm_expand: "展開",
+            bm_delete_title: "刪除書籤",
+            bm_delete_msg: "確定要刪除這個書籤嗎？",
+            bm_created: "建立",
+            bm_modified: "修改",
+            bm_position: "位置",
+            bm_link: "連結",
+            bm_time: "時間",
+            toast_link_copied: "已複製連結",
+            toast_copy_failed: "無法自動複製，請手動複製這個連結：",
+            toast_bm_saved: "已加入書籤",
+            toast_bm_updated: "已更新書籤",
+            toast_bm_deleted: "已刪除書籤",
+            err_bm_jump: "找不到這個書籤的位置（書檔可能已變更）",
+            toc_filter_chapters: "章節",
+            toc_bm_only_hint: "這本書還沒有書籤",
+            export_btn: "匯出書籤",
+            export_title: "匯出書籤",
+            export_format: "格式",
+            export_go: "匯出",
+            export_empty: "沒有可匯出的書籤（請確認上方篩選）",
+            export_exported_at: "匯出時間",
+            export_unknown_chapter: "（未分章節）",
+            search_aria: "搜尋",
+            search_title: "搜尋",
+            search_placeholder: "搜尋內文與書籤（簡繁通用）",
+            search_all: "全部",
+            search_text: "內文",
+            search_bm: "書籤",
+            search_progress: "搜尋中…第 {a} / {b} 章",
+            search_done: "共 {n} 筆",
+            search_none: "找不到符合的結果",
+            search_current: "目前位置",
+            search_prev: "上一個",
+            search_next: "下一個",
+            err_search: "[cwfm:search] 搜尋失敗",
+            err_bookdata_save: "[cwfm:bookdata] 儲存失敗",
+            err_bookdata_load: "[cwfm:bookdata] 讀取失敗，改用本機資料",
         },
         en: {
             group_theme: 'Theme',
@@ -251,9 +308,7 @@
             field_left_right_padding: 'Left/Right Margin',
             field_max_column_count: 'Max Columns',
             field_precise_anchor_align: 'Precise Page Alignment: after toggling fullscreen, resizing the window or changing layout, keep the first character of the current page at the top',
-            field_local_auto_remember: 'Remember reading progress locally (saved instantly on this browser; won\'t sync across devices)',
-            field_auto_sync_enabled: 'Auto-bookmark on idle (works across devices)',
-            field_auto_sync_delay: 'Bookmark After Idle',
+            field_auto_sync_enabled: "Sync reading progress to the server (on every page turn, continue on other devices)",
             field_auto_hide_toolbar: 'Auto-hide Toolbar (slides to edge after 3s idle; hover edge or click to wake)',
             field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
@@ -291,17 +346,17 @@
             hint_key_used: ' is already in use, try another combo',
             err_no_viewer2: '[cwfm] #viewer container not found',
             err_no_current_pos2: 'No current position to sync',
-            log_bookmark_synced2: '[cwfm:bookmark] Synced to server: ',
-            log_bookmark_removed2: '[cwfm:bookmark] Bookmark removed from server',
+            log_bookmark_synced2: "[cwfm:progress] Reading progress synced to server: ",
+            log_bookmark_removed2: "[cwfm:progress] Reading progress removed from server",
             err_download_failed2: 'Failed to download epub: HTTP ',
-            log_restore_local2: '[cwfm:bookmark] Restored locally-remembered position: ',
-            err_restore_local2: '[cwfm:bookmark] Failed to restore locally-remembered position',
-            log_restore_server2: '[cwfm:bookmark] Restored server bookmark position: ',
-            err_restore_server2: '[cwfm:bookmark] Failed to restore server bookmark position, starting from the beginning',
+            log_restore_local2: "[cwfm:progress] Restored local reading progress: ",
+            err_restore_local2: "[cwfm:progress] Failed to restore local reading progress",
+            log_restore_server2: "[cwfm:progress] Restored server reading progress: ",
+            err_restore_server2: "[cwfm:progress] Failed to restore server reading progress",
             err_open_book2: '[cwfm] Failed to open book: ',
             err_book_load_ui2: '(Calibre-Web Foliate Reader Mod) Failed to load the book. See the console for details.',
-            err_local_write2: '[cwfm:bookmark] Failed to write local memory',
-            err_auto_sync2: '[cwfm:bookmark] Idle auto-sync failed',
+            err_local_write2: "[cwfm:progress] Failed to save local reading progress",
+            err_auto_sync2: "[cwfm:progress] Reading progress sync failed",
             err_keydown2: '[cwfm:keydown] Page turn failed',
             err_divider_create2: '[cwfm:divider] Failed to create divider',
             err_divider_update2: '[cwfm:divider] Failed to update divider position',
@@ -416,10 +471,10 @@
             err_go_left: '[cwfm:toolbar] goLeft failed',
             err_go_fraction: '[cwfm:toolbar] goToFraction failed',
             err_go_right: '[cwfm:toolbar] goRight failed',
-            aria_bookmark: 'Bookmark',
-            err_no_pos_to_sync: '[cwfm:toolbar] No position to sync yet',
-            err_remove_bookmark: '[cwfm:toolbar] Failed to remove bookmark',
-            err_sync_bookmark: '[cwfm:toolbar] Bookmark sync failed',
+            aria_bookmark: "Add bookmark",
+            err_no_pos_to_sync: "[cwfm:toolbar] No position available yet",
+            err_remove_bookmark: "[cwfm:bookmarks] Failed to delete bookmark",
+            err_sync_bookmark: "[cwfm:bookmarks] Failed to save bookmark",
             aria_settings: 'Settings',
             aria_fullscreen: 'Fullscreen',
             err_fullscreen_toggle: '[cwfm:toolbar] Failed to toggle fullscreen',
@@ -455,6 +510,65 @@
             field_cursor_auto_hide_delay: 'Hide After Idle',
             field_page_flip_debounce: 'Page-Flip Debounce (prevents repeated triggers within this window)',
             mode_auto: 'Auto',
+            field_cloud_first: "Prefer server progress (on open, use the server reading progress first, then local)",
+            hint_cloud_first: "If server sync is off, the server record is only updated by other syncing devices and may be older than this browser.",
+            field_show_bm_highlight: "Highlight bookmark excerpts in the text",
+            preview_text: "Preview mode · reading progress is not saved",
+            preview_btn: "Start reading here",
+            bm_dialog_add: "Add bookmark",
+            bm_dialog_edit: "Edit bookmark",
+            bm_label_excerpt: "Excerpt",
+            bm_label_name: "Name",
+            bm_label_note: "Note",
+            bm_placeholder_name: "Leave empty for an automatic name",
+            bm_placeholder_note: "Optional",
+            bm_remove_excerpt: "Remove excerpt",
+            bm_save: "Save",
+            bm_type_pos: "Position",
+            bm_type_excerpt: "Excerpt",
+            bm_type_note: "Note",
+            bm_with_excerpt: "With excerpt",
+            bm_edit: "Edit",
+            bm_copy_link: "Copy link",
+            bm_delete: "Delete",
+            bm_expand: "Expand",
+            bm_delete_title: "Delete bookmark",
+            bm_delete_msg: "Delete this bookmark?",
+            bm_created: "Created",
+            bm_modified: "Modified",
+            bm_position: "Position",
+            bm_link: "Link",
+            bm_time: "Time",
+            toast_link_copied: "Link copied",
+            toast_copy_failed: "Couldn't copy automatically. Copy this link:",
+            toast_bm_saved: "Bookmark added",
+            toast_bm_updated: "Bookmark updated",
+            toast_bm_deleted: "Bookmark deleted",
+            err_bm_jump: "Couldn't find this bookmark's position (the book file may have changed)",
+            toc_filter_chapters: "Chapters",
+            toc_bm_only_hint: "No bookmarks in this book yet",
+            export_btn: "Export bookmarks",
+            export_title: "Export bookmarks",
+            export_format: "Format",
+            export_go: "Export",
+            export_empty: "Nothing to export (check the filters above)",
+            export_exported_at: "Exported",
+            export_unknown_chapter: "(No chapter)",
+            search_aria: "Search",
+            search_title: "Search",
+            search_placeholder: "Search text and bookmarks",
+            search_all: "All",
+            search_text: "Text",
+            search_bm: "Bookmarks",
+            search_progress: "Searching… chapter {a} / {b}",
+            search_done: "{n} results",
+            search_none: "No matches",
+            search_current: "Current",
+            search_prev: "Previous",
+            search_next: "Next",
+            err_search: "[cwfm:search] Search failed",
+            err_bookdata_save: "[cwfm:bookdata] Save failed",
+            err_bookdata_load: "[cwfm:bookdata] Load failed, using local data",
         },
     };
 
@@ -483,6 +597,9 @@
     // 是實測抓到的真實 bug，不是假設性的風險。
     const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";
     const INITIAL_POSITION = "__INITIAL_POSITION__";
+    // v1.79：這本書的書籤與跳轉紀錄（Tampermonkey＝GM 的 cwfm-bookdata-<書號>；Docker＝開機段落讀 localStorage）。
+    // 外層沒有替換（舊版 Docker 建置）時會是原本的字串，當作沒有資料。
+    const INITIAL_BOOKDATA = "__INITIAL_BOOKDATA__";
 
     // [cwfm] 語言判斷——放在 INITIAL_SETTINGS 宣告之後，才能同步讀到
     // 使用者存過的語言偏好(settings.uiLanguage)，不用等 loadSettings()
@@ -728,7 +845,7 @@
         + ' win=' + window.innerWidth + 'x' + window.innerHeight + ' dpr=' + window.devicePixelRatio
         + ' INITIAL_SETTINGS=' + cwfmSafe(() => JSON.stringify({
             flow: INITIAL_SETTINGS?.flow, maxColumnCount: INITIAL_SETTINGS?.maxColumnCount,
-            preciseAnchorAlign: INITIAL_SETTINGS?.preciseAnchorAlign, localAutoRemember: INITIAL_SETTINGS?.localAutoRemember,
+            preciseAnchorAlign: INITIAL_SETTINGS?.preciseAnchorAlign, cloudFirst: INITIAL_SETTINGS?.cloudFirst,
             verticalSizeMode: INITIAL_SETTINGS?.verticalSizeMode, targetContentHeightPx: INITIAL_SETTINGS?.targetContentHeightPx,
             maxInlineSize: INITIAL_SETTINGS?.maxInlineSize, fontSize: INITIAL_SETTINGS?.fontSize }))
         + ' INITIAL_POSITION=' + cwfmSafe(() => JSON.stringify(INITIAL_POSITION)));
@@ -801,6 +918,7 @@
     // 為 POSITION_KEY，這裡不重複宣告。
 
     function getCsrfToken() {
+        if (cwfmCsrfOverride) return cwfmCsrfOverride;
         const el = document.querySelector('input[name="csrf_token"]');
         return el ? el.value : '';
     }
@@ -830,43 +948,223 @@
         return btn;
     }
 
-    // 功能二：手動同步到伺服器（對應原版按書籤圖示的動作，同時只會有一個
-    // 書籤，新的會覆蓋舊的——這點跟原版行為一致，不是我們自己發明的）。
-    function postBookmarkValue(rawValue) {
-        return fetch('/ajax/bookmark/' + BOOK_ID + '/epub', {
-            method: 'POST',
+    // ============================================================
+    // v1.79 閱讀進度（見 docs/spec-v1.79.md §1、§2）
+    // - 本機一律記錄；開啟「閱讀進度同步至雲端」時，每次換位置立刻送伺服器
+    //   （同時只送一個，送出中又變動只記最新的，完成後再送）。
+    // - 離開／切到背景時，只有「還沒送出的變動」才補送，沒動過的分頁不寫，
+    //   避免把其他分頁或裝置較新的進度蓋掉。
+    // - 預覽模式（網址帶 #cfi=）一律不寫閱讀進度。
+    // ============================================================
+    let cwfmCsrfOverride = null;
+    // 伺服器回 400（CSRF token 過期，例如頁面放太久、從快取還原）時，重新讀一次閱讀頁取新的 token
+    async function cwfmRefreshCsrf() {
+        try {
+            const r = await fetch(location.pathname + location.search, { credentials: 'same-origin' });
+            const html = await r.text();
+            const m = /name="csrf_token"\s+value="([^"]+)"/.exec(html) || /value="([^"]+)"\s+name="csrf_token"/.exec(html);
+            if (m) { cwfmCsrfOverride = m[1]; return true; }
+        } catch (e) { console.error('[cwfm:csrf] 重新取得 token 失敗', e); }
+        return false;
+    }
+    async function cwfmFetchCsrf(url, init) {
+        const go = () => fetch(url, Object.assign({}, init, {
             credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': getCsrfToken(),
-            },
+            headers: Object.assign({}, init.headers || {}, { 'X-CSRFToken': getCsrfToken() }),
+        }));
+        let res = await go();
+        // Calibre-Web 的 400 錯誤頁不會說明原因（實測 0.6.27：只有「400 Bad Request」）；這些端點我們的請求
+        // 欄位一定齊全，400 幾乎只會是 CSRF token 過期／對不上，所以一律重新取得 token 再重送一次。
+        if (res.status === 400 && !init.keepalive && await cwfmRefreshCsrf()) res = await go();
+        if (!res.ok) {
+            const txt = await res.text().catch(() => '');
+            throw new Error('HTTP ' + res.status + ' ' + txt.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200));
+        }
+        return res;
+    }
+    // 閱讀進度沿用 Calibre-Web 原本的書籤欄位（同時只有一個值，新的覆蓋舊的）
+    function postBookmarkValue(rawValue, keepalive) {
+        return cwfmFetchCsrf('/ajax/bookmark/' + BOOK_ID + '/epub', {
+            method: 'POST',
+            keepalive: !!keepalive,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'bookmark=' + encodeURIComponent(rawValue),
-        }).then((res) => {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
         });
     }
-
-    function syncBookmarkToServer(cfi) {
+    function syncBookmarkToServer(cfi, keepalive) {
         const wrapped = wrapCfi(cfi);
         if (!wrapped) return Promise.reject(new Error(t('err_no_current_pos2')));
-        return postBookmarkValue(wrapped).then(() => {
-            dlog(t('log_bookmark_synced2'), wrapped);
-        });
+        return postBookmarkValue(wrapped, keepalive).then(() => { dlog(t('log_bookmark_synced2'), wrapped); });
     }
 
-    // [cwfm] 移除伺服器書籤：查證原版 reading/epub.js 原始碼後確認，
-    // updateBookmark(action, location) 這個函式，"add" 跟 "remove" 兩種
-    // 動作都是走同一支 $.ajax POST，差別只在傳入的 bookmark 值——
-    // "remove" 對應的 location 會是空值，程式碼寫的是
-    // `data: { bookmark: location || "" }`，代表移除書籤的做法，就是對
-    // 同一個端點送出空字串。這裡照同樣的方式實作。
-    function removeServerBookmark() {
-        return postBookmarkValue('').then(() => {
-            dlog(t('log_bookmark_removed2'));
+    // ---- 預覽模式與定位網址 ----
+    let cwfmPreview = false;
+    function cwfmParseHashCfi() {
+        const m = /^#cfi=(.+)$/.exec(location.hash || '');
+        if (!m) return null;
+        try {
+            const c = decodeURIComponent(m[1]);
+            return /^epubcfi\(.+\)$/.test(c) ? c : null;
+        } catch (e) { return null; }
+    }
+    // Docker 版登入頁暫存的定位（登入表單送出時 # 片段會遺失，見 spec §2）
+    function cwfmTakeLoginStashCfi() {
+        try {
+            const raw = sessionStorage.getItem('cwfm-login-cfi');
+            if (!raw) return null;
+            const o = JSON.parse(raw);
+            if (!o || String(o.book) !== String(BOOK_ID)) return null;
+            sessionStorage.removeItem('cwfm-login-cfi');
+            return /^epubcfi\(.+\)$/.test(o.cfi || '') ? o.cfi : null;
+        } catch (e) { return null; }
+    }
+    function cwfmPositionUrl(cfi) {
+        return location.origin + location.pathname + '#cfi=' + encodeURIComponent(wrapCfi(cfi));
+    }
+    function cwfmSetHashCfi(cfi) {
+        try { history.replaceState(history.state, '', cfi ? '#cfi=' + encodeURIComponent(wrapCfi(cfi)) : location.pathname + location.search); }
+        catch (e) { /* 改不了網址列不影響閱讀 */ }
+    }
+
+    // ---- 同步佇列 ----
+    const cwfmProgress = { pending: null, inflight: false, unsent: null, lastHead: null };
+    function cwfmProgressSyncOn() {
+        const st = window.__cwfm.settings;
+        return st ? !!st.autoSyncEnabled : (INITIAL_SETTINGS ? INITIAL_SETTINGS.autoSyncEnabled !== false : true);
+    }
+    function cwfmProgressQueue(cfi) {
+        cwfmProgress.pending = cfi;
+        cwfmProgress.unsent = cfi;
+        cwfmProgressPump();
+    }
+    function cwfmProgressPump() {
+        if (cwfmProgress.inflight || !cwfmProgress.pending) return;
+        const cfi = cwfmProgress.pending;
+        cwfmProgress.pending = null;
+        cwfmProgress.inflight = true;
+        syncBookmarkToServer(cfi)
+            .then(() => { if (cwfmProgress.unsent === cfi) cwfmProgress.unsent = null; })
+            .catch((err) => console.error(t('err_auto_sync2'), err))
+            .then(() => { cwfmProgress.inflight = false; cwfmProgressPump(); });
+    }
+    function cwfmProgressFlush() {
+        const cfi = cwfmProgress.pending || cwfmProgress.unsent;
+        if (!cfi || cwfmPreview || !cwfmProgressSyncOn()) return;
+        cwfmProgress.pending = null;
+        syncBookmarkToServer(cfi, true).catch(() => { /* 頁面正在關閉，失敗也無法處理 */ });
+    }
+    window.addEventListener('pagehide', cwfmProgressFlush);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cwfmProgressFlush(); });
+    // 本機記錄＋（開啟時）雲端同步，預覽模式不寫
+    function cwfmSaveProgress(cfi, fraction) {
+        if (cwfmPreview || !cfi) return;
+        try { gmSet(POSITION_KEY, { cfi, fraction }); } catch (err) { console.error(t('err_local_write2'), err); }
+        if (cwfmProgressSyncOn()) cwfmProgressQueue(cfi);
+    }
+
+    // ============================================================
+    // v1.79 書本資料（書籤＋跳轉紀錄）的儲存層（見 docs/spec-v1.79.md §3、§4、§8）
+    // - Tampermonkey：GM 儲存（key cwfm-bookdata-<書號>），開書時由外層先讀好嵌進來
+    // - Docker：伺服器 API（window.__cwfmBoot.api），讀不到時退回本機；本機一律留一份
+    // - 書籤逐筆新增／修改／刪除送伺服器（不整包覆蓋，避免多裝置互蓋）
+    // - 預覽模式不寫跳轉紀錄（書籤是使用者主動操作，照常儲存）
+    // ============================================================
+    const CWFM_BOOKDATA_KEY = 'cwfm-bookdata-' + BOOK_ID;
+    const CWFM_API = (window.__cwfmBoot && typeof window.__cwfmBoot.api === 'string') ? window.__cwfmBoot.api.replace(/\/?$/, '/') : null;
+    const cwfmBD = { bookmarks: [], navhist: null, source: 'local' };
+    async function cwfmBookdataLoad() {
+        const local = (INITIAL_BOOKDATA && typeof INITIAL_BOOKDATA === 'object') ? INITIAL_BOOKDATA : null;
+        if (local) {
+            cwfmBD.bookmarks = Array.isArray(local.bookmarks) ? local.bookmarks.filter((b) => b && b.id && b.cfi) : [];
+            cwfmBD.navhist = local.navhist && typeof local.navhist === 'object' ? local.navhist : null;
+        }
+        if (!CWFM_API) return;
+        try {
+            const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+            const timer = ctl ? setTimeout(() => ctl.abort(), 5000) : null;
+            const r = await fetch(CWFM_API + 'book/' + encodeURIComponent(BOOK_ID), { credentials: 'same-origin', signal: ctl ? ctl.signal : undefined });
+            if (timer) clearTimeout(timer);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            cwfmBD.bookmarks = Array.isArray(d.bookmarks) ? d.bookmarks.filter((b) => b && b.id && b.cfi) : [];
+            cwfmBD.navhist = d.navhist && typeof d.navhist === 'object' ? d.navhist : null;
+            cwfmBD.source = 'server';
+            cwfmBookdataSaveLocal();
+        } catch (e) { console.error(t('err_bookdata_load'), e); }
+    }
+    function cwfmBookdataSaveLocal() {
+        try { gmSet(CWFM_BOOKDATA_KEY, { bookmarks: cwfmBD.bookmarks, navhist: cwfmBD.navhist, updated: Date.now() }); }
+        catch (e) { console.error(t('err_bookdata_save'), e); }
+    }
+    function cwfmApi(method, path, body) {
+        return cwfmFetchCsrf(CWFM_API + path, {
+            method,
+            headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+            body: body === undefined ? undefined : JSON.stringify(body),
         });
     }
+    function cwfmBookmarkPut(bm) {
+        const i = cwfmBD.bookmarks.findIndex((b) => b.id === bm.id);
+        if (i >= 0) cwfmBD.bookmarks[i] = bm; else cwfmBD.bookmarks.push(bm);
+        cwfmBookdataSaveLocal();
+        if (CWFM_API) cwfmApi('PUT', 'book/' + encodeURIComponent(BOOK_ID) + '/bookmark/' + encodeURIComponent(bm.id), bm)
+            .catch((e) => console.error(t('err_bookdata_save'), e));
+        window.__cwfm.onBookmarksChanged?.();
+    }
+    function cwfmBookmarkRemove(id) {
+        cwfmBD.bookmarks = cwfmBD.bookmarks.filter((b) => b.id !== id);
+        cwfmBookdataSaveLocal();
+        if (CWFM_API) cwfmApi('DELETE', 'book/' + encodeURIComponent(BOOK_ID) + '/bookmark/' + encodeURIComponent(id))
+            .catch((e) => console.error(t('err_bookdata_save'), e));
+        window.__cwfm.onBookmarksChanged?.();
+    }
+    // 跳轉紀錄：有變動才存（延遲 800ms，讓「跳過去」先完成，目前這格才是目的地）
+    let cwfmNavSaveTimer = null;
+    function cwfmNavSaveSoon() {
+        if (cwfmPreview) return;
+        clearTimeout(cwfmNavSaveTimer);
+        cwfmNavSaveTimer = setTimeout(cwfmNavSaveNow, 800);
+    }
+    function cwfmNavSaveNow() {
+        cwfmNavSaveTimer = null;
+        if (cwfmPreview) return;
+        try {
+            const snap = window.__cwfm.navSnapshot ? window.__cwfm.navSnapshot() : null;
+            if (!snap) return;
+            cwfmBD.navhist = snap;
+            cwfmBookdataSaveLocal();
+            if (CWFM_API) cwfmApi('PUT', 'book/' + encodeURIComponent(BOOK_ID) + '/navhist', snap)
+                .catch((e) => console.error(t('err_bookdata_save'), e));
+        } catch (e) { console.error(t('err_bookdata_save'), e); }
+    }
+    // 離開頁面時，還沒存的跳轉紀錄變動立刻存（本機同步寫；伺服器用 keepalive）
+    function cwfmNavFlush() {
+        if (!cwfmNavSaveTimer) return;
+        clearTimeout(cwfmNavSaveTimer);
+        cwfmNavSaveTimer = null;
+        if (cwfmPreview) return;
+        const snap = window.__cwfm.navSnapshot ? window.__cwfm.navSnapshot() : null;
+        if (!snap) return;
+        cwfmBD.navhist = snap;
+        cwfmBookdataSaveLocal();
+        if (CWFM_API) {
+            try {
+                fetch(CWFM_API + 'book/' + encodeURIComponent(BOOK_ID) + '/navhist', {
+                    method: 'PUT', keepalive: true, credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify(snap),
+                }).catch(() => { /* 頁面正在關閉 */ });
+            } catch (e) { /* 頁面正在關閉 */ }
+        }
+    }
+    window.addEventListener('pagehide', cwfmNavFlush);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cwfmNavFlush(); });
 
     let book;
+    let cwfmRestoredCfi = null; // 開書還原到的位置；精準定位開啟時用它當初始鎖定點（見檔尾 LOCK-SET）
+    // v1.79：書籤／跳轉紀錄跟書檔同時下載；在還原位置之前等它讀好（這時還沒有掛任何 relocate 監聽器，
+    // 等待期間不會碰到後面才宣告的變數）
+    const cwfmBookdataReady = cwfmBookdataLoad().catch((e) => console.error(t('err_bookdata_load'), e));
     try {
         const res = await fetch('/show/' + BOOK_ID + '/epub/file.epub', { credentials: 'same-origin' });
         if (!res.ok) throw new Error(t('err_download_failed2') + res.status);
@@ -875,51 +1173,43 @@
 
         await view.open(file);
         book = view.book;
+        await cwfmBookdataReady;
         cwfmInstallRendererDiag();
         cwfmDiag('INIT-OPENED', 'sections=' + cwfmSafe(() => book.sections.length) + ' title=' + cwfmSafe(() => JSON.stringify(book.metadata?.title)));
 
-        // [cwfm] 進度還原優先順序：本機記錄優先（功能一存的，翻頁就即時
-        // 記，通常比較新），本機沒有才看伺服器書籤（Calibre-Web 原本開書
-        // 時會自動把上次位置放在網址列的 #epubcfi(...) 片段裡）。
-        // 本機記錄要不要拿來用，要看使用者有沒有開啟功能一的開關；這裡
-        // 讀的是外層腳本已經先嵌好的 INITIAL_SETTINGS/INITIAL_POSITION，
-        // 不等 buildSettingsPanel 建好設定物件（那時已經太晚，開書一開始
-        // 就要決定要不要還原位置）。
-        let restored = false;
+        // v1.79 開書位置：定位網址（預覽模式）＞（雲端紀錄優先 ? 雲端→本機 : 本機→雲端）＞ 從頭
+        // 伺服器端的閱讀進度是 Calibre-Web 用模板注入的 calibre.bookmark（不在網址上）。
         let cwfmRestorePath = 'none(renderer.next)';
-        try {
-            const localRememberEnabled = INITIAL_SETTINGS ? INITIAL_SETTINGS.localAutoRemember !== false : true;
-            if (localRememberEnabled && INITIAL_POSITION && INITIAL_POSITION.cfi) {
-                await view.goTo(INITIAL_POSITION.cfi);
-                restored = true;
-                cwfmRestorePath = 'local cfi=' + INITIAL_POSITION.cfi;
-                dlog(t('log_restore_local2'), INITIAL_POSITION.cfi);
-            }
-        } catch (e) {
-            console.error(t('err_restore_local2'), e);
-        }
-
-        if (!restored) {
-            // [cwfm] 伺服器端的書籤 CFI 不在網址 hash 裡（location.hash 實測
-            // 是空字串），是 Calibre-Web 用 Jinja2 模板注入的全域變數
-            // `calibre.bookmark`。typeof 判斷是保險：我們是 document-start
-            // 執行，理論上會排在頁面內嵌 script 之後才跑到這裡，但沒有
-            // 100% 把握，讀不到就當作沒有伺服器書籤，不要整個掛掉。
-            const serverBookmark = (typeof calibre !== 'undefined' && calibre && calibre.bookmark) || '';
-            if (serverBookmark && serverBookmark.startsWith('epubcfi(')) {
-                try {
-                    await view.goTo(serverBookmark);
-                    restored = true;
-                    cwfmRestorePath = 'server cfi=' + serverBookmark;
-                    dlog(t('log_restore_server2'), serverBookmark);
-                } catch (e) {
-                    console.error(t('err_restore_server2'), e);
-                }
+        const hashCfi = cwfmParseHashCfi();
+        const stashCfi = hashCfi ? null : cwfmTakeLoginStashCfi();
+        const linkCfi = hashCfi || stashCfi;
+        const serverCfi = (() => {
+            const b = (typeof calibre !== 'undefined' && calibre && calibre.bookmark) || '';
+            return b && b.startsWith('epubcfi(') ? b : null;
+        })();
+        const localCfi = INITIAL_POSITION && INITIAL_POSITION.cfi ? INITIAL_POSITION.cfi : null;
+        const cloudFirst = INITIAL_SETTINGS ? INITIAL_SETTINGS.cloudFirst !== false : true;
+        const candidates = linkCfi ? [['link', linkCfi]]
+            : (cloudFirst ? [['server', serverCfi], ['local', localCfi]] : [['local', localCfi], ['server', serverCfi]]);
+        for (const [src, cfi] of candidates) {
+            if (!cfi) continue;
+            try {
+                await view.goTo(cfi);
+                cwfmRestoredCfi = cfi;
+                cwfmRestorePath = src + ' cfi=' + cfi;
+                dlog(t(src === 'local' ? 'log_restore_local2' : 'log_restore_server2'), cfi);
+                break;
+            } catch (e) {
+                console.error(t(src === 'local' ? 'err_restore_local2' : 'err_restore_server2'), e);
             }
         }
-
-        if (!restored) view.renderer.next();
-        cwfmDiag('INIT-RESTORED', 'path=' + cwfmRestorePath + ' || ' + cwfmSnap());
+        if (linkCfi) {
+            cwfmPreview = !!cwfmRestoredCfi;
+            if (stashCfi && cwfmPreview) cwfmSetHashCfi(stashCfi);
+        }
+        if (!cwfmRestoredCfi) view.renderer.next();
+        cwfmProgress.lastHead = cwfmSafe(() => cwfmPageStartCfi().cfi, null); // 還原到的位置本來就是存著的，不用再寫一次
+        cwfmDiag('INIT-RESTORED', 'path=' + cwfmRestorePath + ' preview=' + cwfmPreview + ' || ' + cwfmSnap());
     } catch (e) {
         console.error(t('err_open_book2'), e);
         viewerContainer.innerHTML = '';
@@ -927,64 +1217,17 @@
         return;
     }
 
-    // ============================================================
-    // 功能一：本機自動記憶（每次翻頁即時存，比照原版 reading/epub.js 用
-    // "calibre.reader.position." + book.key() 的做法，換成我們自己的 key
-    // 命名，改存進 GM 儲存）。開關讀 window.__cwfm.settings，但這個監聽器
-    // 在設定選單建立之前就已經掛上，所以每次觸發時才即時讀目前設定值，
-    // 不是掛上當下的快照。
-    // ============================================================
+    // 每次換位置：本機記錄＋雲端同步（對位操作中的暫時位置不算）；預覽模式改成更新網址列的 #cfi=
     view.addEventListener('relocate', (e) => {
-        // [cwfm] 定位點對齊操作進行中（搬走/接回原始內容那段期間），這裡
-        // 先不寫入——那段期間算出來的 cfi 是資料量被動過手腳當下的暫時
-        // 值，寫進去會存到錯的位置。等操作結束、真正確定的新位置出來，
-        // 才會有下一次正常的 relocate 觸發寫入。
         if (cwfmAligningAnchor) return;
-        const settings = window.__cwfm.settings;
-        const enabled = settings ? settings.localAutoRemember : true; // 設定選單還沒建立好之前預設開啟
-        if (!enabled) return;
-        const cfi = e.detail?.cfi;
-        const fraction = e.detail?.fraction;
-        if (!cfi) return;
-        try {
-            gmSet(POSITION_KEY, { cfi, fraction });
-        } catch (err) {
-            console.error(t('err_local_write2'), err);
-        }
-    });
-
-    // ============================================================
-    // 功能三：停留超過 N 秒自動同步到伺服器。同一個位置（relocate 之後）
-    // 沒有再變動、經過設定的秒數，才觸發同步；一旦位置又變了，計時器
-    // 重新開始算，避免快速翻頁時每一頁都送出請求。
-    // ============================================================
-    let autoSyncTimer = null;
-    view.addEventListener('relocate', (e) => {
-        // [cwfm] 同上，定位點對齊操作進行中不要用這個當下的 cfi 起算同步
-        // 倒數，理由跟上面本機記憶那段一樣。
-        if (cwfmAligningAnchor) return;
-        const settings = window.__cwfm.settings;
-        clearTimeout(autoSyncTimer);
-        if (!settings || !settings.autoSyncEnabled) return;
         const cfi = e.detail?.cfi;
         if (!cfi) return;
-        const delayMs = Math.max(1, settings.autoSyncDelaySeconds || 5) * 1000;
-        autoSyncTimer = setTimeout(() => {
-            syncBookmarkToServer(cfi)
-                .then(() => {
-                    // [cwfm] 同步成功後要通知書籤圖示重畫（空心→紅色），
-                    // 但 currentServerBookmarkCfi/renderBookmarkIcon 是
-                    // buildToolbar() 裡的區域變數，這裡碰不到，透過
-                    // window.__cwfm 這個既有的共用空間搭一個窗口——
-                    // buildToolbar() 建立時會把實際的更新函式塞進
-                    // onBookmarkSynced，這裡呼叫之前先判斷存不存在（工具
-                    // 列可能還沒建好，或建立失敗），避免噴錯。
-                    window.__cwfm.onBookmarkSynced?.(cfi);
-                })
-                .catch((err) =>
-                    console.error(t('err_auto_sync2'), err)
-                );
-        }, delayMs);
+        // 畫面第一個字沒變（開書對位、重新排版造成的重複事件）就不重寫
+        const head = cwfmSafe(() => cwfmPageStartCfi().cfi, null);
+        if (head && head === cwfmProgress.lastHead) return;
+        cwfmProgress.lastHead = head;
+        if (cwfmPreview) { cwfmSetHashCfi(head || cfi); return; }
+        cwfmSaveProgress(cfi, e.detail?.fraction);
     });
 
     // ============================================================
@@ -1010,6 +1253,9 @@
     let cwfmLastPageFlipTime = 0;
     function handleKeydown(e) {
         try {
+            // v1.79：在輸入框（搜尋、書籤名稱／備註）裡打字時不要翻頁
+            const tg = e.target;
+            if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.isContentEditable)) return;
             // [cwfm] 設定面板開著時，翻頁快速鍵完全停用（面板裡的滑桿／數值框會用方向鍵
             // 調整數值，不能同時翻頁）。目錄面板開著時照常翻頁——使用者可能想邊看目錄邊翻。
             if (document.querySelector('.cwfm-settings-panel.cwfm-open')) return;
@@ -1430,7 +1676,8 @@
             '}',
             'input[type="number"] { -moz-appearance: textfield !important; }',
             '.cwfm-panel {',
-            '  position: fixed; top: 0; bottom: 0; width: 320px; max-width: 85vw;',
+            // v1.79：面板改到工具列（48px）下方，工具列在面板開啟時照常可以操作
+            '  position: fixed; top: 48px; bottom: 0; width: 320px; max-width: 85vw;',
             '  background: var(--cwfm-bg); color: var(--cwfm-text); z-index: 1000000;',
             '  box-shadow: 0 0 24px rgba(0,0,0,0.6);',
             // [cwfm] padding 從這裡整個拿掉，改分別放到標題列（自己上/左/
@@ -2183,11 +2430,19 @@
     function closeAllPanels() {
         document.querySelectorAll('.cwfm-panel.cwfm-open').forEach(p => p.classList.remove('cwfm-open'));
         if (dimming) dimming.classList.remove('cwfm-show');
+        try { cwfmScheduleAutoHide(); } catch (e) { /* 工具列還沒建好 */ }
     }
     function openPanel(panel) {
         closeAllPanels();
         panel.classList.add('cwfm-open');
         ensureDimming().classList.add('cwfm-show');
+        // v1.79：面板在工具列下方，開著時工具列要一直顯示
+        try { cwfmShowBars(); } catch (e) { /* 工具列還沒建好 */ }
+    }
+    // v1.79：工具列上的按鈕再按一次就關閉同一個面板
+    function togglePanel(panel) {
+        if (panel.classList.contains('cwfm-open')) closeAllPanels();
+        else openPanel(panel);
     }
 
     // ============================================================
@@ -2242,9 +2497,13 @@
         // 間距空間 = 這個值 × (欄數 − 1)，1 欄時天生是 0。
         columnGapPx: 24,
         maxColumnCount: 2,
-        localAutoRemember: true,   // 功能一：本機自動記憶開關
-        autoSyncEnabled: false,    // 功能三：停留自動同步開關（預設關閉，避免使用者沒注意到就一直送請求）
-        autoSyncDelaySeconds: 5,   // 功能三：停留幾秒才觸發同步
+        // v1.79：閱讀進度——本機一律記錄；同步開啟時每次換位置立刻送到伺服器；
+        // cloudFirst 決定開書時先用雲端還是本機（見 docs/spec-v1.79.md §1）。
+        autoSyncEnabled: true,
+        cloudFirst: true,
+        // v1.79：書籤
+        showBookmarkHighlights: true,
+        tocFilter: { chapters: true, pos: true, excerpt: true, note: true },
         // [cwfm] 滑鼠閒置自動隱藏游標——只看滑鼠有沒有移動，按鍵盤不算
         // 動作，跟自動隱藏工具列各自獨立計時，不共用同一個計時器。
         cursorAutoHideEnabled: false,
@@ -3675,7 +3934,10 @@
             kind, entries: [], idx: -1, listeners: [],
             get backCount() { return Math.max(0, this.idx); },
             get forwardCount() { return this.idx < 0 ? 0 : this.entries.length - 1 - this.idx; },
-            changed() { this.listeners.forEach((fn) => { try { fn(this); } catch (e) { console.error(e); } }); },
+            changed() {
+                this.listeners.forEach((fn) => { try { fn(this); } catch (e) { console.error(e); } });
+                cwfmNavSaveSoon(); // v1.79：有變動才存
+            },
             // 跳走之前呼叫：記下目前位置，丟掉原本「下一步」那條路
             record() {
                 const cur = cwfmNavCurrentPos();
@@ -3702,6 +3964,12 @@
             },
             clear() { this.entries = []; this.idx = -1; this.changed(); },
         };
+        // v1.79：讀回上次保存的紀錄
+        const saved = cwfmBD.navhist && cwfmBD.navhist[kind];
+        if (saved && Array.isArray(saved.entries) && saved.entries.length && saved.idx >= 0 && saved.idx < saved.entries.length) {
+            h.entries = saved.entries.slice();
+            h.idx = saved.idx;
+        }
         cwfmNavHistories[kind] = h;
         return h;
     }
@@ -3722,6 +3990,20 @@
         } catch (e) { console.error('[cwfm:nav] 返回位置失敗', e); }
     }
     window.__cwfmNavRecord = (kind) => cwfmNavHistory(kind).record();
+    // v1.79：保存用的快照——目前這一格補成當下位置（離開時才會填，存檔時先補上）
+    window.__cwfm.navSnapshot = () => {
+        const out = {};
+        const cur = cwfmNavCurrentPos();
+        for (const kind of Object.keys(cwfmNavHistories)) {
+            const h = cwfmNavHistories[kind];
+            const entries = h.entries.slice();
+            if (h.idx >= 0 && cur) entries[h.idx] = cur;
+            out[kind] = { entries: entries.map((e) => e || cur || null), idx: h.idx };
+        }
+        // 還沒建立的組（例如還沒開過搜尋）沿用上次保存的內容
+        if (cwfmBD.navhist) for (const k of Object.keys(cwfmBD.navhist)) if (!out[k]) out[k] = cwfmBD.navhist[k];
+        return out;
+    };
 
 
     function applySettings(settings) {
@@ -3786,6 +4068,8 @@
             }
         } catch (e) { console.error(t('err_apply_main_bg'), e); }
         window.__cwfm.settings = settings;
+        // v1.79：書籤標示開關等設定變動時通知（模組在檔尾才建立，用窗口呼叫）
+        try { window.__cwfm.onSettingsApplied?.(settings); } catch (e) { console.error('[cwfm:bookmarks] 套用設定失敗', e); }
     }
 
     // 視窗尺寸改變時，margin/max-block-size 與 gap/max-inline-size 都需要
@@ -5511,18 +5795,18 @@
         // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
         addCheckboxField(t('field_precise_anchor_align'), 'preciseAnchorAlign');
 
-        // [cwfm] 三個進度記憶功能各自獨立、各有各的開關，不要混在一起：
-        // 功能一（本機自動記憶）、功能三（停留自動同步）都是設定選單裡的
-        // 開關；功能二（手動同步）不需要開關，是工具列上的按鈕，使用者
-        // 按下去才會觸發，本來就是主動行為，不需要另外開關控制。
-        addCheckboxField(t('field_local_auto_remember'), 'localAutoRemember');
+        // v1.79：閱讀進度——同步開關在上、雲端紀錄優先在下（附說明）；本機一律記錄、不再有開關，
+        // 也不再有「停留幾秒」的延遲（見 docs/spec-v1.79.md §1）。
         const autoSyncCheckbox = addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
-        addNumberField(t('field_auto_sync_delay'), 'autoSyncDelaySeconds', 1, 60, 1, t('unit_seconds'));
-        // [cwfm] 開關+底下緊接著的秒數欄位算同一組設定(開關決定要不要
-        // 啟用，秒數只有開關打開時才有意義)，組內不要分隔線——加一個
-        // class 標記「這個開關欄位後面不顯示分隔線」，跟現有
-        // .cwfm-field-boxed 的排除機制同一種做法。
         autoSyncCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
+        const cloudFirstCheckbox = addCheckboxField(t('field_cloud_first'), 'cloudFirst');
+        {
+            const hint = document.createElement('div');
+            hint.className = 'cwfm-field-hint';
+            hint.textContent = t('hint_cloud_first');
+            cloudFirstCheckbox.closest('.cwfm-field').appendChild(hint);
+        }
+        addCheckboxField(t('field_show_bm_highlight'), 'showBookmarkHighlights');
         const cursorAutoHideCheckbox = addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
         addNumberField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
         cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
@@ -5809,6 +6093,15 @@
         settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
         bookmarkOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
         bookmarkFilled: '<svg viewBox="0 0 24 24" fill="#e33" stroke="#e33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+        search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+        clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+        quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4-4 5"/><path d="M19 11h-4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4-4 5"/></svg>',
+        pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
+        chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+        chevronUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
+        download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>',
+        link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+        edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
         maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
         minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
     };
@@ -5956,82 +6249,33 @@
         const tocBtn = document.createElement('button');
         tocBtn.innerHTML = ICONS.list;
         tocBtn.setAttribute('aria-label', t('aria_toc'));
-        tocBtn.addEventListener('click', () => openPanel(tocPanel));
+        tocBtn.addEventListener('click', () => togglePanel(tocPanel));
         bar.appendChild(tocBtn);
 
         const spacer = document.createElement('div');
         spacer.className = 'cwfm-toolbar-top-spacer';
         bar.appendChild(spacer);
 
-        // 書籤：查證原版 reading/epub.js 的慣例後確認，有存書籤是實心（這裡
-        // 用紅色），沒有則是空心的鏤空圖示。
-        //
-        // [cwfm] 精確比對「目前顯示的位置」是不是剛好等於已存的伺服器書籤
-        // ——不是「這本書有沒有存過書籤」這種粗略狀態。用
-        // currentServerBookmarkCfi 記住目前伺服器書籤實際的 CFI 字串值
-        // （不只是布林值），每次 relocate 都拿目前位置去精確比對：
-        // 相符才顯示紅色，一旦翻頁離開（不再相符）就變回空心。
-        // 初始值從 Calibre-Web 自己注入的全域變數 calibre.bookmark 取得
-        // （不是網址 hash——查證過 location.hash 實測是空字串，伺服器書籤
-        // 是透過 Jinja2 模板寫進這個全域變數，不在網址上）。typeof 判斷
-        // 是保險：讀不到就當這本書沒有伺服器書籤，不要整個掛掉。
-        let currentServerBookmarkCfi = (typeof calibre !== 'undefined' && calibre && calibre.bookmark)
-            ? wrapCfi(calibre.bookmark)
-            : null;
+        // v1.79：搜尋（結果顯示在工具列下方的面板）
+        const searchBtn = document.createElement('button');
+        searchBtn.innerHTML = ICONS.search;
+        searchBtn.setAttribute('aria-label', t('search_aria'));
+        searchBtn.addEventListener('click', () => window.__cwfm.toggleSearchPanel?.());
+        bar.appendChild(searchBtn);
 
+        // v1.79：書籤鈕改成「加書籤」（閱讀進度改為自動同步，不再由這顆按鈕代表），固定空心。
+        // pointerdown 先記時間：iOS 點工具列時書本裡的選取可能被取消，加書籤要沿用剛才的選取。
         const bookmarkBtn = document.createElement('button');
-        function isCurrentLocationBookmarked() {
-            const cfi = view.lastLocation?.cfi;
-            if (!cfi || !currentServerBookmarkCfi) return false;
-            return wrapCfi(cfi) === currentServerBookmarkCfi;
-        }
-        function renderBookmarkIcon() {
-            bookmarkBtn.innerHTML = isCurrentLocationBookmarked() ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
-        }
-        renderBookmarkIcon();
-        // [cwfm] 給停留自動同步（見上面 view.addEventListener('relocate', ...)
-        // 那段功能三的程式碼，跟這裡不在同一個函式作用域）呼叫的窗口，
-        // 同步成功後更新這裡的區域變數並重畫圖示，行為要跟手動按書籤
-        // 按鈕成功後完全一樣。
-        window.__cwfm.onBookmarkSynced = (cfi) => {
-            currentServerBookmarkCfi = wrapCfi(cfi);
-            renderBookmarkIcon();
-        };
+        bookmarkBtn.innerHTML = ICONS.bookmarkOutline;
         bookmarkBtn.setAttribute('aria-label', t('aria_bookmark'));
-        bookmarkBtn.addEventListener('click', () => {
-            const cfi = view.lastLocation?.cfi;
-            if (!cfi) {
-                console.warn(t('err_no_pos_to_sync'));
-                return;
-            }
-            if (isCurrentLocationBookmarked()) {
-                // (c) 已經是紅色書籤，按下去立刻取消
-                removeServerBookmark()
-                    .then(() => {
-                        currentServerBookmarkCfi = null;
-                        renderBookmarkIcon();
-                    })
-                    .catch((e) => console.error(t('err_remove_bookmark'), e));
-            } else {
-                // (b) 目前這頁沒有書籤，按下去立刻存成新書籤（同時只能有
-                // 一個，這裡存了之後，原本別頁的書籤自然就不再相符、
-                // 下次切過去會自動變回空心，不用另外處理）
-                syncBookmarkToServer(cfi)
-                    .then(() => {
-                        currentServerBookmarkCfi = wrapCfi(cfi);
-                        renderBookmarkIcon();
-                    })
-                    .catch((e) => console.error(t('err_sync_bookmark'), e));
-            }
-        });
-        // (a) 翻頁時即時重新比對，離開已存書籤的那一頁就變回空心
-        view.addEventListener('relocate', renderBookmarkIcon);
+        bookmarkBtn.addEventListener('pointerdown', () => { window.__cwfm.bmPressAt = Date.now(); });
+        bookmarkBtn.addEventListener('click', () => window.__cwfm.openBookmarkDialog?.());
         bar.appendChild(bookmarkBtn);
 
         const settingsBtn = document.createElement('button');
         settingsBtn.innerHTML = ICONS.settings;
         settingsBtn.setAttribute('aria-label', t('aria_settings'));
-        settingsBtn.addEventListener('click', () => openPanel(settingsPanel));
+        settingsBtn.addEventListener('click', () => togglePanel(settingsPanel));
         bar.appendChild(settingsBtn);
 
         const fullscreenBtn = document.createElement('button');
@@ -6118,6 +6362,7 @@
     let cwfmAutoHideTimer = null;
     let cwfmAutoHideHoveringBar = false;
     function cwfmShowBars() {
+        document.documentElement.classList.remove('cwfm-bars-hidden');
         toolbar?.classList.remove('cwfm-autohidden');
         topToolbar?.classList.remove('cwfm-autohidden');
         // [cwfm] 背景層跟按鈕層是分開的兩個元素，自動隱藏要一起移動，
@@ -6127,6 +6372,8 @@
     }
     function cwfmHideBars() {
         if (cwfmAutoHideHoveringBar) return;
+        if (document.querySelector('.cwfm-panel.cwfm-open')) return; // v1.79：面板開著不收工具列
+        document.documentElement.classList.add('cwfm-bars-hidden');
         toolbar?.classList.add('cwfm-autohidden');
         topToolbar?.classList.add('cwfm-autohidden');
         document.querySelector('.cwfm-toolbar-bg')?.classList.add('cwfm-autohidden');
@@ -6254,6 +6501,953 @@
         linkNav.dataset.cwfmOwned = 'true';
         document.body.appendChild(linkNav);
     } catch (e) { console.error('[cwfm:nav] 建立返回按鈕失敗', e); }
+
+    // ============================================================
+    // v1.79 書籤、搜尋、匯出、預覽模式提示條（見 docs/spec-v1.79.md）
+    // ============================================================
+    try {
+        const style = document.createElement('style');
+        style.dataset.cwfmOwned = 'true';
+        style.textContent = [
+            // 預覽模式提示條：工具列下方一行；工具列隱藏時貼到畫面頂端
+            '.cwfm-preview-bar { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); z-index: 999999;',
+            '  display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); box-sizing: border-box;',
+            '  padding: 3px 4px 3px 12px; border-radius: 16px; font: 13px/1.4 sans-serif; white-space: nowrap;',
+            '  background: var(--cwfm-toolbar-bg); color: var(--cwfm-text);',
+            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); transition: top 0.3s ease; }',
+            '.cwfm-bars-hidden .cwfm-preview-bar { top: 8px; }',
+            '.cwfm-preview-bar span { overflow: hidden; text-overflow: ellipsis; }',
+            '.cwfm-preview-bar button { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 4px 12px; cursor: pointer;',
+            '  background: var(--cwfm-accent); color: #fff; font: inherit; }',
+            // 提示訊息
+            '.cwfm-toast { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 1000002;',
+            '  padding: 8px 16px; border-radius: 18px; font: 13px sans-serif; background: var(--cwfm-toolbar-bg); color: var(--cwfm-text);',
+            '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); pointer-events: none;',
+            '  opacity: 0; transition: opacity 0.2s ease; }',
+            '.cwfm-toast.cwfm-show { opacity: 1; }',
+            // 對話框裡的欄位
+            '.cwfm-bm-dialog { width: min(420px, calc(100vw - 48px)); }',
+            '.cwfm-bm-dialog label.cwfm-bm-dlabel { display: block; margin: 10px 0 4px; font-size: 12px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-bm-dialog textarea { width: 100%; box-sizing: border-box; min-height: 72px; resize: vertical; padding: 6px 8px;',
+            '  border: 1px solid var(--cwfm-border-light); border-radius: 6px; background: var(--cwfm-surface); color: var(--cwfm-text); font: 13px/1.5 sans-serif; }',
+            '.cwfm-bm-dialog textarea:focus { border-color: var(--cwfm-accent); outline: none; }',
+            '.cwfm-bm-dexcerpt { position: relative; margin: 0; padding: 6px 28px 6px 10px; border-left: 3px solid #EF9F27; max-height: 8em; overflow: auto;',
+            '  font: 14px/1.6 serif; color: var(--cwfm-text); background: var(--cwfm-surface-elevated); white-space: pre-wrap; }',
+            '.cwfm-bm-dexcerpt button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border: 0;',
+            '  border-radius: 50%; background: none; color: var(--cwfm-text-secondary); cursor: pointer; }',
+            '.cwfm-bm-dexcerpt button svg { width: 14px; height: 14px; }',
+            '.cwfm-confirm-ok.cwfm-ok-primary { background: var(--cwfm-accent); border-color: var(--cwfm-accent); }',
+            '.cwfm-confirm-box .cwfm-bm-dialog-buttons { margin-top: 14px; }',
+            // 目錄頂端的篩選與匯出
+            '.cwfm-toc-filter { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 10px; flex: 0 0 auto; }',
+            '.cwfm-chip-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
+            '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text-secondary); font: 12px sans-serif; }',
+            '.cwfm-chip-toggle svg { width: 14px; height: 14px; }',
+            '.cwfm-chip-toggle[aria-pressed="true"] { color: var(--cwfm-text); background: var(--cwfm-surface-elevated); border-color: var(--cwfm-text-secondary); }',
+            '.cwfm-chip-toggle .cwfm-chip-count { color: var(--cwfm-text-secondary); }',
+            '.cwfm-panel-header .cwfm-hdr-btn { background: none; border: none; color: var(--cwfm-text); border-radius: 50%; width: 32px; height: 32px;',
+            '  padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 auto; }',
+            '.cwfm-panel-header .cwfm-hdr-btn:hover { background: var(--cwfm-surface-elevated); }',
+            '.cwfm-panel-header .cwfm-hdr-btn svg { width: 20px; height: 20px; }',
+            '.cwfm-panel-header .cwfm-hdr-btn + .cwfm-nav-group { margin-left: 0; }',
+            '.cwfm-hide-chapters [role="treeitem"] { display: none !important; }',
+            '.cwfm-hide-chapters [aria-expanded="false"] ~ ol { display: block !important; }',
+            '.cwfm-hide-bm-pos .cwfm-bm-row[data-type="pos"], .cwfm-hide-bm-excerpt .cwfm-bm-row[data-type="excerpt"],',
+            '.cwfm-hide-bm-note .cwfm-bm-row[data-type="note"] { display: none; }',
+            // 書籤列：橫躺小書籤（左側尖角旗頭）＋本體＋右側展開區
+            '.cwfm-bm-list { margin: 2px 0 6px; }',
+            '.cwfm-bm-row { display: flex; align-items: stretch; margin: 4px 0; border-radius: 0 6px 6px 0; background: var(--cwfm-surface-elevated); cursor: pointer; }',
+            '.cwfm-bm-flag { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; padding-left: 6px; box-sizing: border-box;',
+            '  clip-path: polygon(28% 0, 100% 0, 100% 100%, 28% 100%, 0 50%); }',
+            '.cwfm-bm-flag svg { width: 15px; height: 15px; }',
+            '.cwfm-bm-row[data-type="pos"] .cwfm-bm-flag { background: #B4B2A9; color: #2C2C2A; }',
+            '.cwfm-bm-row[data-type="excerpt"] .cwfm-bm-flag { background: #FAC775; color: #633806; }',
+            '.cwfm-bm-row[data-type="note"] .cwfm-bm-flag { background: #9FE1CB; color: #085041; }',
+            '.cwfm-bm-body { flex: 1 1 auto; min-width: 0; padding: 6px 8px; font-size: 13px; line-height: 1.45; }',
+            '.cwfm-bm-name { color: var(--cwfm-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+            '.cwfm-bm-row[data-type="excerpt"] .cwfm-bm-name { font-family: serif; }',
+            '.cwfm-bm-sub { color: var(--cwfm-text-secondary); font-size: 11px; margin-top: 1px; }',
+            '.cwfm-bm-exp { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; border: 0; border-left: 1px dashed var(--cwfm-border-light);',
+            '  background: none; color: var(--cwfm-text-secondary); cursor: pointer; padding: 0; }',
+            '.cwfm-bm-exp svg { width: 16px; height: 16px; }',
+            '.cwfm-bm-detail { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cwfm-border); cursor: default; }',
+            '.cwfm-bm-detail blockquote { margin: 0 0 6px; padding: 0 0 0 8px; border-left: 2px solid #EF9F27; font: 14px/1.6 serif; color: var(--cwfm-text); white-space: pre-wrap; }',
+            '.cwfm-bm-detail .cwfm-bm-note { margin: 0 0 6px; color: var(--cwfm-text); white-space: pre-wrap; }',
+            '.cwfm-bm-detail .cwfm-bm-times { color: var(--cwfm-text-secondary); font-size: 11px; margin-bottom: 6px; }',
+            '.cwfm-bm-actions { display: flex; flex-wrap: wrap; gap: 6px; }',
+            '.cwfm-bm-actions button { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; cursor: pointer;',
+            '  border: 1px solid var(--cwfm-border-light); background: none; color: var(--cwfm-text); font: 12px sans-serif; }',
+            '.cwfm-bm-actions button svg { width: 14px; height: 14px; }',
+            '.cwfm-bm-flash { outline: 2px solid var(--cwfm-accent); outline-offset: 1px; }',
+            // 搜尋面板
+            '.cwfm-search-top { padding: 0 18px 8px; flex: 0 0 auto; }',
+            '.cwfm-search-row { display: flex; align-items: center; gap: 4px; }',
+            '.cwfm-panel .cwfm-search-row input[type="text"] { flex: 1 1 auto; min-width: 0; }',
+            '.cwfm-search-row button { width: 30px; height: 30px; flex: 0 0 auto; border: 0; border-radius: 50%; background: none; color: var(--cwfm-text);',
+            '  display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }',
+            '.cwfm-search-row button:disabled { opacity: 0.35; cursor: default; }',
+            '.cwfm-search-row button svg { width: 18px; height: 18px; }',
+            '.cwfm-search-count { font-size: 12px; color: var(--cwfm-text-secondary); min-width: 4.5em; text-align: center; }',
+            '.cwfm-search-scope { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }',
+            '.cwfm-search-status { margin-left: auto; font-size: 11px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-search-results { padding: 0 18px 18px; flex: 1 1 auto; min-height: 0; overflow: auto; }',
+            '.cwfm-search-group { margin: 10px 0 2px; font-size: 12px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-search-hit { padding: 6px 4px; border-bottom: 1px solid var(--cwfm-border); font-size: 13px; line-height: 1.5; cursor: pointer; color: var(--cwfm-text); }',
+            '.cwfm-search-hit:hover { background: var(--cwfm-surface-elevated); }',
+            '.cwfm-search-hit.cwfm-current { background: var(--cwfm-surface-elevated); box-shadow: inset 3px 0 0 var(--cwfm-accent); }',
+            '.cwfm-search-hit mark { background: #FAC775; color: #412402; border-radius: 2px; padding: 0 1px; }',
+            '.cwfm-search-hit .cwfm-hit-meta { font-size: 11px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-search-hit .cwfm-hit-icon { display: inline-flex; vertical-align: -2px; margin-right: 4px; }',
+            '.cwfm-search-hit .cwfm-hit-icon svg { width: 14px; height: 14px; }',
+            '.cwfm-search-hit[data-type="excerpt"] .cwfm-hit-icon { color: #BA7517; }',
+            '.cwfm-search-hit[data-type="note"] .cwfm-hit-icon { color: #0F6E56; }',
+            '.cwfm-search-hide-text .cwfm-sr-text, .cwfm-search-hide-bm .cwfm-sr-bm { display: none; }',
+            // 匯出選格式
+            '.cwfm-export-formats { display: flex; gap: 6px; margin: 4px 0 4px; }',
+        ].join('\n');
+        document.head.appendChild(style);
+    } catch (e) { console.error('[cwfm:v1.79] 樣式建立失敗', e); }
+
+    // ---- 共用小工具 ----
+    function cwfmPad2(n) { return (n < 10 ? '0' : '') + n; }
+    function cwfmFmtTime(ts) {
+        const d = new Date(ts);
+        return d.getFullYear() + '-' + cwfmPad2(d.getMonth() + 1) + '-' + cwfmPad2(d.getDate()) + ' '
+            + cwfmPad2(d.getHours()) + ':' + cwfmPad2(d.getMinutes()) + ':' + cwfmPad2(d.getSeconds());
+    }
+    function cwfmToast(msg) {
+        const el = document.createElement('div');
+        el.className = 'cwfm-toast';
+        el.dataset.cwfmOwned = 'true';
+        el.textContent = msg;
+        document.body.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('cwfm-show'));
+        setTimeout(() => { el.classList.remove('cwfm-show'); setTimeout(() => el.remove(), 300); }, 1800);
+    }
+    // http（非 https）下沒有 navigator.clipboard，改用選取文字 + execCommand；都失敗就把連結顯示出來讓使用者自己複製
+    async function cwfmCopyText(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+        } catch (e) { /* 改用下面的做法 */ }
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.setSelectionRange(0, text.length);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        ta.remove();
+        return ok;
+    }
+    async function cwfmCopyLink(cfi) {
+        const url = cwfmPositionUrl(cfi);
+        if (await cwfmCopyText(url)) cwfmToast(t('toast_link_copied'));
+        else cwfmAlertDialog(t('bm_copy_link'), t('toast_copy_failed') + '\n' + url);
+    }
+
+    // ---- 預覽模式提示條 ----
+    let cwfmPreviewBar = null;
+    function cwfmEndPreview() {
+        if (!cwfmPreview) return;
+        cwfmPreview = false;
+        cwfmSetHashCfi(null);
+        cwfmPreviewBar?.remove();
+        cwfmPreviewBar = null;
+        const loc = view.lastLocation;
+        if (loc?.cfi) cwfmSaveProgress(loc.cfi, loc.fraction);
+        cwfmNavSaveSoon();
+    }
+    if (cwfmPreview) {
+        cwfmPreviewBar = document.createElement('div');
+        cwfmPreviewBar.className = 'cwfm-preview-bar';
+        cwfmPreviewBar.dataset.cwfmOwned = 'true';
+        const txt = document.createElement('span');
+        txt.textContent = t('preview_text');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = t('preview_btn');
+        btn.addEventListener('click', cwfmEndPreview);
+        cwfmPreviewBar.append(txt, btn);
+        document.body.appendChild(cwfmPreviewBar);
+    }
+
+    // ---- 書籤資料小工具 ----
+    function cwfmBmType(bm) { return bm.note ? 'note' : bm.excerpt ? 'excerpt' : 'pos'; }
+    function cwfmBmClip(s, n) { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n) + '…' : s; }
+    function cwfmBmName(bm) { return bm.name || cwfmBmClip(bm.note, 20) || cwfmBmClip(bm.excerpt, 20) || cwfmFmtTime(bm.created); }
+    function cwfmBmIcon(type) { return type === 'note' ? ICONS.pencil : type === 'excerpt' ? ICONS.quote : ICONS.clock; }
+    function cwfmBmTypeLabel(type) { return t(type === 'note' ? 'bm_type_note' : type === 'excerpt' ? 'bm_type_excerpt' : 'bm_type_pos'); }
+    function cwfmBmIndex(bm) { return cwfmSafe(() => view.resolveCFI(bm.cfi).index, -1); }
+    function cwfmBmSorted(list) {
+        return list.map((bm) => ({ bm, i: cwfmBmIndex(bm) }))
+            .sort((a, b) => (a.i - b.i) || ((a.bm.fraction || 0) - (b.bm.fraction || 0)) || (a.bm.created - b.bm.created))
+            .map((x) => x.bm);
+    }
+    function cwfmNewId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+    // ---- 選取文字：選取當下就記住（iOS 點工具列時書本裡的選取可能被取消）----
+    let cwfmSel = null;
+    const cwfmSelDocs = new WeakSet();
+    function cwfmWatchSelection(doc, index) {
+        if (!doc || cwfmSelDocs.has(doc)) return;
+        cwfmSelDocs.add(doc);
+        doc.addEventListener('selectionchange', () => {
+            const sel = doc.getSelection && doc.getSelection();
+            if (sel && sel.rangeCount && !sel.isCollapsed && sel.toString().trim()) {
+                cwfmSel = { doc, index, range: sel.getRangeAt(0).cloneRange(), text: sel.toString() };
+            } else if (Date.now() - (window.__cwfm.bmPressAt || 0) > 1000) {
+                cwfmSel = null;
+            }
+        });
+    }
+    view.addEventListener('load', (e) => { try { cwfmWatchSelection(e.detail.doc, e.detail.index); } catch (err) { console.error(err); } });
+    try { for (const c of view.renderer.getContents()) cwfmWatchSelection(c.doc, c.index); } catch (e) { /* 還沒有章節 */ }
+
+    // ---- 加書籤／編輯書籤對話框 ----
+    function cwfmBookmarkDialog(bm, isNew) {
+        return new Promise((resolve) => {
+            const shell = cwfmBuildDialogShell(t(isNew ? 'bm_dialog_add' : 'bm_dialog_edit'));
+            shell.box.classList.add('cwfm-bm-dialog');
+            let excerpt = bm.excerpt || '';
+            if (excerpt) {
+                const lab = document.createElement('label');
+                lab.className = 'cwfm-bm-dlabel';
+                lab.textContent = t('bm_label_excerpt');
+                const q = document.createElement('blockquote');
+                q.className = 'cwfm-bm-dexcerpt';
+                q.textContent = excerpt;
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.innerHTML = CWFM_CLOSE_ICON_SVG;
+                rm.title = t('bm_remove_excerpt');
+                rm.setAttribute('aria-label', t('bm_remove_excerpt'));
+                rm.addEventListener('click', () => { excerpt = ''; lab.remove(); q.remove(); updatePlaceholder(); });
+                q.appendChild(rm);
+                shell.box.append(lab, q);
+            }
+            const nameLab = document.createElement('label');
+            nameLab.className = 'cwfm-bm-dlabel';
+            nameLab.textContent = t('bm_label_name');
+            const name = document.createElement('input');
+            name.type = 'text';
+            name.className = 'cwfm-prompt-input';
+            name.value = bm.name || '';
+            const noteLab = document.createElement('label');
+            noteLab.className = 'cwfm-bm-dlabel';
+            noteLab.textContent = t('bm_label_note');
+            const note = document.createElement('textarea');
+            note.placeholder = t('bm_placeholder_note');
+            note.value = bm.note || '';
+            function updatePlaceholder() {
+                name.placeholder = cwfmBmName({ note: note.value, excerpt, created: bm.created }) + '（' + t('bm_placeholder_name') + '）';
+            }
+            note.addEventListener('input', updatePlaceholder);
+            updatePlaceholder();
+            const cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'cwfm-confirm-cancel';
+            cancel.textContent = t('dlg_cancel');
+            const save = document.createElement('button');
+            save.type = 'button';
+            save.className = 'cwfm-confirm-ok cwfm-ok-primary';
+            save.textContent = t('bm_save');
+            let done = false;
+            function close(result) {
+                if (done) return;
+                done = true;
+                shell.overlay.remove();
+                resolve(result);
+            }
+            cancel.addEventListener('click', () => close(null));
+            save.addEventListener('click', () => close(Object.assign({}, bm, {
+                name: name.value.trim(), note: note.value.trim(), excerpt,
+            })));
+            name.addEventListener('keydown', (e) => { if (e.key === 'Enter') save.click(); else if (e.key === 'Escape') close(null); });
+            note.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(null); });
+            shell.closeOnOutsideClick(() => close(null));
+            shell.btnRow.classList.add('cwfm-bm-dialog-buttons');
+            shell.btnRow.append(cancel, save);
+            shell.box.append(nameLab, name, noteLab, note, shell.btnRow);
+            shell.mount();
+            name.focus();
+        });
+    }
+    window.__cwfm.openBookmarkDialog = async () => {
+        try {
+            const loc = view.lastLocation;
+            let cfi = null, excerpt = '';
+            const sel = cwfmSel;
+            if (sel && sel.doc && sel.range && view.renderer.getContents().some((c) => c.doc === sel.doc)) {
+                cfi = cwfmSafe(() => view.getCFI(sel.index, sel.range), null);
+                excerpt = String(sel.text || '').replace(/[ \t\r\f\v]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, 4000);
+            }
+            if (!cfi) {
+                cfi = cwfmNavCurrentPos();
+                excerpt = '';
+            }
+            if (!cfi) { console.warn(t('err_no_pos_to_sync')); return; }
+            const now = Date.now();
+            const draft = {
+                id: cwfmNewId(), cfi, excerpt, note: '', name: '',
+                chapter: loc?.tocItem?.label || '', fraction: typeof loc?.fraction === 'number' ? loc.fraction : 0,
+                created: now, modified: now,
+            };
+            const res = await cwfmBookmarkDialog(draft, true);
+            if (!res) return;
+            cwfmSel = null;
+            try { sel?.doc?.getSelection()?.removeAllRanges(); } catch (e) { /* ignore */ }
+            cwfmBookmarkPut(res);
+            cwfmToast(t('toast_bm_saved'));
+        } catch (e) { console.error(t('err_sync_bookmark'), e); }
+    };
+    async function cwfmEditBookmark(bm) {
+        const res = await cwfmBookmarkDialog(bm, false);
+        if (!res) return;
+        res.modified = Date.now();
+        cwfmBookmarkPut(res);
+        cwfmToast(t('toast_bm_updated'));
+    }
+    async function cwfmDeleteBookmark(bm) {
+        const ok = await cwfmConfirmDialog(t('bm_delete_title'), t('bm_delete_msg') + '\n' + cwfmBmName(bm), t('bm_delete'));
+        if (!ok) return;
+        cwfmBookmarkRemove(bm.id);
+        cwfmToast(t('toast_bm_deleted'));
+    }
+    async function cwfmGoToBookmark(bm) {
+        cwfmNewCorr('BOOKMARK');
+        try {
+            if (cwfmBmIndex(bm) < 0) throw new Error('unresolvable cfi');
+            if (cwfmBmType(bm) === 'pos' || !bm.excerpt) await cwfmNavGoToPos(bm.cfi);
+            else await view.goTo(bm.cfi); // 摘錄：跳到包含它的頁，靠標示找到它
+        } catch (e) {
+            console.error('[cwfm:bookmarks] 跳轉失敗', e);
+            cwfmAlertDialog(t('bm_dialog_edit'), t('err_bm_jump'));
+        }
+    }
+
+    // ---- 內文標示（引擎的註記圖層，不改書本內容）----
+    const cwfmHlDrawn = new Set();
+    function cwfmHlOn() { return window.__cwfm.settings ? window.__cwfm.settings.showBookmarkHighlights !== false : true; }
+    function cwfmBmByCfi(cfi) { return cwfmBD.bookmarks.find((b) => b.cfi === cfi && b.excerpt); }
+    function cwfmRefreshHighlights() {
+        for (const v of Array.from(cwfmHlDrawn)) {
+            if (!cwfmHlOn() || !cwfmBmByCfi(v)) { cwfmHlDrawn.delete(v); cwfmSafe(() => view.deleteAnnotation({ value: v })); }
+        }
+        if (!cwfmHlOn()) return;
+        const loaded = new Set(cwfmSafe(() => view.renderer.getContents().map((c) => c.index), []));
+        for (const bm of cwfmBD.bookmarks) {
+            if (!bm.excerpt || cwfmHlDrawn.has(bm.cfi)) continue;
+            if (!loaded.has(cwfmBmIndex(bm))) continue;
+            cwfmHlDrawn.add(bm.cfi);
+            Promise.resolve(view.addAnnotation({ value: bm.cfi })).catch(() => cwfmHlDrawn.delete(bm.cfi));
+        }
+    }
+    view.addEventListener('draw-annotation', (e) => {
+        const { draw, annotation } = e.detail || {};
+        if (!draw || !annotation || !cwfmBmByCfi(annotation.value)) return;
+        const O = window.__cwfm.Overlayer;
+        if (O && O.highlight) draw(O.highlight, { color: '#EF9F27' });
+    });
+    view.addEventListener('create-overlay', (e) => {
+        // 章節重新載入時圖層是新的：該章的標示要重畫
+        const idx = e.detail?.index;
+        for (const v of Array.from(cwfmHlDrawn)) if (cwfmSafe(() => view.resolveCFI(v).index, -1) === idx) cwfmHlDrawn.delete(v);
+        setTimeout(cwfmRefreshHighlights, 0);
+    });
+    view.addEventListener('show-annotation', (e) => {
+        const bm = cwfmBmByCfi(e.detail?.value);
+        if (bm) cwfmRevealBookmarkInToc(bm.id);
+    });
+
+    // ---- 目錄：篩選列、匯出鈕、書籤混排 ----
+    const cwfmTocState = { view: null, hrefIndex: null, expanded: new Set() };
+    function cwfmTocFilter() {
+        const st = window.__cwfm.settings;
+        const f = (st && st.tocFilter) || DEFAULT_SETTINGS.tocFilter;
+        return { chapters: f.chapters !== false, pos: f.pos !== false, excerpt: f.excerpt !== false, note: f.note !== false };
+    }
+    function cwfmSetTocFilter(key, on) {
+        const st = window.__cwfm.settings;
+        if (!st) return;
+        st.tocFilter = Object.assign({}, cwfmTocFilter(), { [key]: on });
+        saveSettings(st);
+        cwfmApplyTocFilter();
+    }
+    let cwfmTocFilterBar = null;
+    function cwfmApplyTocFilter() {
+        const f = cwfmTocFilter();
+        const host = tocPanel;
+        if (!host) return;
+        host.classList.toggle('cwfm-hide-chapters', !f.chapters);
+        host.classList.toggle('cwfm-hide-bm-pos', !f.pos);
+        host.classList.toggle('cwfm-hide-bm-excerpt', !f.excerpt);
+        host.classList.toggle('cwfm-hide-bm-note', !f.note);
+        if (cwfmTocFilterBar) {
+            const counts = { pos: 0, excerpt: 0, note: 0 };
+            for (const b of cwfmBD.bookmarks) counts[cwfmBmType(b)]++;
+            for (const btn of cwfmTocFilterBar.children) {
+                const k = btn.dataset.key;
+                btn.setAttribute('aria-pressed', String(f[k]));
+                const c = btn.querySelector('.cwfm-chip-count');
+                if (c) c.textContent = counts[k] ? String(counts[k]) : '';
+            }
+        }
+    }
+    function cwfmBuildBmRow(bm) {
+        const type = cwfmBmType(bm);
+        const row = document.createElement('div');
+        row.className = 'cwfm-bm-row';
+        row.dataset.type = type;
+        row.dataset.id = bm.id;
+        const flag = document.createElement('div');
+        flag.className = 'cwfm-bm-flag';
+        flag.innerHTML = cwfmBmIcon(type);
+        const body = document.createElement('div');
+        body.className = 'cwfm-bm-body';
+        const nm = document.createElement('div');
+        nm.className = 'cwfm-bm-name';
+        nm.textContent = type === 'excerpt' && !bm.name ? '「' + cwfmBmClip(bm.excerpt, 40) + '」' : cwfmBmName(bm);
+        const sub = document.createElement('div');
+        sub.className = 'cwfm-bm-sub';
+        sub.textContent = (type === 'note' && bm.excerpt ? t('bm_with_excerpt') + ' · ' : '') + cwfmFmtTime(bm.created);
+        body.append(nm, sub);
+        const exp = document.createElement('button');
+        exp.type = 'button';
+        exp.className = 'cwfm-bm-exp';
+        exp.setAttribute('aria-label', t('bm_expand'));
+        const open = cwfmTocState.expanded.has(bm.id);
+        exp.innerHTML = open ? ICONS.chevronUp : ICONS.chevronDown;
+        exp.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (cwfmTocState.expanded.has(bm.id)) cwfmTocState.expanded.delete(bm.id); else cwfmTocState.expanded.add(bm.id);
+            row.replaceWith(cwfmBuildBmRow(bm));
+        });
+        if (open) {
+            const det = document.createElement('div');
+            det.className = 'cwfm-bm-detail';
+            det.addEventListener('click', (e) => e.stopPropagation());
+            if (bm.excerpt) { const q = document.createElement('blockquote'); q.textContent = bm.excerpt; det.appendChild(q); }
+            if (bm.note) { const n = document.createElement('div'); n.className = 'cwfm-bm-note'; n.textContent = bm.note; det.appendChild(n); }
+            const tm = document.createElement('div');
+            tm.className = 'cwfm-bm-times';
+            tm.textContent = t('bm_created') + ' ' + cwfmFmtTime(bm.created)
+                + (bm.modified && bm.modified !== bm.created ? '　' + t('bm_modified') + ' ' + cwfmFmtTime(bm.modified) : '');
+            det.appendChild(tm);
+            const acts = document.createElement('div');
+            acts.className = 'cwfm-bm-actions';
+            const mk = (icon, label, fn) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.innerHTML = icon;
+                b.appendChild(document.createTextNode(label));
+                b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+                acts.appendChild(b);
+            };
+            mk(ICONS.edit, t('bm_edit'), () => cwfmEditBookmark(bm));
+            mk(ICONS.link, t('bm_copy_link'), () => cwfmCopyLink(bm.cfi));
+            mk(ICONS.navTrash, t('bm_delete'), () => cwfmDeleteBookmark(bm));
+            det.appendChild(acts);
+            body.appendChild(det);
+        }
+        row.append(flag, body, exp);
+        // 點旗頭或本體：直接跳過去（算正式閱讀，記進目錄那組跳轉紀錄）
+        row.addEventListener('click', () => {
+            cwfmNavHistory('toc').record();
+            cwfmGoToBookmark(bm);
+        });
+        return row;
+    }
+    function cwfmRenderTocBookmarks() {
+        const panel = tocPanel;
+        if (!panel) return;
+        panel.querySelectorAll('.cwfm-bm-list').forEach((el) => el.remove());
+        let tocView = panel.querySelector('.cwfm-toc-view');
+        if (!tocView) {
+            // 這本書沒有目錄：建一個容器只放書籤
+            tocView = document.createElement('div');
+            tocView.className = 'cwfm-toc-view';
+            panel.querySelector('.cwfm-empty-hint')?.remove();
+            panel.appendChild(tocView);
+        }
+        if (!cwfmTocState.hrefIndex) {
+            cwfmTocState.hrefIndex = Array.from(tocView.querySelectorAll('a[role="treeitem"]')).map((a) => ({
+                a, index: cwfmSafe(() => view.resolveNavigation(a.getAttribute('href')).index, -1),
+            })).filter((x) => x.index >= 0);
+        }
+        const items = cwfmTocState.hrefIndex;
+        const groups = new Map(); // 目錄項 → 書籤們；null＝放最上面
+        for (const bm of cwfmBmSorted(cwfmBD.bookmarks)) {
+            const bi = cwfmBmIndex(bm);
+            let target = items.find((x) => x.index === bi) || null;
+            if (!target) for (const x of items) if (x.index < bi) target = x;
+            const key = target ? target.a : null;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(bm);
+        }
+        for (const [a, list] of groups) {
+            const box = document.createElement('div');
+            box.className = 'cwfm-bm-list';
+            box.dataset.cwfmOwned = 'true';
+            const pad = a ? (parseFloat(a.style.paddingInlineStart) || 24) : 0;
+            box.style.marginLeft = (a ? pad : 0) + 'px';
+            for (const bm of list) box.appendChild(cwfmBuildBmRow(bm));
+            if (a) a.insertAdjacentElement('afterend', box);
+            else tocView.insertBefore(box, tocView.firstChild);
+        }
+        cwfmApplyTocFilter();
+    }
+    function cwfmRevealBookmarkInToc(id) {
+        if (!tocPanel) return;
+        cwfmTocState.expanded.add(id);
+        const st = window.__cwfm.settings;
+        if (st) { const f = cwfmTocFilter(); const bm = cwfmBD.bookmarks.find((b) => b.id === id); if (bm && !f[cwfmBmType(bm)]) cwfmSetTocFilter(cwfmBmType(bm), true); }
+        cwfmRenderTocBookmarks();
+        openPanel(tocPanel);
+        const row = tocPanel.querySelector('.cwfm-bm-row[data-id="' + id + '"]');
+        if (row) {
+            // 父章節收合著就展開
+            for (let el = row.parentElement; el && el !== tocPanel; el = el.parentElement) {
+                if (el.tagName === 'OL') { const tr = el.previousElementSibling && el.parentElement.querySelector(':scope > [role="treeitem"]'); if (tr) tr.setAttribute('aria-expanded', 'true'); }
+            }
+            row.scrollIntoView({ block: 'center' });
+            row.classList.add('cwfm-bm-flash');
+            setTimeout(() => row.classList.remove('cwfm-bm-flash'), 1200);
+        }
+    }
+    try {
+        if (tocPanel) {
+            const header = tocPanel.querySelector('.cwfm-panel-header');
+            const exportBtn = document.createElement('button');
+            exportBtn.type = 'button';
+            exportBtn.className = 'cwfm-hdr-btn';
+            exportBtn.innerHTML = ICONS.download;
+            exportBtn.title = t('export_btn');
+            exportBtn.setAttribute('aria-label', t('export_btn'));
+            exportBtn.addEventListener('click', () => cwfmExportDialog());
+            const navGroup = header && header.querySelector('.cwfm-nav-group');
+            if (navGroup) header.insertBefore(exportBtn, navGroup);
+            else if (header) header.insertBefore(exportBtn, header.lastChild);
+            exportBtn.style.marginLeft = 'auto';
+            cwfmTocFilterBar = document.createElement('div');
+            cwfmTocFilterBar.className = 'cwfm-toc-filter';
+            for (const [key, label, icon] of [['chapters', t('toc_filter_chapters'), ICONS.list], ['pos', t('bm_type_pos'), ICONS.clock],
+                ['excerpt', t('bm_type_excerpt'), ICONS.quote], ['note', t('bm_type_note'), ICONS.pencil]]) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'cwfm-chip-toggle';
+                b.dataset.key = key;
+                b.innerHTML = icon;
+                b.appendChild(document.createTextNode(label));
+                const c = document.createElement('span');
+                c.className = 'cwfm-chip-count';
+                b.appendChild(c);
+                b.addEventListener('click', () => cwfmSetTocFilter(key, !cwfmTocFilter()[key]));
+                cwfmTocFilterBar.appendChild(b);
+            }
+            header.insertAdjacentElement('afterend', cwfmTocFilterBar);
+            cwfmRenderTocBookmarks();
+        }
+    } catch (e) { console.error('[cwfm:bookmarks] 目錄書籤建立失敗', e); }
+    window.__cwfm.onBookmarksChanged = () => {
+        try { cwfmRenderTocBookmarks(); } catch (e) { console.error(e); }
+        try { cwfmRefreshHighlights(); } catch (e) { console.error(e); }
+        try { cwfmSearchBookmarksOnly(); } catch (e) { console.error(e); }
+    };
+    window.__cwfm.onSettingsApplied = () => {
+        try { cwfmRefreshHighlights(); } catch (e) { console.error(e); }
+        try { cwfmApplyTocFilter(); } catch (e) { console.error(e); }
+    };
+    view.addEventListener('relocate', () => { try { cwfmRefreshHighlights(); } catch (e) { /* ignore */ } });
+    setTimeout(() => { try { cwfmRefreshHighlights(); } catch (e) { console.error(e); } }, 0);
+
+    // ---- 匯出（目前這本書、套用目錄篩選）----
+    function cwfmEsc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function cwfmExportList() {
+        const f = cwfmTocFilter();
+        return cwfmBmSorted(cwfmBD.bookmarks).filter((b) => f[cwfmBmType(b)]);
+    }
+    function cwfmBookMeta() {
+        const md = book?.metadata || {};
+        const pick = (v) => (typeof v === 'string' ? v : v && typeof v === 'object' ? (Object.values(v)[0] || '') : '');
+        const title = pick(md.title) || ('Book ' + BOOK_ID);
+        const authors = (Array.isArray(md.author) ? md.author : md.author ? [md.author] : [])
+            .map((a) => (typeof a === 'string' ? a : pick(a && a.name))).filter(Boolean).join(', ');
+        return { title, authors };
+    }
+    function cwfmChapterOf(bm) {
+        if (bm.chapter) return bm.chapter;
+        return t('export_unknown_chapter');
+    }
+    function cwfmExportHtml(list) {
+        const { title, authors } = cwfmBookMeta();
+        const counts = { pos: 0, excerpt: 0, note: 0 };
+        list.forEach((b) => counts[cwfmBmType(b)]++);
+        const badge = { pos: ['#F1EFE8', '#444441'], excerpt: ['#FAEEDA', '#633806'], note: ['#E1F5EE', '#085041'] };
+        let html = '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            + '<title>' + cwfmEsc(title) + ' — ' + cwfmEsc(t('export_title')) + '</title><style>'
+            + 'body{margin:0;background:#f4f4f5;color:#18181b;font:15px/1.6 -apple-system,"Segoe UI","Noto Sans TC",sans-serif}'
+            + '.w{max-width:760px;margin:0 auto;padding:24px 16px 48px}header{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:16px 20px;margin-bottom:20px}'
+            + 'h1{font-size:20px;margin:0 0 4px}.meta{color:#71717a;font-size:13px}h2{font-size:14px;color:#52525b;margin:24px 0 8px;font-weight:600}'
+            + '.card{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:4px 16px;margin:10px 0}'
+            + '.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f2;align-items:start}'
+            + '.row:last-child{border-bottom:0}.lab{color:#71717a;font-size:13px}.tag{font-size:11px;padding:1px 8px;border-radius:6px;white-space:nowrap}'
+            + 'blockquote{margin:0;padding-left:10px;border-left:3px solid #EF9F27;font-family:serif;white-space:pre-wrap}.note{white-space:pre-wrap}'
+            + 'a{color:#2563eb;word-break:break-all}@media print{body{background:#fff}.card,header{break-inside:avoid}}'
+            + '</style></head><body><div class="w"><header><h1>' + cwfmEsc(title) + '</h1><div class="meta">'
+            + (authors ? cwfmEsc(authors) + ' · ' : '') + cwfmEsc(t('export_exported_at')) + ' ' + cwfmEsc(cwfmFmtTime(Date.now()))
+            + ' · ' + cwfmEsc(t('bm_type_pos')) + ' ' + counts.pos + ' · ' + cwfmEsc(t('bm_type_excerpt')) + ' ' + counts.excerpt
+            + ' · ' + cwfmEsc(t('bm_type_note')) + ' ' + counts.note + '</div></header>';
+        let lastCh = null;
+        for (const bm of list) {
+            const ch = cwfmChapterOf(bm);
+            if (ch !== lastCh) { html += '<h2>' + cwfmEsc(ch) + '</h2>'; lastCh = ch; }
+            const type = cwfmBmType(bm);
+            const [bg, fg] = badge[type];
+            const tag = (txt, c) => '<span class="tag" style="background:' + (c ? c[0] : '#f4f4f5') + ';color:' + (c ? c[1] : '#52525b') + '">' + cwfmEsc(txt) + '</span>';
+            const row = (lab, val, right) => '<div class="row"><span class="lab">' + cwfmEsc(lab) + '</span><div>' + val + '</div><div>' + (right || '') + '</div></div>';
+            html += '<div class="card">';
+            html += row(t('bm_label_name'), cwfmEsc(cwfmBmName(bm)), tag(cwfmBmTypeLabel(type), [bg, fg]));
+            html += row(t('bm_position'), cwfmEsc(ch), tag(Math.round((bm.fraction || 0) * 100) + '%'));
+            if (bm.excerpt) html += row(t('bm_label_excerpt'), '<blockquote>' + cwfmEsc(bm.excerpt) + '</blockquote>', '');
+            if (bm.note) html += row(t('bm_label_note'), '<div class="note">' + cwfmEsc(bm.note) + '</div>', '');
+            html += row(t('bm_time'), cwfmEsc(t('bm_created') + ' ' + cwfmFmtTime(bm.created))
+                + (bm.modified && bm.modified !== bm.created ? '<br>' + cwfmEsc(t('bm_modified') + ' ' + cwfmFmtTime(bm.modified)) : ''), '');
+            const url = cwfmPositionUrl(bm.cfi);
+            html += row(t('bm_link'), '<a href="' + cwfmEsc(url) + '">' + cwfmEsc(url) + '</a>', '');
+            html += '</div>';
+        }
+        return html + '</div></body></html>';
+    }
+    function cwfmExportMd(list) {
+        const { title, authors } = cwfmBookMeta();
+        let md = '# ' + title + '\n\n' + (authors ? authors + ' · ' : '') + t('export_exported_at') + ' ' + cwfmFmtTime(Date.now()) + '\n';
+        let lastCh = null;
+        for (const bm of list) {
+            const ch = cwfmChapterOf(bm);
+            if (ch !== lastCh) { md += '\n## ' + ch + '\n'; lastCh = ch; }
+            md += '\n### ' + cwfmBmName(bm) + '\n\n';
+            md += '- ' + cwfmBmTypeLabel(cwfmBmType(bm)) + ' · ' + Math.round((bm.fraction || 0) * 100) + '% · ' + cwfmFmtTime(bm.created) + '\n';
+            md += '- ' + t('bm_link') + '：<' + cwfmPositionUrl(bm.cfi) + '>\n';
+            if (bm.excerpt) md += '\n' + bm.excerpt.split('\n').map((l) => '> ' + l).join('\n') + '\n';
+            if (bm.note) md += '\n' + bm.note + '\n';
+        }
+        return md;
+    }
+    function cwfmExportCsv(list) {
+        const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+        const head = ['type', 'name', 'chapter', 'percent', 'excerpt', 'note', 'created', 'modified', 'link', 'cfi'];
+        const lines = [head.join(',')];
+        for (const bm of list) {
+            lines.push([cwfmBmType(bm), cwfmBmName(bm), cwfmChapterOf(bm), Math.round((bm.fraction || 0) * 100), bm.excerpt || '', bm.note || '',
+                cwfmFmtTime(bm.created), bm.modified ? cwfmFmtTime(bm.modified) : '', cwfmPositionUrl(bm.cfi), bm.cfi].map(q).join(','));
+        }
+        return '﻿' + lines.join('\r\n'); // BOM：Excel 開中文不亂碼
+    }
+    function cwfmDownload(name, text, mime) {
+        const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 2000);
+    }
+    function cwfmExportDialog() {
+        const list = cwfmExportList();
+        if (!list.length) { cwfmAlertDialog(t('export_title'), t('export_empty')); return; }
+        const shell = cwfmBuildDialogShell(t('export_title'));
+        const lab = document.createElement('label');
+        lab.className = 'cwfm-bm-dlabel';
+        lab.textContent = t('export_format') + '（' + list.length + '）';
+        const fmts = document.createElement('div');
+        fmts.className = 'cwfm-export-formats';
+        let chosen = 'html';
+        for (const f of ['html', 'md', 'csv']) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'cwfm-chip-toggle';
+            b.textContent = f === 'html' ? 'HTML' : f === 'md' ? 'Markdown' : 'CSV';
+            b.setAttribute('aria-pressed', String(f === chosen));
+            b.addEventListener('click', () => { chosen = f; for (const x of fmts.children) x.setAttribute('aria-pressed', String(x === b)); });
+            fmts.appendChild(b);
+        }
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'cwfm-confirm-cancel';
+        cancel.textContent = t('dlg_cancel');
+        const go = document.createElement('button');
+        go.type = 'button';
+        go.className = 'cwfm-confirm-ok cwfm-ok-primary';
+        go.textContent = t('export_go');
+        const close = () => shell.overlay.remove();
+        cancel.addEventListener('click', close);
+        go.addEventListener('click', () => {
+            const { title } = cwfmBookMeta();
+            const base = (title.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60) || 'book') + ' - ' + t('export_title');
+            try {
+                if (chosen === 'html') cwfmDownload(base + '.html', cwfmExportHtml(list), 'text/html');
+                else if (chosen === 'md') cwfmDownload(base + '.md', cwfmExportMd(list), 'text/markdown');
+                else cwfmDownload(base + '.csv', cwfmExportCsv(list), 'text/csv');
+            } catch (e) { console.error('[cwfm:export] 匯出失敗', e); }
+            close();
+        });
+        shell.closeOnOutsideClick(close);
+        shell.btnRow.classList.add('cwfm-bm-dialog-buttons');
+        shell.btnRow.append(cancel, go);
+        shell.box.append(lab, fmts, shell.btnRow);
+        shell.mount();
+    }
+    window.__cwfm.exportBookmarks = (fmt) => {
+        const list = cwfmExportList();
+        return fmt === 'md' ? cwfmExportMd(list) : fmt === 'csv' ? cwfmExportCsv(list) : cwfmExportHtml(list);
+    };
+
+    // ---- 搜尋 ----
+    // 比對前的正規化：小寫、全形轉半形、繁體轉簡體（逐字等長對照，位置不變）。
+    // 對照表取自 OpenCC（Apache-2.0）TSCharacters＋TWVariantsRev，只收單一字元互換的項目。
+    const CWFM_TS_K = "㑯㑳㑶㓨㘚㜄㜏㠏㥮㩜㩳㩵䁻䃮䊷䋙䋚䋹䋻䍦䎱䙡䜀䝼䥇䥑䥱䦛䦟䯀䰾䱷䱽䲁䲘䴉丟並乾亂亙亞佇佈佔併來侖侶侷俁係俔俠俥俬倀倆倈倉個們倖倫倲偉偑側偵偽傌傑傖傘備傢傭傯傳傴債傷傾僂僅僉僑僕僞僥僨僱價儀儁儂億儈儉儎儐儔儕儘償優儲儷儸儺儻儼兇兌兒兗內兩冊冑冪凈凍凜凱別刪剄則剋剎剗剛剝剮剴創剷劃劄劇劉劊劌劍劏劑劚勁動務勛勝勞勢勩勱勳勵勸勻匭匯匱區協卹卻卽厙厠厤厭厲厴參叄叢吒吳吶呂咼員唄唸問啓啞啟啢喎喚喪喫喬單喲嗆嗇嗊嗎嗚嗩嗶嘆嘍嘓嘔嘖嘗嘜嘩嘮嘯嘰嘵嘸嘽噁噓噚噝噠噥噦噯噲噴噸噹嚀嚇嚌嚐嚕嚙嚥嚦嚨嚮嚲嚳嚴嚶囀囁囂囅囈囉囌囑囪圇國圍園圓圖團垻埡埰執堅堊堖堝堯報場塊塋塏塒塗塚塢塤塵塹墊墜墮墰墳墶墻墾壇壋壎壓壘壙壚壜壞壟壠壢壩壪壯壺壼壽夠夢夥夾奐奧奩奪奬奮奼妝姍姦娛婁婦婭媧媯媰媼媽嫋嫗嫵嫺嫻嫿嬀嬃嬈嬋嬌嬙嬡嬤嬪嬰嬸孃孋孌孫學孿宮寀寢實寧審寫寬寵寶將專尋對導尷屆屍屓屜屢層屨屬岡峯峴島峽崍崑崗崙崢崬嵐嵗嵾嶁嶄嶇嶔嶗嶠嶢嶧嶨嶮嶸嶺嶼嶽巋巒巔巖巰巹帥師帳帶幀幃幓幗幘幟幣幫幬幷幹幾庫廁廂廄廈廎廕廚廝廟廠廡廢廣廩廬廳弒弔弳張強彆彈彌彎彔彙彠彥彫彲彿後徑從徠復徵徹恆恥悅悞悵悶悽惡惱惲惻愛愜愨愴愷愾慄態慍慘慚慟慣慤慪慫慮慳慶慺慼慾憂憊憐憑憒憖憚憤憫憮憲憶懇應懌懍懞懟懣懤懨懲懶懷懸懺懼懾戀戇戔戧戩戰戱戲戶扞拋拚挩挱挾捨捫捱捲掃掄掆掗掙掛採揀揚換揮揯損搖搗搧搵搶摑摜摟摯摳摶摺摻撈撏撐撓撝撟撣撥撫撲撳撻撾撿擁擄擇擊擋擓擔據擠擡擣擬擯擰擱擲擴擷擺擻擼擽擾攄攆攏攔攖攙攛攜攝攢攣攤攪攬敎敓敗敘敵數斂斃斆斕斬斷於旂旣昇時晉晝暈暉暘暢暫曄曆曇曉曏曖曠曨曬書會朧朮東枴柵柺査桿梔梘條梟梲棄棊棖棗棟棡棧棲棶椏椲楊楓楨業極榘榦榪榮榲榿構槍槓槤槧槨槮槳槶槼樁樂樅樑樓標樞樢樣樧樫樳樸樹樺樿橈橋機橢橫檁檉檔檜檟檢檣檮檯檳檸檻櫃櫓櫚櫛櫝櫞櫟櫥櫧櫨櫪櫫櫬櫱櫳櫸櫻欄欅權欏欒欖欞欽歎歐歟歡歲歷歸歿殘殞殤殨殫殭殮殯殰殲殺殻殼毀毆毿氂氈氌氣氫氬氳氾汎汙決沒沖況泝洩洶浹涇涗涼淒淚淥淨淩淪淵淶淺渙減渢渦測渾湊湞湧湯溈準溝溫溮溳溼滄滅滌滎滙滬滯滲滷滸滻滾滿漁漊漚漢漣漬漲漵漸漿潁潑潔潙潚潛潤潯潰潷潿澀澆澇澐澗澠澤澦澩澮澱澾濁濃濄濕濘濚濛濜濟濤濧濫濰濱濺濼濾瀂瀅瀆瀇瀉瀋瀏瀕瀘瀝瀟瀠瀦瀧瀨瀰瀲瀾灃灄灑灕灘灝灡灣灤灧灩災為烏烴無煉煒煙煢煥煩煬煱熅熒熗熱熲熾燁燈燉燒燙燜營燦燬燭燴燶燻燼燾爍爐爛爭爲爺爾牀牆牘牴牽犖犛犢犧狀狹狽猙猶猻獁獃獄獅獎獨獪獫獮獰獱獲獵獷獸獺獻獼玀現琱琺琿瑋瑒瑣瑤瑩瑪瑲璉璡璣璦璫璯環璵璸璽璿瓊瓏瓔瓚甌甕產産畝畢畫異畵當疇疊痙痠痾瘂瘋瘍瘓瘞瘡瘧瘮瘲瘺瘻療癆癇癉癒癘癟癡癢癤癥癧癩癬癭癮癰癱癲發皁皚皰皸皺盃盜盞盡監盤盧盪眞眥眾睏睜睞瞘瞜瞞瞶瞼矇矓矚矯硃硜硤硨硯碕碩碭碸確碼碽磑磚磠磣磧磯磽磾礄礎礙礦礪礫礬礱祕祿禍禎禕禡禦禪禮禰禱禿秈稅稈稏稜稟種稱穀穇穌積穎穠穡穢穩穫穭窩窪窮窯窵窶窺竄竅竇竈竊竪競筆筍筧筴箇箋箏箚節範築篋篔篠篤篩篳簀簍簑簞簡簣簫簹簽簾籃籌籔籙籛籜籟籠籤籩籪籬籮籲粵糉糝糞糧糰糲糴糶糹糾紀紂約紅紆紇紈紉紋納紐紓純紕紖紗紘紙級紛紜紝紡紬紮細紱紲紳紵紹紺紼紿絀終絃組絅絆絎結絕絛絝絞絡絢給絨絰統絲絳絶絹綁綃綆綈綉綌綏綐綑經綜綞綠綢綣綫綬維綯綰綱網綳綴綵綸綹綺綻綽綾綿緄緇緊緋緑緒緓緔緗緘緙線緝緞締緡緣緦編緩緬緯緱緲練緶緹緻緼縈縉縊縋縐縑縕縗縛縝縞縟縣縧縫縭縮縱縲縳縴縵縶縷縹總績繃繅繆繒織繕繚繞繡繢繩繪繫繭繮繯繰繳繸繹繼繽繾繿纇纈纊續纍纏纓纔纖纘纜缽罃罈罌罎罰罵罷羅羆羈羋羣羥羨義羶習翫翬翹翽耬耮聖聞聯聰聲聳聵聶職聹聽聾肅脅脈脛脣脩脫脹腎腖腡腦腫腳腸膃膕膚膞膠膩膽膾膿臉臍臏臘臚臟臠臢臥臨臺與興舉舊舖舘艙艤艦艫艱艷芻苧茲荊莊莖莢莧華菴菸萇萊萬萴萵葉葒葤葦葯葷蒐蒓蒔蒕蒞蒼蓀蓆蓋蓮蓯蓴蓽蔔蔘蔞蔣蔥蔦蔭蕁蕆蕎蕒蕓蕕蕘蕢蕩蕪蕭蕷薀薈薊薌薑薔薘薟薦薩薳薴薵薹薺藍藎藝藥藪藭藴藶藹藺蘀蘄蘆蘇蘊蘋蘚蘞蘢蘭蘺蘿虆處虛虜號虧虯蛺蛻蜆蝕蝟蝦蝨蝸螄螞螢螮螻螿蟄蟈蟎蟣蟬蟯蟲蟶蟻蠁蠅蠆蠍蠐蠑蠔蠟蠣蠨蠱蠶蠻衆衊術衕衚衛衝袞袷裊裏補裝裡製複褌褘褲褳褸褻襇襉襏襖襝襠襤襪襬襯襲襴覈見覎規覓視覘覡覥覦親覬覯覲覷覺覽覿觀觴觶觸訁訂訃計訊訌討訐訒訓訕訖託記訛訝訟訢訣訥訩訪設許訴訶診註証詁詆詎詐詒詔評詖詗詘詛詞詠詡詢詣試詩詫詬詭詮詰話該詳詵詼詿誄誅誆誇誌認誑誒誕誘誚語誠誡誣誤誥誦誨說説誰課誶誹誼誾調諂諄談諉請諍諏諑諒論諗諛諜諝諞諡諢諤諦諧諫諭諮諱諳諶諷諸諺諼諾謀謁謂謄謅謊謎謐謔謖謗謙謚講謝謠謡謨謫謬謭謳謹謾譁證譎譏譖識譙譚譜譟譫譭譯議譴護譸譽譾讀讅變讋讌讎讒讓讕讖讚讜讞谿豈豎豐豔豬豶貍貓貙貝貞貟負財貢貧貨販貪貫責貯貰貲貳貴貶買貸貺費貼貽貿賀賁賂賃賄賅資賈賊賑賒賓賕賙賚賜賞賠賡賢賣賤賦賧質賫賬賭賰賴賵賺賻購賽賾贄贅贇贈贊贋贍贏贐贓贔贖贗贛贜赬趕趙趨趲跡踐踰踴蹌蹕蹟蹠蹣蹤蹺躂躉躊躋躍躎躑躒躓躕躚躡躥躦躪軀車軋軌軍軑軒軔軛軟軤軫軲軸軹軺軻軼軾較輅輇輈載輊輒輓輔輕輛輜輝輞輟輥輦輩輪輬輯輳輸輻輼輾輿轀轂轄轅轆轉轍轎轔轟轡轢轤辦辭辮辯農迴逕這連週進遊運過達違遙遜遞遠遡適遲遶遷選遺遼邁還邇邊邏邐郟郵鄆鄉鄒鄔鄖鄧鄭鄰鄲鄴鄶鄺酇酈醃醖醜醞醟醣醫醬醱釀釁釃釅釋釐釒釓釔釕釗釘釙針釣釤釦釧釩釵釷釹釺釾鈀鈁鈃鈄鈅鈈鈉鈍鈎鈐鈑鈒鈔鈕鈞鈡鈣鈥鈦鈧鈮鈰鈳鈴鈷鈸鈹鈺鈽鈾鈿鉀鉅鉆鉈鉉鉋鉍鉑鉕鉗鉚鉛鉞鉢鉤鉦鉬鉭鉳鉶鉸鉺鉻鉿銀銃銅銍銑銓銖銘銚銛銜銠銣銥銦銨銩銪銫銬銱銳銷銹銻銼鋁鋃鋅鋇鋌鋏鋒鋙鋝鋟鋣鋤鋥鋦鋨鋩鋪鋭鋮鋯鋰鋱鋶鋸鋼錁錄錆錇錈錏錐錒錕錘錙錚錛錟錠錡錢錦錨錩錫錮錯録錳錶錸錼鍀鍁鍃鍅鍆鍇鍈鍊鍋鍍鍔鍘鍚鍛鍠鍤鍥鍩鍬鍰鍵鍶鍺鍼鍾鎂鎄鎇鎊鎌鎔鎖鎘鎚鎛鎡鎢鎣鎦鎧鎩鎪鎬鎭鎮鎰鎲鎳鎵鎶鎸鎿鏃鏇鏈鏌鏍鏐鏑鏗鏘鏜鏝鏞鏟鏡鏢鏤鏨鏰鏵鏷鏹鏺鏽鐃鐋鐐鐒鐓鐔鐘鐙鐝鐠鐥鐦鐧鐨鐫鐮鐯鐲鐳鐵鐶鐸鐺鐿鑄鑊鑌鑑鑒鑔鑕鑞鑠鑣鑥鑭鑰鑱鑲鑷鑹鑼鑽鑾鑿钁钂長門閂閃閆閈閉開閌閎閏閑閒間閔閘閡閣閤閥閨閩閫閬閭閱閲閶閹閻閼閽閾閿闃闆闇闈闊闋闌闍闐闒闓闔闕闖關闞闠闡闢闤闥陘陝陞陣陰陳陸陽隉隊階隕際隨險隯隱隴隸隻雋雖雙雛雜雞離難雲電霑霢霧霽靂靄靆靈靉靚靜靝靦靨鞏鞝鞦鞽韁韃韆韉韋韌韍韓韙韜韝韞韻響頁頂頃項順頇須頊頌頎頏預頑頒頓頗領頜頡頤頦頭頮頰頲頴頷頸頹頻頽顆題額顎顏顒顓顔願顙顛類顢顥顧顫顬顯顰顱顳顴風颭颮颯颱颳颶颸颺颻颼飀飄飆飈飛飠飢飣飥飩飪飫飭飯飱飲飴飼飽飾飿餃餄餅餈餉養餌餎餏餑餒餓餕餖餘餚餛餜餞餡館餬餱餳餵餶餷餺餼餾餿饁饃饅饈饉饊饋饌饑饒饗饜饞饢馬馭馮馱馳馴馹駁駐駑駒駔駕駘駙駛駝駟駡駢駭駰駱駸駿騁騂騅騌騍騎騏騖騙騤騧騫騭騮騰騶騷騸騾驀驁驂驃驄驅驊驌驍驏驕驗驚驛驟驢驤驥驦驪驫骯髏髒體髕髖髮鬆鬍鬚鬢鬥鬧鬨鬩鬮鬱鬹魎魘魚魛魢魨魯魴魷魺鮁鮃鮊鮋鮍鮎鮐鮑鮒鮓鮚鮜鮝鮞鮣鮦鮪鮫鮭鮮鮳鮶鮺鯀鯁鯇鯉鯊鯒鯔鯕鯖鯗鯛鯝鯡鯢鯤鯧鯨鯪鯫鯰鯴鯷鯽鯿鰁鰂鰃鰆鰈鰉鰌鰍鰏鰐鰒鰓鰛鰜鰟鰠鰣鰥鰧鰨鰩鰭鰮鰱鰲鰳鰵鰷鰹鰺鰻鰼鰾鱂鱅鱈鱉鱒鱔鱖鱗鱘鱝鱟鱠鱣鱤鱧鱨鱭鱯鱷鱸鱺鳥鳧鳩鳬鳲鳳鳴鳶鳾鴆鴇鴉鴒鴕鴛鴝鴞鴟鴣鴦鴨鴯鴰鴴鴷鴻鴿鵁鵂鵃鵐鵑鵒鵓鵜鵝鵠鵡鵪鵬鵮鵯鵰鵲鵷鵾鶄鶇鶉鶊鶓鶖鶘鶚鶡鶥鶩鶪鶬鶯鶲鶴鶹鶺鶻鶼鶿鷀鷁鷂鷄鷉鷊鷓鷖鷗鷙鷚鷥鷦鷫鷯鷲鷳鷴鷸鷹鷺鷽鸂鸇鸊鸌鸏鸕鸘鸚鸛鸝鸞鹵鹹鹺鹼鹽麗麥麩麪麫麯麴麵麼麽黃黌點黨黲黴黶黷黽黿鼂鼉鼕鼴齊齋齎齏齒齔齕齗齙齜齟齠齡齣齦齧齪齬齲齶齷龍龎龐龑龔龕龜鿁鿓么吃唇峰床才核潀灶痴痺皂睪秘簷粽群著蒍";
+    const CWFM_TS_V = "㑔㑇㐹刾㘎㚯㛣㟆㤘㨫㧐擜䀥鿎䌶䌺䌻䌿䌾䍠䎬䙌䜧䞍䦂鿏䥾䦶䦷䯅鲃䲣䲝鳚鳤鹮丢并干乱亘亚伫布占并来仑侣局俣系伣侠伡私伥俩俫仓个们幸伦㑈伟㐽侧侦伪㐷杰伧伞备家佣偬传伛债伤倾偻仅佥侨仆伪侥偾雇价仪俊侬亿侩俭傤傧俦侪尽偿优储俪㑩傩傥俨凶兑儿兖内两册胄幂净冻凛凯别删刭则克刹刬刚剥剐剀创铲划札剧刘刽刿剑㓥剂㔉劲动务勋胜劳势勚劢勋励劝匀匦汇匮区协恤却即厍厕历厌厉厣参叁丛咤吴呐吕呙员呗念问启哑启唡㖞唤丧喫乔单哟呛啬唝吗呜唢哔叹喽啯呕啧尝唛哗唠啸叽哓呒啴恶嘘㖊咝哒哝哕嗳哙喷吨当咛吓哜尝噜啮咽呖咙向亸喾严嘤啭嗫嚣冁呓啰苏嘱囱囵国围园圆图团坝垭采执坚垩垴埚尧报场块茔垲埘涂冢坞埙尘堑垫坠堕坛坟垯墙垦坛垱埙压垒圹垆坛坏垄垅坜坝塆壮壶壸寿够梦伙夹奂奥奁夺奖奋姹妆姗奸娱娄妇娅娲妫㛀媪妈袅妪妩娴娴婳妫媭娆婵娇嫱嫒嬷嫔婴婶娘㛤娈孙学孪宫采寝实宁审写宽宠宝将专寻对导尴届尸屃屉屡层屦属冈峯岘岛峡崃昆岗仑峥岽岚岁㟥嵝崭岖嵚崂峤峣峄峃崄嵘岭屿岳岿峦巅岩巯卺帅师帐带帧帏㡎帼帻帜币帮帱并干几库厕厢厩厦庼荫厨厮庙厂庑废广廪庐厅弑吊弪张强别弹弥弯录汇彟彦雕彨佛后径从徕复征彻恒耻悦悮怅闷凄恶恼恽恻爱惬悫怆恺忾栗态愠惨惭恸惯悫怄怂虑悭庆㥪戚欲忧惫怜凭愦慭惮愤悯怃宪忆恳应怿懔蒙怼懑㤽恹惩懒怀悬忏惧慑恋戆戋戗戬战戯戏户捍抛拼捝挲挟舍扪挨卷扫抡㧏挜挣挂采拣扬换挥搄损摇捣扇揾抢掴掼搂挚抠抟折掺捞挦撑挠㧑挢掸拨抚扑揿挞挝捡拥掳择击挡㧟担据挤抬捣拟摈拧搁掷扩撷摆擞撸㧰扰摅撵拢拦撄搀撺携摄攒挛摊搅揽教敚败叙敌数敛毙敩斓斩断于旗既升时晋昼晕晖旸畅暂晔历昙晓向暧旷昽晒书会胧术东拐栅拐查杆栀枧条枭棁弃棋枨枣栋㭎栈栖梾桠㭏杨枫桢业极矩干杩荣榅桤构枪杠梿椠椁椮桨椢椝桩乐枞梁楼标枢㭤样榝㭴桪朴树桦椫桡桥机椭横檩柽档桧槚检樯梼台槟柠槛柜橹榈栉椟橼栎橱槠栌枥橥榇蘖栊榉樱栏榉权椤栾榄棂钦叹欧欤欢岁历归殁残殒殇㱮殚僵殓殡㱩歼杀壳壳毁殴毵牦毡氇气氢氩氲泛泛污决没冲况溯泄汹浃泾涚凉凄泪渌净凌沦渊涞浅涣减沨涡测浑凑浈涌汤沩准沟温浉涢湿沧灭涤荥汇沪滞渗卤浒浐滚满渔溇沤汉涟渍涨溆渐浆颍泼洁沩㴋潜润浔溃滗涠涩浇涝沄涧渑泽滪泶浍淀㳠浊浓㳡湿泞溁蒙浕济涛㳔滥潍滨溅泺滤澛滢渎㲿泻沈浏濒泸沥潇潆潴泷濑弥潋澜沣滠洒漓滩灏㳕湾滦滟滟灾为乌烃无炼炜烟茕焕烦炀㶽煴荧炝热颎炽烨灯炖烧烫焖营灿毁烛烩㶶熏烬焘烁炉烂争为爷尔牀墙牍抵牵荦牦犊牺状狭狈狰犹狲犸呆狱狮奖独狯猃狝狞㺍获猎犷兽獭献猕猡现雕珐珲玮玚琐瑶莹玛玱琏琎玑瑷珰㻅环玙瑸玺璇琼珑璎瓒瓯瓮产产亩毕画异画当畴叠痉酸疴痖疯疡痪瘗疮疟瘆疭瘘瘘疗痨痫瘅愈疠瘪癡痒疖症疬癞癣瘿瘾痈瘫癫发皁皑疱皲皱杯盗盏尽监盘卢荡真眦众困睁睐眍䁖瞒瞆睑蒙眬瞩矫朱硁硖砗砚埼硕砀砜确码䂵硙砖硵碜碛矶硗䃅硚础碍矿砺砾矾砻祕禄祸祯祎祃御禅礼祢祷秃籼税秆䅉棱禀种称谷䅟稣积颖秾穑秽稳获穞窝洼穷窑窎窭窥窜窍窦竈窃竖竞笔笋笕䇲个笺筝札节范筑箧筼筿笃筛筚箦篓蓑箪简篑箫筜签帘篮筹䉤箓篯箨籁笼签笾簖篱箩吁粤糉糁粪粮团粝籴粜纟纠纪纣约红纡纥纨纫纹纳纽纾纯纰纼纱纮纸级纷纭纴纺䌷扎细绂绁绅纻绍绀绋绐绌终弦组䌹绊绗结绝绦绔绞络绚给绒绖统丝绛绝绢绑绡绠绨绣绤绥䌼捆经综缍绿绸绻线绶维绹绾纲网绷缀彩纶绺绮绽绰绫绵绲缁紧绯绿绪绬绱缃缄缂线缉缎缔缗缘缌编缓缅纬缑缈练缏缇致缊萦缙缢缒绉缣缊缞缚缜缟缛县绦缝缡缩纵缧䌸纤缦絷缕缥总绩绷缫缪缯织缮缭绕绣缋绳绘系茧缰缳缲缴䍁绎继缤缱䍀颣缬纩续累缠缨纔纤缵缆钵䓨坛罂坛罚骂罢罗罴羁芈羣羟羡义膻习玩翚翘翙耧耢圣闻联聪声耸聩聂职聍听聋肃胁脉胫脣修脱胀肾胨脶脑肿脚肠腽腘肤䏝胶腻胆脍脓脸脐膑腊胪脏脔臜卧临台与兴举旧铺馆舱舣舰舻艰艳刍苎兹荆庄茎荚苋华庵烟苌莱万荝莴叶荭荮苇药荤搜莼莳蒀莅苍荪席盖莲苁莼荜卜参蒌蒋葱茑荫荨蒇荞荬芸莸荛蒉荡芜萧蓣蕰荟蓟芗姜蔷荙莶荐萨䓕苎䓓苔荠蓝荩艺药薮䓖蕴苈蔼蔺萚蕲芦苏蕴苹藓蔹茏兰蓠萝蔂处虚虏号亏虬蛱蜕蚬蚀猬虾虱蜗蛳蚂萤䗖蝼螀蛰蝈螨虮蝉蛲虫蛏蚁蚃蝇虿蝎蛴蝾蚝蜡蛎蟏蛊蚕蛮众蔑术同胡卫冲衮夹袅里补装里制复裈袆裤裢褛亵裥裥袯袄裣裆褴袜摆衬袭襕覈见觃规觅视觇觋觍觎亲觊觏觐觑觉览觌观觞觯触讠订讣计讯讧讨讦讱训讪讫托记讹讶讼䜣诀讷讻访设许诉诃诊注证诂诋讵诈诒诏评诐诇诎诅词咏诩询诣试诗诧诟诡诠诘话该详诜诙诖诔诛诓夸志认诳诶诞诱诮语诚诫诬误诰诵诲说说谁课谇诽谊訚调谄谆谈诿请诤诹诼谅论谂谀谍谞谝谥诨谔谛谐谏谕咨讳谙谌讽诸谚谖诺谋谒谓誊诌谎谜谧谑谡谤谦谥讲谢谣谣谟谪谬谫讴谨谩哗证谲讥谮识谯谭谱噪谵毁译议谴护诪誉谫读谉变詟䜩雠谗让谰谶赞谠谳溪岂竖丰艳猪豮狸猫䝙贝贞贠负财贡贫货贩贪贯责贮贳赀贰贵贬买贷贶费贴贻贸贺贲赂赁贿赅资贾贼赈赊宾赇赒赉赐赏赔赓贤卖贱赋赕质赍账赌䞐赖赗赚赙购赛赜贽赘赟赠赞赝赡赢赆赃赑赎赝赣赃赪赶赵趋趱迹践逾踊跄跸迹跖蹒踪跷跶趸踌跻跃䟢踯跞踬蹰跹蹑蹿躜躏躯车轧轨军轪轩轫轭软轷轸轱轴轵轺轲轶轼较辂辁辀载轾辄挽辅轻辆辎辉辋辍辊辇辈轮辌辑辏输辐辒辗舆辒毂辖辕辘转辙轿辚轰辔轹轳办辞辫辩农回径这连周进游运过达违遥逊递远溯适迟绕迁选遗辽迈还迩边逻逦郏邮郓乡邹邬郧邓郑邻郸邺郐邝酂郦腌酝丑酝蒏糖医酱酦酿衅酾酽释厘钅钆钇钌钊钉钋针钓钐扣钏钒钗钍钕钎䥺钯钫钘钭钥钚钠钝钩钤钣钑钞钮钧钟钙钬钛钪铌铈钶铃钴钹铍钰钸铀钿钾巨钻铊铉铇铋铂钷钳铆铅钺钵钩钲钼钽锫铏铰铒铬铪银铳铜铚铣铨铢铭铫铦衔铑铷铱铟铵铥铕铯铐铞锐销锈锑锉铝锒锌钡铤铗锋铻锊锓铘锄锃锔锇铓铺锐铖锆锂铽锍锯钢锞录锖锫锩铔锥锕锟锤锱铮锛锬锭锜钱锦锚锠锡锢错录锰表铼镎锝锨锪钫钔锴锳炼锅镀锷铡钖锻锽锸锲锘锹锾键锶锗针钟镁锿镅镑镰镕锁镉锤镈镃钨蓥镏铠铩锼镐镇镇镒镋镍镓鿔镌镎镞旋链镆镙镠镝铿锵镗镘镛铲镜镖镂錾镚铧镤镪䥽锈铙铴镣铹镦镡钟镫镢镨䦅锎锏镄镌镰䦃镯镭铁镮铎铛镱铸镬镔鉴鉴镲锧镴铄镳镥镧钥镵镶镊镩锣钻銮凿镢镋长门闩闪闫闬闭开闶闳闰闲闲间闵闸阂阁合阀闺闽阃阆闾阅阅阊阉阎阏阍阈阌阒板暗闱阔阕阑阇阗阘闿阖阙闯关阚阓阐辟阛闼陉陕升阵阴陈陆阳陧队阶陨际随险陦隐陇隶只隽虽双雏杂鸡离难云电沾霡雾霁雳霭叇灵叆靓静靔腼靥巩绱秋鞒缰鞑千鞯韦韧韨韩韪韬鞲韫韵响页顶顷项顺顸须顼颂颀颃预顽颁顿颇领颌颉颐颏头颒颊颋颕颔颈颓频颓颗题额颚颜颙颛颜愿颡颠类颟颢顾颤颥显颦颅颞颧风飐飑飒台刮飓飔飏飖飕飗飘飙飚飞饣饥饤饦饨饪饫饬饭飧饮饴饲饱饰饳饺饸饼糍饷养饵饹饻饽馁饿馂饾余肴馄馃饯馅馆糊糇饧喂馉馇馎饩馏馊馌馍馒馐馑馓馈馔饥饶飨餍馋馕马驭冯驮驰驯驲驳驻驽驹驵驾骀驸驶驼驷骂骈骇骃骆骎骏骋骍骓骔骒骑骐骛骗骙䯄骞骘骝腾驺骚骟骡蓦骜骖骠骢驱骅骕骁骣骄验惊驿骤驴骧骥骦骊骉肮髅脏体髌髋发松胡须鬓斗闹哄阋阄郁鬶魉魇鱼鱽鱾鲀鲁鲂鱿鲄鲅鲆鲌鲉鲏鲇鲐鲍鲋鲊鲒鲘鲞鲕䲟鲖鲔鲛鲑鲜鲓鲪鲝鲧鲠鲩鲤鲨鲬鲻鲯鲭鲞鲷鲴鲱鲵鲲鲳鲸鲮鲰鲶鲺鳀鲫鳊鳈鲗鳂䲠鲽鳇䲡鳅鲾鳄鳆鳃鳁鳒鳑鳋鲥鳏䲢鳎鳐鳍鳁鲢鳌鳓鳘鲦鲣鲹鳗鳛鳔鳉鳙鳕鳖鳟鳝鳜鳞鲟鲼鲎鲙鳣鳡鳢鲿鲚鳠鳄鲈鲡鸟凫鸠凫鸤凤鸣鸢䴓鸩鸨鸦鸰鸵鸳鸲鸮鸱鸪鸯鸭鸸鸹鸻䴕鸿鸽䴔鸺鸼鹀鹃鹆鹁鹈鹅鹄鹉鹌鹏鹐鹎雕鹊鹓鹍䴖鸫鹑鹒鹋鹙鹕鹗鹖鹛鹜䴗鸧莺鹟鹤鹠鹡鹘鹣鹚鹚鹢鹞鸡䴘鹝鹧鹥鸥鸷鹨鸶鹪鹔鹩鹫鹇鹇鹬鹰鹭鸴㶉鹯䴙鹱鹲鸬鹴鹦鹳鹂鸾卤咸鹾碱盐丽麦麸面面曲曲面幺幺黄黉点党黪霉黡黩黾鼋鼌鼍冬鼹齐斋赍齑齿龀龁龂龅龇龃龆龄出龈啮龊龉龋腭龌龙厐庞䶮龚龛龟䜤鿒幺喫脣峯牀纔覈潨竈癡痹皁睾祕檐糉羣着蔿";
+    let cwfmTsMap = null;
+    function cwfmNormalize(str) {
+        if (!cwfmTsMap) {
+            cwfmTsMap = new Map();
+            for (let i = 0; i < CWFM_TS_K.length; i++) cwfmTsMap.set(CWFM_TS_K[i], CWFM_TS_V[i]);
+        }
+        let out = '';
+        for (let i = 0; i < str.length; i++) {
+            const ch = str[i];
+            const c = ch.charCodeAt(0);
+            if (c >= 0xFF01 && c <= 0xFF5E) out += String.fromCharCode(c - 0xFEE0).toLowerCase();
+            else if (c === 0x3000) out += ' ';
+            else out += cwfmTsMap.get(ch) || ch;
+        }
+        return out;
+    }
+    const cwfmSearch = { query: '', hits: [], bmHits: [], current: -1, token: 0, scope: 'all', panel: null };
+    function cwfmBuildSearchPanel() {
+        const panel = document.createElement('div');
+        panel.className = 'cwfm-panel cwfm-search-panel';
+        panel.dataset.side = 'left';
+        panel.dataset.cwfmOwned = 'true';
+        const header = document.createElement('div');
+        header.className = 'cwfm-panel-header';
+        const h3 = document.createElement('h3');
+        h3.textContent = t('search_title');
+        header.appendChild(h3);
+        header.appendChild(cwfmBuildNavGroup('search'));
+        header.appendChild(createCloseBtn(closeAllPanels));
+        panel.appendChild(header);
+        const top = document.createElement('div');
+        top.className = 'cwfm-search-top';
+        const row = document.createElement('div');
+        row.className = 'cwfm-search-row';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = t('search_placeholder');
+        input.setAttribute('aria-label', t('search_aria'));
+        const prev = document.createElement('button');
+        prev.type = 'button';
+        prev.innerHTML = ICONS.chevronUp;
+        prev.setAttribute('aria-label', t('search_prev'));
+        const count = document.createElement('span');
+        count.className = 'cwfm-search-count';
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.innerHTML = ICONS.chevronDown;
+        next.setAttribute('aria-label', t('search_next'));
+        row.append(input, prev, count, next);
+        const scope = document.createElement('div');
+        scope.className = 'cwfm-search-scope';
+        const scopeBtns = {};
+        for (const [k, label] of [['all', t('search_all')], ['text', t('search_text')], ['bm', t('search_bm')]]) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'cwfm-chip-toggle';
+            b.dataset.scope = k;
+            b.appendChild(document.createTextNode(label));
+            const c = document.createElement('span');
+            c.className = 'cwfm-chip-count';
+            b.appendChild(c);
+            b.addEventListener('click', () => { cwfmSearch.scope = k; cwfmSearchRenderScope(); });
+            scope.appendChild(b);
+            scopeBtns[k] = b;
+        }
+        const status = document.createElement('span');
+        status.className = 'cwfm-search-status';
+        scope.appendChild(status);
+        top.append(row, scope);
+        panel.appendChild(top);
+        const results = document.createElement('div');
+        results.className = 'cwfm-search-results';
+        panel.appendChild(results);
+        document.body.appendChild(panel);
+        Object.assign(cwfmSearch, { panel, input, prev, next, count, status, results, scopeBtns });
+        let timer = null;
+        input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => cwfmRunSearch(input.value), 450); });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { clearTimeout(timer); if (input.value !== cwfmSearch.query) cwfmRunSearch(input.value); else cwfmSearchStep(e.shiftKey ? -1 : 1); }
+            e.stopPropagation(); // 不要觸發翻頁快速鍵
+        });
+        prev.addEventListener('click', () => cwfmSearchStep(-1));
+        next.addEventListener('click', () => cwfmSearchStep(1));
+        cwfmSearchRenderScope();
+        cwfmSearchUpdateCount();
+        return panel;
+    }
+    function cwfmSearchRenderScope() {
+        const s = cwfmSearch;
+        if (!s.panel) return;
+        for (const k of Object.keys(s.scopeBtns)) s.scopeBtns[k].setAttribute('aria-pressed', String(k === s.scope));
+        s.scopeBtns.text.querySelector('.cwfm-chip-count').textContent = s.query ? String(s.hits.length) : '';
+        s.scopeBtns.bm.querySelector('.cwfm-chip-count').textContent = s.query ? String(s.bmHits.length) : '';
+        s.scopeBtns.all.querySelector('.cwfm-chip-count').textContent = s.query ? String(s.hits.length + s.bmHits.length) : '';
+        s.results.classList.toggle('cwfm-search-hide-text', s.scope === 'bm');
+        s.results.classList.toggle('cwfm-search-hide-bm', s.scope === 'text');
+    }
+    function cwfmSearchUpdateCount() {
+        const s = cwfmSearch;
+        if (!s.panel) return;
+        s.count.textContent = s.hits.length ? (s.current >= 0 ? (s.current + 1) + ' / ' + s.hits.length : '– / ' + s.hits.length) : '';
+        s.prev.disabled = s.next.disabled = !s.hits.length;
+        s.results.querySelectorAll('.cwfm-search-hit.cwfm-current').forEach((el) => el.classList.remove('cwfm-current'));
+        const cur = s.current >= 0 ? s.results.querySelector('.cwfm-sr-text[data-i="' + s.current + '"]') : null;
+        if (cur) { cur.classList.add('cwfm-current'); cur.scrollIntoView({ block: 'nearest' }); }
+    }
+    function cwfmHitEl(cls, html, meta, onClick) {
+        const el = document.createElement('div');
+        el.className = 'cwfm-search-hit ' + cls;
+        el.innerHTML = html;
+        const m = document.createElement('div');
+        m.className = 'cwfm-hit-meta';
+        m.textContent = meta;
+        el.appendChild(m);
+        el.addEventListener('click', onClick);
+        return el;
+    }
+    // 在一段文字裡標出符合的部分（用同一套正規化找位置，長度不變所以位置可以直接對回原文）
+    function cwfmMarkText(text, query) {
+        const nq = cwfmNormalize(query.toLowerCase());
+        const nt = cwfmNormalize(text.toLowerCase());
+        if (nt.length !== text.length || !nq) return cwfmEsc(text);
+        let out = '', i = 0, j;
+        while ((j = nt.indexOf(nq, i)) >= 0) { out += cwfmEsc(text.slice(i, j)) + '<mark>' + cwfmEsc(text.slice(j, j + nq.length)) + '</mark>'; i = j + nq.length; }
+        return out + cwfmEsc(text.slice(i));
+    }
+    function cwfmSearchBookmarksOnly() {
+        const s = cwfmSearch;
+        if (!s.panel || !s.query) return;
+        const nq = cwfmNormalize(s.query.toLowerCase());
+        s.bmHits = cwfmBmSorted(cwfmBD.bookmarks).filter((b) => cwfmNormalize([b.name, b.excerpt, b.note].join('\n').toLowerCase()).includes(nq));
+        s.results.querySelectorAll('.cwfm-sr-bm').forEach((el) => el.remove());
+        const anchor = s.results.firstChild;
+        if (s.bmHits.length) {
+            const g = document.createElement('div');
+            g.className = 'cwfm-search-group cwfm-sr-bm';
+            g.textContent = t('search_bm');
+            s.results.insertBefore(g, anchor);
+            for (const bm of s.bmHits) {
+                const type = cwfmBmType(bm);
+                const src = bm.note && cwfmNormalize(bm.note.toLowerCase()).includes(nq) ? bm.note
+                    : bm.excerpt && cwfmNormalize(bm.excerpt.toLowerCase()).includes(nq) ? bm.excerpt : cwfmBmName(bm);
+                const html = '<span class="cwfm-hit-icon">' + cwfmBmIcon(type) + '</span>' + cwfmMarkText(cwfmBmClip(src, 120), s.query);
+                const el = cwfmHitEl('cwfm-sr-bm', html, (bm.chapter ? bm.chapter + ' · ' : '') + cwfmBmTypeLabel(type) + ' · ' + cwfmFmtTime(bm.created), () => {
+                    cwfmNavHistory('search').record();
+                    cwfmGoToBookmark(bm);
+                });
+                el.dataset.type = type;
+                s.results.insertBefore(el, anchor);
+            }
+        }
+        cwfmSearchRenderScope();
+    }
+    async function cwfmRunSearch(q) {
+        const s = cwfmSearch;
+        const token = ++s.token;
+        q = String(q || '').trim();
+        s.query = q;
+        s.hits = [];
+        s.bmHits = [];
+        s.current = -1;
+        s.results.textContent = '';
+        s.status.textContent = '';
+        cwfmSafe(() => view.clearSearch());
+        if (!q) { cwfmSearchRenderScope(); cwfmSearchUpdateCount(); return; }
+        cwfmSearchBookmarksOnly();
+        const total = cwfmSafe(() => book.sections.length, 0);
+        const fractions = cwfmSafe(() => view.getSectionFractions(), []);
+        try {
+            const O = window.__cwfm.Overlayer;
+            const it = view.search({ query: q, normalize: cwfmNormalize, draw: O && O.highlight, drawOptions: { color: '#FAC775' } });
+            let done = 0;
+            for await (const r of it) {
+                if (token !== s.token) return; // 有新的搜尋，這次作廢
+                if (r === 'done') break;
+                if (typeof r.progress === 'number') {
+                    done = Math.round(r.progress * total);
+                    s.status.textContent = t('search_progress').replace('{a}', done).replace('{b}', total);
+                    continue;
+                }
+                if (r.subitems && r.subitems.length) {
+                    const idx = cwfmSafe(() => view.resolveCFI(r.subitems[0].cfi).index, -1);
+                    const g = document.createElement('div');
+                    g.className = 'cwfm-search-group cwfm-sr-text';
+                    g.textContent = (r.label || '') + '（' + r.subitems.length + '）';
+                    s.results.appendChild(g);
+                    const pct = idx >= 0 && fractions[idx] != null ? Math.round(fractions[idx] * 100) + '%' : '';
+                    for (const sub of r.subitems) {
+                        const i = s.hits.length;
+                        s.hits.push(sub.cfi);
+                        const ex = sub.excerpt || {};
+                        const html = cwfmEsc(ex.pre || '') + '<mark>' + cwfmEsc(ex.match || '') + '</mark>' + cwfmEsc(ex.post || '');
+                        const el = cwfmHitEl('cwfm-sr-text', html, pct, () => cwfmSearchGo(i));
+                        el.dataset.i = String(i);
+                        s.results.appendChild(el);
+                    }
+                    cwfmSearchRenderScope();
+                    cwfmSearchUpdateCount();
+                }
+            }
+            if (token !== s.token) return;
+            const n = s.hits.length + s.bmHits.length;
+            s.status.textContent = n ? t('search_done').replace('{n}', n) : t('search_none');
+            cwfmSearchRenderScope();
+            cwfmSearchUpdateCount();
+        } catch (e) {
+            console.error(t('err_search'), e);
+            s.status.textContent = t('search_none');
+        }
+    }
+    async function cwfmSearchGo(i) {
+        const s = cwfmSearch;
+        if (i < 0 || i >= s.hits.length) return;
+        s.current = i;
+        cwfmSearchUpdateCount();
+        cwfmNewCorr('SEARCH');
+        cwfmNavHistory('search').record();
+        try { await view.goTo(s.hits[i]); } catch (e) { console.error(t('err_search'), e); }
+    }
+    function cwfmSearchStep(d) {
+        const s = cwfmSearch;
+        if (!s.hits.length) return;
+        const n = s.current < 0 ? (d > 0 ? 0 : s.hits.length - 1) : (s.current + d + s.hits.length) % s.hits.length;
+        cwfmSearchGo(n);
+    }
+    window.__cwfm.toggleSearchPanel = () => {
+        try {
+            if (!cwfmSearch.panel) cwfmBuildSearchPanel();
+            togglePanel(cwfmSearch.panel);
+            if (cwfmSearch.panel.classList.contains('cwfm-open')) setTimeout(() => { try { cwfmSearch.input.focus(); cwfmSearch.input.select(); } catch (e) { /* ignore */ } }, 50);
+        } catch (e) { console.error(t('err_search'), e); }
+    };
+    // 開書時讀回的搜尋跳轉紀錄有內容時，先把面板建好（按鈕組才有地方顯示）
+    try { if (cwfmBD.navhist && cwfmBD.navhist.search && cwfmBD.navhist.search.entries && cwfmBD.navhist.search.entries.length) cwfmBuildSearchPanel(); }
+    catch (e) { console.error(t('err_search'), e); }
 
     // ============================================================
     // [cwfm] 翻頁動畫（K16Pro chevron 風格完整移植）
@@ -6772,6 +7966,13 @@
         if (initialCfi) {
             cwfmLockedAnchorCfi = initialCfi;
             dlog(t('log_init_anchor') + initialCfi);
+        }
+        // v1.79：開書位置（定位網址／雲端／本機）就是要對齊的那個字——精準定位開啟時改鎖它並重新排版，
+        // 讓它成為畫面第一個字（跟跳轉紀錄返回同一套流程，見 cwfmNavGoToPos）。
+        if (cwfmRestoredCfi && cwfmNavPreciseOn() && typeof view.renderer.render === 'function') {
+            cwfmLockedAnchorCfi = cwfmRestoredCfi;
+            cwfmDiag('LOCK-SET', 'reason=restore 新:' + cwfmCfiText(cwfmRestoredCfi));
+            view.renderer.render();
         }
     } catch (e) { console.error(t('err_init_anchor'), e); }
 
