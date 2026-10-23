@@ -6732,7 +6732,7 @@
             '.cwfm-bm-card { position: fixed; z-index: 1000001; display: flex; flex-direction: column; box-sizing: border-box;',
             '  background: var(--cwfm-bg); color: var(--cwfm-text); border-radius: 12px; font: 13px/1.6 sans-serif;',
             // v1.80：整圈 2px 類型色框（與目錄選中書籤的框同一語言）＋標題區淡色底；取代原本會沿圓角變細的上框線
-            '  box-shadow: 0 10px 30px var(--cwfm-shadow-soft), 0 0 0 2px var(--cwfm-card-c);',
+            '  background: transparent; box-shadow: 0 10px 30px var(--cwfm-shadow-soft);',
             '  animation: cwfm-card-in 0.14s ease-out; }',
             '@keyframes cwfm-card-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }',
             '.cwfm-bm-card.cwfm-card-below { animation-name: cwfm-card-in-y; }',
@@ -6745,14 +6745,14 @@
             '.cwfm-card-badge-mini { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%;',
             '  background: #FAC775; color: #633806; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--cwfm-bg); }',
             '.cwfm-card-badge .cwfm-card-badge-mini svg { width: 9px; height: 9px; }',
-            '.cwfm-card-arrow { position: absolute; width: 14px; height: 14px; background: var(--cwfm-bg); transform: rotate(45deg);',
-            '  box-shadow: -1px 1px 0 var(--cwfm-shadow-ring); }',
+            // v1.80.1：外框（色框＋尖角＋底色＋標題區淡色底）改由一條 SVG 路徑畫（cwfmDrawCardOutline）。
+            // 原本卡片色框（box-shadow）＋旋轉方塊尖角是兩個圖形拼接，交會處兩層抗鋸齒疊在一起，看得到接縫；
+            // 全改 CSS 也一樣是兩個圖形，只有一筆畫完整個外框才沒有接縫。
+            '.cwfm-bm-card > * { position: relative; z-index: 1; }',
+            '.cwfm-bm-card > svg.cwfm-card-outline { position: absolute; left: 0; top: 0; z-index: 0; overflow: visible; pointer-events: none; }',
             // 小尖角接在標題區（淡色底）上，框線跟卡片同色
-            '.cwfm-card-side .cwfm-card-arrow { left: -8px; background: linear-gradient(var(--cwfm-card-tint), var(--cwfm-card-tint)), var(--cwfm-bg); box-shadow: -2px 2px 0 var(--cwfm-card-c); }',
-            '.cwfm-card-below .cwfm-card-arrow { top: -8px !important; background: linear-gradient(var(--cwfm-card-tint), var(--cwfm-card-tint)), var(--cwfm-bg); box-shadow: -2px -2px 0 var(--cwfm-card-c); }',
-            '.cwfm-card-below.cwfm-card-above .cwfm-card-arrow { top: auto !important; bottom: -8px; background: var(--cwfm-bg); box-shadow: 2px 2px 0 var(--cwfm-card-c); }',
             '.cwfm-card-head { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 10px 14px; flex: 0 0 auto;',
-            '  background: var(--cwfm-card-tint); border-bottom: 1px solid var(--cwfm-card-line); border-radius: 12px 12px 0 0; margin-bottom: 8px; }',
+            '  border-bottom: 1px solid var(--cwfm-card-line); margin-bottom: 8px; }',
             '.cwfm-card-badge { flex: 0 0 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;',
             '  background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); }',
             '.cwfm-card-badge { position: relative; }',
@@ -7198,6 +7198,9 @@
     }
     // ---- v1.79.2 書籤彈出卡片：目錄寬度不動，選中的書籤往右彈出一張卡片（窄螢幕改成蓋在目錄上）----
     const cwfmCard = { id: null, el: null, pinned: false, openTimer: 0, closeTimer: 0 };
+    // 卡片大小一變就重畫外框（放在這裡宣告，開關卡片的函式第一次被呼叫前就已就緒）
+    const cwfmCardResizeObs = (typeof ResizeObserver === 'function')
+        ? new ResizeObserver((ents) => { for (const en of ents) cwfmDrawCardOutline(en.target); }) : null;
     // 滑鼠停在書籤上多久才打開（只是經過清單時不要一路閃）；離開書籤／卡片後多久才關
     // （滑鼠從書籤移到卡片途中會經過兩者之間的空隙，不能一離開就關）
     const CWFM_CARD_HOVER_OPEN_MS = 150;
@@ -7212,6 +7215,7 @@
     function cwfmCardRow() { return cwfmCard.id && tocPanel ? tocPanel.querySelector('.cwfm-bm-row[data-id="' + cwfmCard.id + '"]') : null; }
     function cwfmCloseCard() {
         cwfmCancelCardTimers();
+        if (cwfmCard.el && cwfmCardResizeObs) cwfmCardResizeObs.unobserve(cwfmCard.el);
         cwfmCard.pinned = false;
         cwfmCard.el?.remove();
         cwfmCard.el = null;
@@ -7225,6 +7229,7 @@
         // 重繪同一張（keepScroll）沿用原本的釘住狀態；滑鼠移上去打開的不釘住，其他方式（點箭頭等）打開的釘住
         if (!keepScroll) cwfmCard.pinned = !hover;
         const prevScroll = keepScroll && cwfmCard.el ? cwfmCard.el.querySelector('.cwfm-card-body')?.scrollTop : 0;
+        if (cwfmCard.el && cwfmCardResizeObs) cwfmCardResizeObs.unobserve(cwfmCard.el);
         cwfmCard.el?.remove();
         cwfmCard.id = id;
         tocPanel?.querySelectorAll('.cwfm-bm-row').forEach((r) => r.classList.toggle('cwfm-bm-active', r.dataset.id === id));
@@ -7235,8 +7240,8 @@
         card.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') cwfmScheduleCardHoverClose(); });
         card.dataset.type = type;
         card.dataset.cwfmOwned = 'true';
-        const arrow = document.createElement('div');
-        arrow.className = 'cwfm-card-arrow';
+        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        arrow.setAttribute('class', 'cwfm-card-outline');
         const head = document.createElement('div');
         head.className = 'cwfm-card-head';
         const badge = document.createElement('span');
@@ -7284,6 +7289,7 @@
         mk(ICONS.link, t('bm_copy_link'), () => cwfmCopyLink(bm.cfi));
         mk(ICONS.navTrash, t('bm_delete'), () => cwfmDeleteBookmark(bm), 'cwfm-card-danger');
         card.append(arrow, head, body, acts);
+        if (cwfmCardResizeObs) cwfmCardResizeObs.observe(card);
         document.body.appendChild(card);
         cwfmCard.el = card;
         if (prevScroll) body.scrollTop = prevScroll;
@@ -7303,7 +7309,7 @@
         const side = W - pr.right >= 380;
         card.classList.toggle('cwfm-card-side', side);
         card.classList.toggle('cwfm-card-below', !side);
-        const arrow = card.querySelector('.cwfm-card-arrow');
+        let arrowAt;
         if (side) {
             const left = pr.right + 12;
             card.style.left = left + 'px';
@@ -7312,9 +7318,7 @@
             const h = card.offsetHeight;
             const top = Math.max(TOP, Math.min(rr.top - 6, H - PAD - h));
             card.style.top = top + 'px';
-            const ay = Math.max(14, Math.min(rr.top + rr.height / 2 - top, h - 14));
-            arrow.style.top = (ay - 7) + 'px';
-            arrow.style.left = '';
+            arrowAt = { edge: 'left', pos: rr.top + rr.height / 2 - top };
         } else {
             card.style.left = '16px';
             card.style.width = (W - 32) + 'px';
@@ -7325,10 +7329,56 @@
             if (above) { room = rr.top - 10 - TOP; card.style.maxHeight = room + 'px'; top = rr.top - 10 - card.offsetHeight; }
             else card.style.maxHeight = room + 'px';
             card.style.top = Math.max(TOP, top) + 'px';
-            arrow.style.left = Math.max(18, Math.min(rr.left + 40 - 16, W - 60)) + 'px';
-            arrow.style.top = '';
+            arrowAt = { edge: above ? 'bottom' : 'top', pos: rr.left + 40 - 16 + 7 };
         }
+        card._cwfmArrow = arrowAt;
+        cwfmDrawCardOutline(card);
     }
+    // v1.80.1：整張卡片外框一筆畫完——圓角矩形＋指向書籤的尖角（方案 B：突出 8、底寬 16、
+    // 接觸處圓角 4、尖端圓角 1），同一條路徑填底色、描 2px 類型色框，標題區再疊淡色底（裁到標題高度）。
+    // 卡片大小一變（字型載入、視窗縮放、內容重建）由 ResizeObserver 重畫；尖角位置由 cwfmPlaceCard 提供。
+    const CWFM_CARD_OUTLINE = { radius: 12, arrowOut: 8, arrowBase: 16, fillet: 4, tip: 1, stroke: 2 };
+    function cwfmCardOutlinePath(w, h, arrowAt) {
+        const { radius: R, arrowOut: aw, arrowBase: ab, fillet: f, tip: t } = CWFM_CARD_OUTLINE;
+        const P = (x, y) => x.toFixed(2) + ',' + y.toFixed(2);
+        const unit = (x, y) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
+        // 在一條邊上插入尖角：S→E 是沿外框前進方向的底邊兩端，n 是往外的法向量
+        function arrowSeg(S, E, n) {
+            const dir = unit(E[0] - S[0], E[1] - S[1]);
+            const tipP = [(S[0] + E[0]) / 2 + n[0] * aw, (S[1] + E[1]) / 2 + n[1] * aw];
+            const u1 = unit(tipP[0] - S[0], tipP[1] - S[1]), u2 = unit(E[0] - tipP[0], E[1] - tipP[1]);
+            return ' L' + P(S[0] - dir[0] * f, S[1] - dir[1] * f) + ' Q' + P(S[0], S[1]) + ' ' + P(S[0] + u1[0] * f, S[1] + u1[1] * f)
+                + ' L' + P(tipP[0] - u1[0] * t, tipP[1] - u1[1] * t) + ' Q' + P(tipP[0], tipP[1]) + ' ' + P(tipP[0] + u2[0] * t, tipP[1] + u2[1] * t)
+                + ' L' + P(E[0] - u2[0] * f, E[1] - u2[1] * f) + ' Q' + P(E[0], E[1]) + ' ' + P(E[0] + dir[0] * f, E[1] + dir[1] * f);
+        }
+        const half = ab / 2;
+        const clamp = (v, len) => Math.max(R + f + half, Math.min(len - R - f - half, v)); // 尖角不能壓到圓角
+        const a = arrowAt || {};
+        let d = 'M' + P(R, 0);
+        if (a.edge === 'top') { const x = clamp(a.pos, w); d += arrowSeg([x - half, 0], [x + half, 0], [0, -1]); }
+        d += ' L' + P(w - R, 0) + ' Q' + P(w, 0) + ' ' + P(w, R) + ' L' + P(w, h - R) + ' Q' + P(w, h) + ' ' + P(w - R, h);
+        if (a.edge === 'bottom') { const x = clamp(a.pos, w); d += arrowSeg([x + half, h], [x - half, h], [0, 1]); }
+        d += ' L' + P(R, h) + ' Q' + P(0, h) + ' ' + P(0, h - R);
+        if (a.edge === 'left') { const y = clamp(a.pos, h); d += arrowSeg([0, y + half], [0, y - half], [-1, 0]); }
+        return d + ' L' + P(0, R) + ' Q' + P(0, 0) + ' ' + P(R, 0) + ' Z';
+    }
+    function cwfmDrawCardOutline(card) {
+        const svg = card && card.querySelector('svg.cwfm-card-outline');
+        if (!svg) return;
+        const w = card.offsetWidth, h = card.offsetHeight;
+        if (!w || !h) return;
+        const d = cwfmCardOutlinePath(w, h, card._cwfmArrow);
+        const head = card.querySelector('.cwfm-card-head');
+        const hh = head ? head.offsetTop + head.offsetHeight : 0;
+        const sw = CWFM_CARD_OUTLINE.stroke;
+        svg.setAttribute('width', w); svg.setAttribute('height', h);
+        // 顏色用 style 寫 var()（presentation attribute 裡的 var() 舊版 Safari 不一定支援）
+        svg.innerHTML = '<defs><clipPath id="cwfm-card-head-clip"><rect x="-20" y="-20" width="' + (w + 40) + '" height="' + (hh + 20) + '"/></clipPath></defs>'
+            + '<path d="' + d + '" style="fill:var(--cwfm-bg)"/>'
+            + '<path d="' + d + '" style="fill:var(--cwfm-card-tint)" clip-path="url(#cwfm-card-head-clip)"/>'
+            + '<path d="' + d + '" style="fill:none;stroke:var(--cwfm-card-c)" stroke-width="' + sw + '" stroke-linejoin="round"/>';
+    }
+
     document.addEventListener('pointerdown', (e) => {
         if (!cwfmCard.el) return;
         if (cwfmCard.el.contains(e.target)) return;
@@ -8357,6 +8407,9 @@
             const sel = doc.getSelection && doc.getSelection();
             if (sel && !sel.isCollapsed) return;
             if (e.target && e.target.closest && e.target.closest('a[href]')) return;
+            // 外層頁面：只接受落在閱讀器本體（foliate-view，含內容框外的左右留白）上的點擊，
+            // 工具列、面板、卡片、錯誤面板等介面上的點擊不翻頁
+            if (doc === document && !(e.target && e.target.closest && e.target.closest('foliate-view'))) return;
             try {
                 const c = view.renderer.getContents().find((x) => x.doc === doc);
                 if (c && c.overlayer && c.overlayer.hitTest(e)[0]) return; // 點到書籤標示：交給引擎開書籤
@@ -8374,6 +8427,9 @@
     });
     // 這段跑到時第一個章節多半已經載入完（load 已經觸發過），補掛目前已載入的
     try { for (const c of view.renderer.getContents()) cwfmAttachTouchTap(c.doc); } catch (e) { console.error('[cwfm:tap] 補掛觸控翻頁失敗', e); }
+    // v1.80.1：內容優先模式下，內容框兩側的留白不屬於書本 iframe，點那裡的事件只到外層頁面
+    // （v1.80.0 只掛 iframe，iPad 點兩側空白不會翻頁）——外層頁面也掛同一套判斷
+    try { cwfmAttachTouchTap(document); } catch (e) { console.error('[cwfm:tap] 掛外層觸控翻頁失敗', e); }
 
     try {
         const topZone = document.createElement('div');
