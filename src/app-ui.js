@@ -47,10 +47,7 @@
             nav_back: '返回上一個位置',
             nav_forward: '前往下一個位置',
             nav_clear: '清空紀錄',
-            nav_clear_close: '清空紀錄並關閉',
-            dlg_nav_close_title: '關閉跳轉按鈕',
-            dlg_nav_close_msg: '關閉跳轉按鈕後，就沒有辦法跳回原來閱讀的地方了。確定要關閉嗎？',
-            btn_close_nav: '關閉',
+            nav_hide: '收起（紀錄保留，工具列上也能用）',
             btn_add_scheme: '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272',
             btn_add_font_name: '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31',
             btn_upload_font: '+ \u4e0a\u50b3\u5b57\u578b',
@@ -197,6 +194,7 @@
             aria_settings: '設定',
             aria_fullscreen: '全螢幕',
             err_fullscreen_toggle: '[cwfm:toolbar] 全螢幕切換失敗',
+            toast_fullscreen_unsupported: '該瀏覽器不支援全螢幕',
             log_fullscreen_event: '[cwfm:align:t] fullscreenchange 事件 t=',
             err_build_toc: '[cwfm:toc] 建立目錄面板失敗',
             err_build_settings: '[cwfm:settings] 建立設定面板失敗',
@@ -338,10 +336,7 @@
             nav_back: 'Back',
             nav_forward: 'Forward',
             nav_clear: 'Clear history',
-            nav_clear_close: 'Clear and close',
-            dlg_nav_close_title: 'Close jump button',
-            dlg_nav_close_msg: "After closing the jump button, you won't be able to jump back to where you were reading. Close it?",
-            btn_close_nav: 'Close',
+            nav_hide: 'Hide (history kept; also on the toolbar)',
             btn_add_scheme: '+ Save Current Color Scheme',
             btn_add_font_name: '+ Add Font Name',
             btn_upload_font: '+ Upload Font',
@@ -488,6 +483,7 @@
             aria_settings: 'Settings',
             aria_fullscreen: 'Fullscreen',
             err_fullscreen_toggle: '[cwfm:toolbar] Failed to toggle fullscreen',
+            toast_fullscreen_unsupported: 'This browser does not support fullscreen',
             log_fullscreen_event: '[cwfm:align:t] fullscreenchange event t=',
             err_build_toc: '[cwfm:toc] Failed to build TOC panel',
             err_build_settings: '[cwfm:settings] Failed to build settings panel',
@@ -614,6 +610,8 @@
     // 的宣告」，替換整個失效，設定值/閱讀進度永遠讀不到剛存過的內容，
     // 是實測抓到的真實 bug，不是假設性的風險。
     const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";
+    // v1.80：觸控為主的裝置（手機、平板）。用主要指標判斷，不看瀏覽器識別字串（iPad 預設偽裝成 Mac）。
+    const CWFM_TOUCH_UI = (() => { try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
     const INITIAL_POSITION = "__INITIAL_POSITION__";
     // v1.79：這本書的書籤與跳轉紀錄（Tampermonkey＝GM 的 cwfm-bookdata-<書號>；Docker＝開機段落讀 localStorage）。
     // 外層沒有替換（舊版 Docker 建置）時會是原本的字串，當作沒有資料。
@@ -1656,6 +1654,10 @@
             '}',
             '.cwfm-toolbar-top-bg.cwfm-autohidden { transform: translateY(-100%); box-shadow: none; }',
             '.cwfm-toolbar-top-spacer { flex: 1 1 auto; }',
+            // v1.80：iPad Safari 全螢幕時，系統會在左上角疊一顆退出全螢幕的 ✕（網頁拿不到位置，
+            // safe-area 也是 0；Apple 沒公開尺寸）。左側按鈕往右讓開：✕ 觸控範圍約 44 ＋ 離邊約 15 ＋ 餘裕
+            // ＝ 64px（使用者截圖實測 ✕ 右緣約 58）。只在全螢幕時讓，進出全螢幕按鈕會跟著跳位（已同意）。
+            'html.cwfm-ipad-fs .cwfm-toolbar-top { padding-left: calc(14px + 64px); }',
             '.cwfm-toolbar-top button {',
             '  background: none; border: none; color: var(--cwfm-text);',
             '  border-radius: 50%; padding: 6px; cursor: pointer;',
@@ -1693,7 +1695,8 @@
             '.cwfm-nav-float { position: fixed; top: 56px; right: calc(var(--cwfm-scrollbar-w-fixed, 0px) + 14px);',
             '  z-index: 999999; display: none; background: var(--cwfm-toolbar-bg);',
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); border-radius: 18px; padding: 2px; height: 36px; box-sizing: border-box; }',
-            '.cwfm-nav-float.cwfm-nav-visible { display: inline-flex; }',
+            // v1.80：跟工具列上那組是同一份紀錄——只在工具列隱藏時出現；按 ✕ 收起
+            'html.cwfm-bars-hidden .cwfm-nav-float.cwfm-nav-visible:not(.cwfm-nav-dismissed) { display: inline-flex; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
             // 直接沿用：WebKit 系瀏覽器（Chrome/Edge）用 -webkit-appearance
@@ -2773,11 +2776,54 @@
         }
     }
 
+    // v1.80：首次使用（還沒有任何設定）時，依裝置類型與螢幕大小算出接近「電子閱讀器」的預設排版。
+    // 規則來源：使用者 PC（1920×1080、內容 760×900、字級 170%）與 iPad（直式 768 寬、字級 200%）的設定倒推。
+    // - 看的距離越遠，一眼能看的字越多 → 用「每行字數 N」表達（CSS px 本身已按視角定義，其餘差異由 N 吸收）。
+    // - 用螢幕短邊 S（不是視窗）算內容框：旋轉、進出全螢幕時內容框都塞得下、大小不變，資料量一致。
+    // - 手機畫面窄，旋轉後資料量不可能一樣，改成留白優先、填滿畫面。
+    // 字級 = 內容寬 ÷ (N × 1.2)（1.2 = 1 + 字距 0.2em）÷ 16px × 100%，四捨五入到 10。
+    // 百分比相對於書本自己的字級，換一本書每行字數會略有差異（可接受）。
+    const CWFM_FIRST_RUN = {
+        chars: { desktop: 23, tablet: 14, phone: 16 },  // 每行字數 N
+        desktopMaxWidthPx: 760,       // 電腦內容寬上限（使用者 PC 設定）
+        sideReservePx: 120,           // 電腦／平板兩側各留的寬度（與點擊區預設寬同）
+        heightRatio: 1.2,             // 內容高 ÷ 內容寬（使用者兩台 1.07～1.18 的中間值）
+        barsPx: 96, marginPx: 32,     // 上下工具列合計、額外邊距（內容高的上限 = S − 這兩項）
+        phonePaddingPx: { side: 16, topBottom: 48 },
+        tabletMinShortSidePx: 600,    // 觸控裝置短邊 ≥ 這個值算平板
+    };
+    function cwfmFirstRunDefaults() {
+        try {
+            const S = Math.min(window.screen.width, window.screen.height) || Math.min(window.innerWidth, window.innerHeight);
+            const kind = !CWFM_TOUCH_UI ? 'desktop' : (S >= CWFM_FIRST_RUN.tabletMinShortSidePx ? 'tablet' : 'phone');
+            const N = CWFM_FIRST_RUN.chars[kind];
+            const out = { maxColumnCount: 1, letterSpacing: 0.2, lineSpacing: 1.8, autoHideToolbar: false, cursorAutoHideEnabled: false, tapZoneEnabled: true };
+            let W;
+            if (kind === 'phone') {
+                const p = CWFM_FIRST_RUN.phonePaddingPx;
+                W = S - p.side * 2;
+                Object.assign(out, { horizontalSizeMode: 'margin', verticalSizeMode: 'margin', leftRightPadding: p.side, topBottomPadding: p.topBottom,
+                    tapZoneWidthPx: Math.round(S / 4) });
+            } else {
+                W = S - CWFM_FIRST_RUN.sideReservePx * 2;
+                if (kind === 'desktop') W = Math.min(W, CWFM_FIRST_RUN.desktopMaxWidthPx);
+                const H = Math.min(Math.round(W * CWFM_FIRST_RUN.heightRatio), S - CWFM_FIRST_RUN.barsPx - CWFM_FIRST_RUN.marginPx);
+                Object.assign(out, { horizontalSizeMode: 'content', verticalSizeMode: 'content', targetContentWidthPx: W, targetContentHeightPx: H,
+                    tapZoneWidthPx: CWFM_FIRST_RUN.sideReservePx });
+            }
+            out.fontSize = Math.max(70, Math.min(300, Math.round(W / (N * (1 + out.letterSpacing)) / 16 * 10) * 10)); // 設定欄範圍 70～300
+            try { cwfmDiag('FIRST-RUN', 'kind=' + kind + ' S=' + S + ' ' + JSON.stringify(out)); } catch (e) { /* 診斷紀錄還沒就緒 */ }
+            return out;
+        } catch (e) {
+            console.error('[cwfm] 首次預設值計算失敗，改用固定預設', e);
+            return {};
+        }
+    }
     function loadSettings() {
         try {
             if (!INITIAL_SETTINGS) {
                 dlog(t('log_no_saved2'));
-                const fresh = { ...DEFAULT_SETTINGS };
+                const fresh = { ...DEFAULT_SETTINGS, ...cwfmFirstRunDefaults() };
                 cwfmMigrateColorSettings(fresh, null);
                 return fresh;
             }
@@ -3964,6 +4010,9 @@
         return view.lastLocation?.cfi || cwfmLockedAnchorCfi || null;
     }
     function cwfmNavHistory(kind) {
+        // v1.80：目錄、書內連結、搜尋合併成一份紀錄（凡是跳轉都記在同一份）；沿用 'toc' 這個鍵，
+        // 舊的目錄紀錄直接接續使用，舊的 link／search 紀錄捨棄。呼叫端傳什麼種類都歸到這一份。
+        kind = 'toc';
         if (cwfmNavHistories[kind]) return cwfmNavHistories[kind];
         const h = {
             kind, entries: [], idx: -1, listeners: [],
@@ -3984,6 +4033,8 @@
                 // v1.79.2：最多保留 50 筆，超過丟掉最舊的
                 const over = this.entries.length - 50;
                 if (over > 0) { this.entries.splice(0, over); this.idx -= over; }
+                // 有新的跳轉：之前按 ✕ 收起的浮動組重新出現
+                document.querySelectorAll('.cwfm-nav-float.cwfm-nav-dismissed').forEach((g) => g.classList.remove('cwfm-nav-dismissed'));
                 cwfmDiag('NAV-RECORD', 'kind=' + kind + ' idx=' + this.idx + ' from=' + cwfmCfiText(cur));
                 this.changed();
             },
@@ -3994,8 +4045,6 @@
                 if (cur) this.entries[this.idx] = cur;
                 this.idx += dir;
                 const target = this.entries[this.idx];
-                // 書內連結：退回最初的位置就是看完了，自動清空並消失（不用確認）
-                if (kind === 'link' && this.idx === 0) { this.entries = []; this.idx = -1; }
                 this.changed();
                 cwfmDiag('NAV-MOVE', 'kind=' + kind + ' dir=' + dir + ' idx=' + this.idx + ' to=' + cwfmCfiText(target));
                 if (target) await cwfmNavGoToPos(target);
@@ -4030,7 +4079,7 @@
     window.__cwfmNavRecord = (kind) => cwfmNavHistory(kind).record();
     window.__cwfm.clearNavHistory = () => {
         cwfmBD.navhist = null;
-        for (const kind of ['toc', 'search', 'link']) cwfmNavHistory(kind).clear();
+        cwfmNavHistory('toc').clear();
         try { cwfmToast(t('toast_navhist_cleared')); } catch (e) { /* 提示訊息還沒建立 */ }
     };
     // v1.79：保存用的快照——目前這一格補成當下位置（離開時才會填，存檔時先補上）
@@ -4044,7 +4093,7 @@
             out[kind] = { entries: entries.map((e) => e || cur || null), idx: h.idx };
         }
         // 還沒建立的組（例如還沒開過搜尋）沿用上次保存的內容
-        if (cwfmBD.navhist) for (const k of Object.keys(cwfmBD.navhist)) if (!out[k] && k !== 'progress') out[k] = cwfmBD.navhist[k];
+        if (cwfmBD.navhist && !out.toc && cwfmBD.navhist.toc) out.toc = cwfmBD.navhist.toc; // 還沒建立時沿用上次保存的（舊的 link／search 不再保存）
         return out;
     };
 
@@ -6175,7 +6224,7 @@
 
     // [cwfm] v1.78 跳轉紀錄按鈕組（↩ 上一步、↪ 下一步、✕ 清空）。三處共用同一個外觀；
     // link 那組浮在右上角、有紀錄才出現，✕ 的意思是「清空並關閉」。
-    function cwfmBuildNavGroup(kind) {
+    function cwfmBuildNavGroup(kind, float) {
         const h = cwfmNavHistory(kind);
         const group = document.createElement('div');
         group.className = 'cwfm-nav-group';
@@ -6199,18 +6248,11 @@
         // 清空紀錄用垃圾桶；右上角那組按下去整個關掉，維持 ✕（與面板關閉鈕的圓形 ✕ 分開）
         // v1.79.2：只有右上角書內連結那組保留 ✕（看完註解、關掉這組）；其他組跟瀏覽器上一頁一樣不放清除鈕，
         // 每組最多保留 50 筆，要清除到設定面板「清除這本書的跳轉紀錄」。
-        const clr = kind !== 'link' ? null : mk(ICONS.navClear, t('nav_clear_close'), async () => {
-            // v1.78.4：只有右上角那組（關掉整個跳轉按鈕）要確認；目錄、進度條直接清空
-            if (kind === 'link') {
-                const ok = await cwfmConfirmDialog(t('dlg_nav_close_title'), t('dlg_nav_close_msg'), t('btn_close_nav'));
-                if (!ok) return;
-            }
-            h.clear();
-        });
+        // v1.80：浮動組（工具列隱藏時才出現）的 ✕ 只是收起來，不清紀錄、不確認；下次有新跳轉再出現
+        const clr = !float ? null : mk(ICONS.navClear, t('nav_hide'), () => { group.classList.add('cwfm-nav-dismissed'); });
         function update() {
             back.b.disabled = h.backCount === 0;
             fwd.b.disabled = h.forwardCount === 0;
-            if (clr) clr.b.disabled = h.entries.length === 0;
             back.cnt.textContent = h.backCount > 1 ? String(h.backCount) : '';
             fwd.cnt.textContent = h.forwardCount > 1 ? String(h.forwardCount) : '';
             // 右上角（書內連結）與工具列上（目錄、搜尋）那幾組：沒有紀錄時整組不顯示
@@ -6360,7 +6402,16 @@
         }
         renderFullscreenIcon();
         fullscreenBtn.setAttribute('aria-label', t('aria_fullscreen'));
+        // v1.80：瀏覽器不支援網頁全螢幕（例：iOS 15.3 上的 Aloha——App 內嵌網頁元件要 App 自己開放，
+        // 連 webkit 前綴版都沒有）：按鈕顯示成停用（不隱藏，讓使用者知道有這個功能），點了提示原因
+        const fsSupported = !!document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === 'function';
+        if (!fsSupported) {
+            fullscreenBtn.setAttribute('aria-disabled', 'true');
+            fullscreenBtn.style.opacity = '0.35';
+            fullscreenBtn.style.cursor = 'not-allowed';
+        }
         fullscreenBtn.addEventListener('click', () => {
+            if (!fsSupported) { cwfmToast(t('toast_fullscreen_unsupported')); return; }
             cwfmNewCorr('FSC');
             cwfmDiag('FULLSCREEN-CLICK', (document.fullscreenElement ? '退出全螢幕' : '進入全螢幕') + ' || ' + cwfmSnap());
             try {
@@ -6380,6 +6431,8 @@
         document.addEventListener('fullscreenchange', () => {
             if (!/^FSC-/.test(cwfmCorr)) cwfmNewCorr('FSC'); // 非按鈕觸發（例如 Esc 退出）也配編號
             cwfmDiag('FULLSCREEN-CHANGE', 'fullscreenElement=' + !!document.fullscreenElement + ' || ' + cwfmSnap());
+            // iPad（觸控＋Mac 或 iPad 識別字串）全螢幕時讓開系統的 ✕
+            document.documentElement.classList.toggle('cwfm-ipad-fs', !!document.fullscreenElement && CWFM_TOUCH_UI && /Macintosh|iPad/.test(navigator.userAgent));
             const _fscCorr = cwfmCorr;
             for (const ms of [100, 500, 1000, 2000]) {
                 setTimeout(() => cwfmDiag('FULLSCREEN+' + ms, '(觸發時corr=' + _fscCorr + ') || ' + cwfmSnap()), ms);
@@ -6572,7 +6625,7 @@
     try { topToolbar = buildTopToolbar(tocPanel, settingsPanel); } catch (e) { console.error(t('err_build_top_toolbar'), e); }
     // v1.78：右上角的書內連結跳轉紀錄（有紀錄才出現）
     try {
-        const linkNav = cwfmBuildNavGroup('link');
+        const linkNav = cwfmBuildNavGroup('toc', true);
         linkNav.classList.add('cwfm-nav-float');
         linkNav.dataset.cwfmOwned = 'true';
         document.body.appendChild(linkNav);
@@ -6678,24 +6731,28 @@
             // v1.79.2 彈出卡片：頂端類型色帶、左上類型徽章、摘錄（色條＋襯線）、備註、時間、操作列
             '.cwfm-bm-card { position: fixed; z-index: 1000001; display: flex; flex-direction: column; box-sizing: border-box;',
             '  background: var(--cwfm-bg); color: var(--cwfm-text); border-radius: 12px; font: 13px/1.6 sans-serif;',
-            '  border-top: 4px solid var(--cwfm-card-c); box-shadow: 0 10px 30px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring);',
+            // v1.80：整圈 2px 類型色框（與目錄選中書籤的框同一語言）＋標題區淡色底；取代原本會沿圓角變細的上框線
+            '  box-shadow: 0 10px 30px var(--cwfm-shadow-soft), 0 0 0 2px var(--cwfm-card-c);',
             '  animation: cwfm-card-in 0.14s ease-out; }',
             '@keyframes cwfm-card-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }',
             '.cwfm-bm-card.cwfm-card-below { animation-name: cwfm-card-in-y; }',
             '@keyframes cwfm-card-in-y { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }',
             // v1.79.5：卡片的色帶、徽章、〔前往〕跟目錄旗頭同一組顏色（定位紅底白字、摘錄琥珀底深棕、備註青綠底深綠）
-            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #E24B4A; --cwfm-card-fg: #ffffff; }',
-            '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #FAC775; --cwfm-card-bg: #FAC775; --cwfm-card-fg: #633806; }',
-            '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #9FE1CB; --cwfm-card-bg: #9FE1CB; --cwfm-card-fg: #085041; }',
+            // 淡色底用 rgba 寫死（iOS 15 不支援 color-mix）
+            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #E24B4A; --cwfm-card-fg: #ffffff; --cwfm-card-tint: rgba(226,75,74,0.15); --cwfm-card-line: rgba(226,75,74,0.35); }',
+            '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #FAC775; --cwfm-card-bg: #FAC775; --cwfm-card-fg: #633806; --cwfm-card-tint: rgba(250,199,117,0.15); --cwfm-card-line: rgba(250,199,117,0.35); }',
+            '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #9FE1CB; --cwfm-card-bg: #9FE1CB; --cwfm-card-fg: #085041; --cwfm-card-tint: rgba(159,225,203,0.15); --cwfm-card-line: rgba(159,225,203,0.35); }',
             '.cwfm-card-badge-mini { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%;',
             '  background: #FAC775; color: #633806; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--cwfm-bg); }',
             '.cwfm-card-badge .cwfm-card-badge-mini svg { width: 9px; height: 9px; }',
             '.cwfm-card-arrow { position: absolute; width: 14px; height: 14px; background: var(--cwfm-bg); transform: rotate(45deg);',
             '  box-shadow: -1px 1px 0 var(--cwfm-shadow-ring); }',
-            '.cwfm-card-side .cwfm-card-arrow { left: -7px; }',
-            '.cwfm-card-below .cwfm-card-arrow { top: -11px !important; box-shadow: none; background: var(--cwfm-card-c); }',
-            '.cwfm-card-below.cwfm-card-above .cwfm-card-arrow { top: auto !important; bottom: -7px; background: var(--cwfm-bg); box-shadow: 1px 1px 0 var(--cwfm-shadow-ring); }',
-            '.cwfm-card-head { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 8px 14px; flex: 0 0 auto; }',
+            // 小尖角接在標題區（淡色底）上，框線跟卡片同色
+            '.cwfm-card-side .cwfm-card-arrow { left: -8px; background: linear-gradient(var(--cwfm-card-tint), var(--cwfm-card-tint)), var(--cwfm-bg); box-shadow: -2px 2px 0 var(--cwfm-card-c); }',
+            '.cwfm-card-below .cwfm-card-arrow { top: -8px !important; background: linear-gradient(var(--cwfm-card-tint), var(--cwfm-card-tint)), var(--cwfm-bg); box-shadow: -2px -2px 0 var(--cwfm-card-c); }',
+            '.cwfm-card-below.cwfm-card-above .cwfm-card-arrow { top: auto !important; bottom: -8px; background: var(--cwfm-bg); box-shadow: 2px 2px 0 var(--cwfm-card-c); }',
+            '.cwfm-card-head { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 10px 14px; flex: 0 0 auto;',
+            '  background: var(--cwfm-card-tint); border-bottom: 1px solid var(--cwfm-card-line); border-radius: 12px 12px 0 0; margin-bottom: 8px; }',
             '.cwfm-card-badge { flex: 0 0 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;',
             '  background: var(--cwfm-card-bg); color: var(--cwfm-card-fg); }',
             '.cwfm-card-badge { position: relative; }',
@@ -7079,8 +7136,18 @@
         if (cwfmCard.id === bm.id) row.classList.add('cwfm-bm-active');
         exp.addEventListener('click', (e) => {
             e.stopPropagation();
+            // 滑鼠移上去暫時打開的卡片，再點箭頭就是「釘住」（不會因滑鼠離開而關）
+            if (cwfmCard.id === bm.id && !cwfmCard.pinned) { cwfmCard.pinned = true; cwfmCancelCardTimers(); return; }
             if (cwfmCard.id === bm.id) cwfmCloseCard(); else cwfmOpenCard(bm.id);
         });
+        // v1.80：有滑鼠時，移到書籤上就打開詳細資料（觸控仍要點箭頭）；移到別張就換成那一張（不論目前這張是否釘住）
+        row.addEventListener('pointerenter', (e) => {
+            if (e.pointerType !== 'mouse') return;
+            cwfmCancelCardTimers();
+            if (cwfmCard.id === bm.id) return;
+            cwfmCard.openTimer = setTimeout(() => cwfmOpenCard(bm.id, false, true), CWFM_CARD_HOVER_OPEN_MS);
+        });
+        row.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') cwfmScheduleCardHoverClose(); });
         row.append(flag, body, exp);
         // 點旗頭或本體：直接跳過去（算正式閱讀，記進目錄那組跳轉紀錄）
         row.addEventListener('click', () => {
@@ -7130,17 +7197,33 @@
         if (cwfmCard.id) { if (cwfmBD.bookmarks.some((b) => b.id === cwfmCard.id)) cwfmOpenCard(cwfmCard.id, true); else cwfmCloseCard(); }
     }
     // ---- v1.79.2 書籤彈出卡片：目錄寬度不動，選中的書籤往右彈出一張卡片（窄螢幕改成蓋在目錄上）----
-    const cwfmCard = { id: null, el: null };
+    const cwfmCard = { id: null, el: null, pinned: false, openTimer: 0, closeTimer: 0 };
+    // 滑鼠停在書籤上多久才打開（只是經過清單時不要一路閃）；離開書籤／卡片後多久才關
+    // （滑鼠從書籤移到卡片途中會經過兩者之間的空隙，不能一離開就關）
+    const CWFM_CARD_HOVER_OPEN_MS = 150;
+    const CWFM_CARD_HOVER_CLOSE_MS = 300;
+    function cwfmCancelCardTimers() { clearTimeout(cwfmCard.openTimer); clearTimeout(cwfmCard.closeTimer); }
+    function cwfmScheduleCardHoverClose() {
+        clearTimeout(cwfmCard.openTimer);
+        clearTimeout(cwfmCard.closeTimer);
+        if (!cwfmCard.el || cwfmCard.pinned) return;
+        cwfmCard.closeTimer = setTimeout(() => { if (!cwfmCard.pinned) cwfmCloseCard(); }, CWFM_CARD_HOVER_CLOSE_MS);
+    }
     function cwfmCardRow() { return cwfmCard.id && tocPanel ? tocPanel.querySelector('.cwfm-bm-row[data-id="' + cwfmCard.id + '"]') : null; }
     function cwfmCloseCard() {
+        cwfmCancelCardTimers();
+        cwfmCard.pinned = false;
         cwfmCard.el?.remove();
         cwfmCard.el = null;
         cwfmCard.id = null;
         tocPanel?.querySelectorAll('.cwfm-bm-row.cwfm-bm-active').forEach((r) => r.classList.remove('cwfm-bm-active'));
     }
-    function cwfmOpenCard(id, keepScroll) {
+    function cwfmOpenCard(id, keepScroll, hover) {
         const bm = cwfmBD.bookmarks.find((b) => b.id === id);
         if (!bm) { cwfmCloseCard(); return; }
+        cwfmCancelCardTimers();
+        // 重繪同一張（keepScroll）沿用原本的釘住狀態；滑鼠移上去打開的不釘住，其他方式（點箭頭等）打開的釘住
+        if (!keepScroll) cwfmCard.pinned = !hover;
         const prevScroll = keepScroll && cwfmCard.el ? cwfmCard.el.querySelector('.cwfm-card-body')?.scrollTop : 0;
         cwfmCard.el?.remove();
         cwfmCard.id = id;
@@ -7148,6 +7231,8 @@
         const type = cwfmBmType(bm);
         const card = document.createElement('div');
         card.className = 'cwfm-bm-card';
+        card.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') cwfmCancelCardTimers(); });
+        card.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') cwfmScheduleCardHoverClose(); });
         card.dataset.type = type;
         card.dataset.cwfmOwned = 'true';
         const arrow = document.createElement('div');
@@ -7556,7 +7641,6 @@
         h3.textContent = t('search_title');
         header.appendChild(h3);
         // v1.79.2：搜尋的跳轉紀錄放在標題列（跟搜尋框旁的 ↑↓「上一個／下一個結果」分開兩排）
-        header.appendChild(cwfmBuildNavGroup('search'));
         header.appendChild(createCloseBtn(closeAllPanels));
         panel.appendChild(header);
         const top = document.createElement('div');
@@ -8236,10 +8320,60 @@
             // 外掛擴充功能的滑鼠操作，事件根本傳不到底下的內容，在碰到
             // 這塊點擊區的當下就先被吃掉了。pointer-events:none 讓滑鼠
             // 事件直接穿透到底下，這塊區域形同不存在。
-            zone.style.pointerEvents = enabled ? 'auto' : 'none';
+            // v1.80：觸控裝置不攔截（長按選字要能穿過去），改由內文自己判斷點擊位置（cwfmAttachTouchTap）
+            zone.style.pointerEvents = enabled && !CWFM_TOUCH_UI ? 'auto' : 'none';
             zone.style.cursor = enabled ? 'pointer' : 'default';
         });
     }
+    // v1.80：觸控裝置的左右翻頁——跟 Kindle／Apple Books 一樣用手勢區分，不用透明層區分：
+    // 原本透明點擊區蓋在文字上，長按選字碰到的是那一層，翻頁區範圍內的字選不到。
+    // 改成在內文 document 上判斷：短按、沒移動、按下前沒有選取、不是連結／書籤標示，
+    // 才依位置（點擊區寬度內）翻頁。每次章節載入（view 的 load）重新掛，換章節後照樣有效。
+    const CWFM_TAP_MOVE_TOL_PX = 10;  // 移動超過這個距離就是滑動，不算點擊
+    const CWFM_TAP_MAX_MS = 400;      // 按住超過這個時間就是長按（選字），不算點擊
+    const cwfmTouchTapDocs = new WeakSet(); // 同一份 document 只掛一次
+    function cwfmTapZoneWidthNow(settings) {
+        const raw = typeof settings.tapZoneWidthPx === 'number' ? settings.tapZoneWidthPx : 80;
+        return Math.max(0, Math.min(Math.floor(window.innerWidth / 2), raw));
+    }
+    function cwfmAttachTouchTap(doc) {
+        if (!CWFM_TOUCH_UI || !doc || cwfmTouchTapDocs.has(doc)) return;
+        cwfmTouchTapDocs.add(doc);
+        let start = null;
+        doc.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse' || !e.isPrimary) { start = null; return; }
+            const sel = doc.getSelection && doc.getSelection();
+            // 按下時已經有選取：這一下是要取消選取，不翻頁
+            start = { x: e.clientX, y: e.clientY, t: Date.now(), hadSel: !!(sel && !sel.isCollapsed) };
+        }, { passive: true });
+        doc.addEventListener('pointercancel', () => { start = null; }, { passive: true });
+        doc.addEventListener('pointerup', (e) => {
+            const s0 = start; start = null;
+            if (!s0 || s0.hadSel) return;
+            const st = window.__cwfm.settings;
+            if (!st || !st.tapZoneEnabled || st.flow === 'scrolled') return;
+            if (Math.hypot(e.clientX - s0.x, e.clientY - s0.y) > CWFM_TAP_MOVE_TOL_PX) return;
+            if (Date.now() - s0.t > CWFM_TAP_MAX_MS) return;
+            const sel = doc.getSelection && doc.getSelection();
+            if (sel && !sel.isCollapsed) return;
+            if (e.target && e.target.closest && e.target.closest('a[href]')) return;
+            try {
+                const c = view.renderer.getContents().find((x) => x.doc === doc);
+                if (c && c.overlayer && c.overlayer.hitTest(e)[0]) return; // 點到書籤標示：交給引擎開書籤
+            } catch (err) { console.error('[cwfm:tap] 標示判斷失敗', err); }
+            const fe = doc.defaultView && doc.defaultView.frameElement;
+            const x = (fe ? fe.getBoundingClientRect().left : 0) + e.clientX; // iframe 座標換成畫面座標
+            const w = cwfmTapZoneWidthNow(st);
+            cwfmDiag('TOUCH-TAP', 'x=' + Math.round(x) + ' w=' + w);
+            if (x <= w) cwfmGoLeft();
+            else if (x >= window.innerWidth - w) cwfmGoRight();
+        }, { passive: true });
+    }
+    view.addEventListener('load', ({ detail }) => {
+        try { cwfmAttachTouchTap(detail.doc); } catch (e) { console.error('[cwfm:tap] 掛觸控翻頁失敗', e); }
+    });
+    // 這段跑到時第一個章節多半已經載入完（load 已經觸發過），補掛目前已載入的
+    try { for (const c of view.renderer.getContents()) cwfmAttachTouchTap(c.doc); } catch (e) { console.error('[cwfm:tap] 補掛觸控翻頁失敗', e); }
 
     try {
         const topZone = document.createElement('div');
