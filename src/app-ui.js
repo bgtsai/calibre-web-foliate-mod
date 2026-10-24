@@ -6662,6 +6662,12 @@
             '.cwfm-toast.cwfm-show { opacity: 1; }',
             // 對話框裡的欄位
             '.cwfm-bm-dialog { width: min(420px, calc(100vw - 48px)); }',
+            // v1.80.3：加／編輯書籤的對話框跟卡片同一套——整圈 2px 類型色框＋標題列淡色底；
+            // 類型隨內容即時變（有備註＝備註、否則有摘錄＝摘錄、都沒有＝定位），存下去會是什麼一眼看得到。
+            // 對話框沒有尖角，單一元素的 border 就是一圈，不會有接縫
+            '.cwfm-bm-dialog[data-type] { border: 2px solid var(--cwfm-card-c); border-radius: 12px; }',
+            '.cwfm-bm-dialog[data-type] h4 { margin: -20px -20px 10px; padding: 14px 20px 12px; background: var(--cwfm-card-tint);',
+            '  border-bottom: 1px solid var(--cwfm-card-line); border-radius: 10px 10px 0 0; }',
             '.cwfm-bm-dialog label.cwfm-bm-dlabel { display: block; margin: 10px 0 4px; font-size: 12px; color: var(--cwfm-text-secondary); }',
             '.cwfm-bm-dialog textarea { width: 100%; box-sizing: border-box; min-height: 72px; resize: vertical; padding: 6px 8px;',
             '  border: 1px solid var(--cwfm-border-light); border-radius: 6px; background: var(--cwfm-surface); color: var(--cwfm-text); font: 13px/1.5 sans-serif; }',
@@ -6744,9 +6750,9 @@
             '@keyframes cwfm-card-in-y { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }',
             // v1.79.5：卡片的色帶、徽章、〔前往〕跟目錄旗頭同一組顏色（定位紅底白字、摘錄琥珀底深棕、備註青綠底深綠）
             // 淡色底用 rgba 寫死（iOS 15 不支援 color-mix）
-            '.cwfm-bm-card[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #E24B4A; --cwfm-card-fg: #ffffff; --cwfm-card-tint: rgba(226,75,74,0.15); --cwfm-card-line: rgba(226,75,74,0.35); }',
-            '.cwfm-bm-card[data-type="excerpt"] { --cwfm-card-c: #FAC775; --cwfm-card-bg: #FAC775; --cwfm-card-fg: #633806; --cwfm-card-tint: rgba(250,199,117,0.15); --cwfm-card-line: rgba(250,199,117,0.35); }',
-            '.cwfm-bm-card[data-type="note"] { --cwfm-card-c: #9FE1CB; --cwfm-card-bg: #9FE1CB; --cwfm-card-fg: #085041; --cwfm-card-tint: rgba(159,225,203,0.15); --cwfm-card-line: rgba(159,225,203,0.35); }',
+            '.cwfm-bm-card[data-type="pos"], .cwfm-bm-dialog[data-type="pos"] { --cwfm-card-c: #E24B4A; --cwfm-card-bg: #E24B4A; --cwfm-card-fg: #ffffff; --cwfm-card-tint: rgba(226,75,74,0.15); --cwfm-card-line: rgba(226,75,74,0.35); }',
+            '.cwfm-bm-card[data-type="excerpt"], .cwfm-bm-dialog[data-type="excerpt"] { --cwfm-card-c: #FAC775; --cwfm-card-bg: #FAC775; --cwfm-card-fg: #633806; --cwfm-card-tint: rgba(250,199,117,0.15); --cwfm-card-line: rgba(250,199,117,0.35); }',
+            '.cwfm-bm-card[data-type="note"], .cwfm-bm-dialog[data-type="note"] { --cwfm-card-c: #9FE1CB; --cwfm-card-bg: #9FE1CB; --cwfm-card-fg: #085041; --cwfm-card-tint: rgba(159,225,203,0.15); --cwfm-card-line: rgba(159,225,203,0.35); }',
             '.cwfm-card-badge-mini { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%;',
             '  background: #FAC775; color: #633806; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--cwfm-bg); }',
             '.cwfm-card-badge .cwfm-card-badge-mini svg { width: 9px; height: 9px; }',
@@ -6952,6 +6958,7 @@
             note.value = bm.note || '';
             function updatePlaceholder() {
                 name.placeholder = cwfmBmName({ note: note.value, excerpt, created: bm.created }) + '（' + t('bm_placeholder_name') + '）';
+                shell.box.dataset.type = cwfmBmType({ note: note.value.trim(), excerpt }); // 外框色跟著「存下去會是什麼類型」
             }
             note.addEventListener('input', updatePlaceholder);
             updatePlaceholder();
