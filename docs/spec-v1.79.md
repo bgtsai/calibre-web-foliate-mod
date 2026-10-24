@@ -68,6 +68,7 @@
   - `PUT  /cwfm/api/book/<id>/bookmark/<bmid>`、`DELETE` 同路徑
   - `PUT  /cwfm/api/book/<id>/navhist`
   - v1.80：`POST /cwfm/api/errlog`（該次開書有錯誤或提示才送，整份紀錄；同 session 覆蓋；每人保留 50 次）、`GET /cwfm/api/errlog`（純文字檢視，只看自己）
+  - v1.80.4：預設不上傳，設定面板「錯誤紀錄」區同意後才開（`errlogUpload`）；`DELETE /cwfm/api/errlog` 清除自己的；`GET ?all=1` 僅管理員看全部（伺服器端檢查 `role_admin()`）；下載檔遮主機為 `<host>`
   - 單次請求上限 256KB；書籤 id 限 `[A-Za-z0-9_-]{1,40}`。
 - 建置時把 blueprint 註冊插進 `cps/main.py`（`app.register_blueprint(editbook)` 後，必須剛好 1 處，否則建置失敗）。
 - `read.html` 開機段落多給 `api` 網址與本機 `bookdata`；`login.html` 加暫存定位腳本。

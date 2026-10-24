@@ -290,6 +290,26 @@
             field_clear_navhist: "清除這本書的跳轉紀錄",
             btn_clear_navhist: "清除",
             dlg_clear_navhist_msg: "清除目錄、搜尋、進度條、書內連結的上一步／下一步紀錄（只影響這本書）。",
+            group_errlog: '錯誤紀錄',
+            errlog_caution_title: '隱私說明',
+            errlog_caution_items: [
+                '記錄什麼：出錯那次開書的步驟與錯誤訊息，包含網址、書號、瀏覽器版本。',
+                '存在哪裡：只存在這台伺服器，不會傳到任何外部網站。',
+                '誰看得到：你自己，以及這台伺服器的管理員。',
+                '保留多久：最近 50 次，舊的自動刪除。',
+                '可以隨時關閉、隨時清除。',
+            ],
+            field_errlog_upload: '出錯時記錄到伺服器',
+            dlg_errlog_consent_title: '開啟錯誤紀錄',
+            dlg_errlog_consent_msg: '開啟後，閱讀器出錯時會把這次開書的紀錄存在這台伺服器。你自己和這台伺服器的管理員都看得到這些紀錄。可以隨時關閉或清除。',
+            btn_errlog_consent: '同意並開啟',
+            btn_errlog_download: '下載我的錯誤紀錄',
+            btn_errlog_clear: '清除我的錯誤紀錄',
+            dlg_errlog_clear_msg: '刪除這台伺服器上你的所有錯誤紀錄，無法復原。',
+            toast_errlog_cleared: '已清除錯誤紀錄',
+            toast_errlog_failed: '錯誤紀錄讀取或清除失敗',
+            hint_errlog_url: '閱讀器整個打不開時，也可以登入後直接開這個網址查看：',
+            errlog_download_notice: '※ 上傳到 GitHub 等公開網站前，請確認內容沒有你不想公開的資訊（主機位址已自動遮成 <host>）。',
             toast_navhist_cleared: "已清除跳轉紀錄",
             err_search: "[cwfm:search] 搜尋失敗",
             err_bookdata_save: "[cwfm:bookdata] 儲存失敗",
@@ -579,6 +599,26 @@
             field_clear_navhist: "Clear this book's jump history",
             btn_clear_navhist: "Clear",
             dlg_clear_navhist_msg: "Clears the back/forward history of contents, search, progress bar and in-book links (this book only).",
+            group_errlog: 'Error log',
+            errlog_caution_title: 'Privacy notice',
+            errlog_caution_items: [
+                'What: the steps and error messages of the session that failed, including URLs, book IDs and browser version.',
+                'Where: stored only on this server, never sent to any outside website.',
+                'Who can see it: you and the administrator of this server.',
+                'How long: the latest 50 sessions; older ones are deleted automatically.',
+                'You can turn it off or clear it at any time.',
+            ],
+            field_errlog_upload: 'Save error logs to the server',
+            dlg_errlog_consent_title: 'Turn on error logging',
+            dlg_errlog_consent_msg: 'When the reader hits an error, the log of that session will be stored on this server. You and the administrator of this server can see it. You can turn it off or clear it at any time.',
+            btn_errlog_consent: 'Agree and turn on',
+            btn_errlog_download: 'Download my error log',
+            btn_errlog_clear: 'Clear my error log',
+            dlg_errlog_clear_msg: 'Deletes all of your error logs on this server. This cannot be undone.',
+            toast_errlog_cleared: 'Error log cleared',
+            toast_errlog_failed: 'Failed to read or clear the error log',
+            hint_errlog_url: 'If the reader cannot open at all, sign in and open this address:',
+            errlog_download_notice: '* Before posting to a public site such as GitHub, check that nothing private is included (host addresses are masked as <host>).',
             toast_navhist_cleared: "Jump history cleared",
             err_search: "[cwfm:search] Search failed",
             err_bookdata_save: "[cwfm:bookdata] Save failed",
@@ -1967,6 +2007,16 @@
             '.cwfm-confirm-cancel { background: none; border: 1px solid var(--cwfm-border-light); color: var(--cwfm-text-secondary); }',
             '.cwfm-confirm-cancel:hover { border-color: var(--cwfm-text-secondary); color: var(--cwfm-text); }',
             '.cwfm-confirm-ok { background: #b03030; border: 1px solid #d04040; color: #fff; }',
+            // v1.80.4：錯誤紀錄區——琥珀色「注意」框（知情說明，不是紅色危險）、刪除鈕紅框、同意對話框琥珀框
+            '.cwfm-caution { margin: 2px 0 10px; padding: 10px 12px 8px; border: 1px solid rgba(250,199,117,0.55); border-left: 4px solid #FAC775;',
+            '  border-radius: 8px; background: rgba(250,199,117,0.10); font-size: 12px; line-height: 1.6; color: var(--cwfm-text); }',
+            '.cwfm-caution-title { font-weight: 600; margin-bottom: 4px; }',
+            '.cwfm-caution ul { margin: 0; padding-left: 18px; }',
+            '.cwfm-errlog-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }',
+            '.cwfm-errlog-buttons button { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }',
+            '.cwfm-btn-danger-outline { background: none; border: 1px solid #d04040; color: #e05555; }',
+            '.cwfm-field-hint a { color: var(--cwfm-accent); word-break: break-all; }',
+            '.cwfm-consent-dialog { border: 2px solid #FAC775; border-radius: 12px; }',
             '.cwfm-confirm-ok:hover { background: #c03838; }',
             '.cwfm-panel[data-side="left"] { left: 0; transform: translateX(-105%); }',
             '.cwfm-panel[data-side="left"].cwfm-open { transform: translateX(0); }',
@@ -2535,6 +2585,9 @@
         // v1.79：閱讀進度——本機一律記錄；同步開啟時每次換位置立刻送到伺服器；
         // cloudFirst 決定開書時先用雲端還是本機（見 docs/spec-v1.79.md §1）。
         autoSyncEnabled: true,
+        // v1.80.4：Docker 版出錯時把該次開書紀錄存到伺服器（/cwfm/api/errlog）——預設關，
+        // 使用者看過隱私說明、按〔同意並開啟〕才開（錯誤面板上傳前會讀這個值）
+        errlogUpload: false,
         cloudFirst: true,
         // v1.79：書籤
         showBookmarkHighlights: true,
@@ -2994,6 +3047,48 @@
         };
     }
 
+    // v1.80.4：知情同意用的對話框——琥珀色框（注意等級，不是紅色危險），確認鈕用主要色
+    function cwfmConsentDialog(title, message, okLabel) {
+        return new Promise((resolve) => {
+            const shell = cwfmBuildDialogShell(title);
+            shell.box.classList.add('cwfm-consent-dialog');
+            const p = document.createElement('p');
+            p.textContent = message;
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'cwfm-confirm-cancel';
+            cancelBtn.textContent = t('dlg_cancel');
+            const okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.className = 'cwfm-confirm-ok cwfm-ok-primary';
+            okBtn.textContent = okLabel;
+            const close = (v) => { shell.overlay.remove(); resolve(v); };
+            cancelBtn.addEventListener('click', () => close(false));
+            okBtn.addEventListener('click', () => close(true));
+            shell.closeOnOutsideClick(() => close(false));
+            shell.btnRow.append(cancelBtn, okBtn);
+            shell.box.append(p, shell.btnRow);
+            shell.mount();
+        });
+    }
+    // v1.80.4：下載自己的錯誤紀錄（給 GitHub 回報用：附加檔案比貼一長串文字方便，iPad 也好操作）。
+    // 主機名稱與埠號遮成 <host>（http／https 與路徑保留——判斷剪貼簿限制、路徑錯誤都靠它們）
+    async function cwfmDownloadErrlog() {
+        try {
+            const res = await fetch(CWFM_API + 'errlog', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const text = (await res.text()).replace(/(https?:\/\/)[^\/\s"'<>)]+/g, '$1<host>');
+            const blob = new Blob([t('errlog_download_notice') + '\n\n' + text], { type: 'text/plain;charset=utf-8' });
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'cwfm-errlog-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        } catch (err) { console.error('[cwfm:errlog] 下載失敗', err); cwfmToast(t('toast_errlog_failed')); }
+    }
     function cwfmConfirmDialog(title, message, confirmLabel) {
         return new Promise((resolve) => {
             const { overlay, box, btnRow, closeOnOutsideClick, mount } = cwfmBuildDialogShell(title);
@@ -6019,6 +6114,64 @@
             const confirmed = await cwfmConfirmDialog(t('dlg_reload_title'), t('dlg_reload_msg'), t('btn_reload_now'));
             if (confirmed) location.reload();
         });
+
+        // v1.80.4：錯誤紀錄（只有 Docker 版有伺服器）——放在最後：不是閱讀設定、平常用不到，出問題時才找。
+        // 知情同意：琥珀色「注意」框列出記什麼／存哪／誰看得到／保留多久；開啟時再確認一次（同意＝也同意管理員可看）
+        if (CWFM_API) {
+            beginGroup(t('group_errlog'));
+            const caution = document.createElement('div');
+            caution.className = 'cwfm-caution';
+            const ct = document.createElement('div');
+            ct.className = 'cwfm-caution-title';
+            ct.textContent = '⚠ ' + t('errlog_caution_title');
+            const ul = document.createElement('ul');
+            for (const line of t('errlog_caution_items')) { const li = document.createElement('li'); li.textContent = line; ul.appendChild(li); }
+            caution.append(ct, ul);
+            panelTarget.appendChild(caution);
+            const upCb = addCheckboxField(t('field_errlog_upload'), 'errlogUpload');
+            // 從關→開要先同意（攔下這一次點擊，同意後才真的打勾並觸發原本的儲存）；關閉不用確認
+            upCb.addEventListener('click', async (e) => {
+                if (upCb.checked === false) return; // 這次點擊會變成「關」
+                e.preventDefault();
+                const ok = await cwfmConsentDialog(t('dlg_errlog_consent_title'), t('dlg_errlog_consent_msg'), t('btn_errlog_consent'));
+                if (!ok) return;
+                upCb.checked = true;
+                upCb.dispatchEvent(new Event('change'));
+            });
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const row = document.createElement('div');
+            row.className = 'cwfm-errlog-buttons';
+            const dl = document.createElement('button');
+            dl.type = 'button';
+            dl.className = 'cwfm-confirm-cancel';
+            dl.textContent = t('btn_errlog_download');
+            dl.addEventListener('click', () => cwfmDownloadErrlog());
+            const clr = document.createElement('button');
+            clr.type = 'button';
+            clr.className = 'cwfm-btn-danger-outline';
+            clr.textContent = t('btn_errlog_clear');
+            clr.addEventListener('click', async () => {
+                if (!(await cwfmConfirmDialog(t('btn_errlog_clear'), t('dlg_errlog_clear_msg'), t('btn_errlog_clear')))) return;
+                try {
+                    const res = await cwfmApi('DELETE', 'errlog');
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    cwfmToast(t('toast_errlog_cleared'));
+                } catch (err) { console.error('[cwfm:errlog] 清除失敗', err); cwfmToast(t('toast_errlog_failed')); }
+            });
+            row.append(dl, clr);
+            const hint = document.createElement('div');
+            hint.className = 'cwfm-field-hint';
+            hint.textContent = t('hint_errlog_url') + ' ';
+            const a = document.createElement('a');
+            a.href = CWFM_API + 'errlog';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = new URL(CWFM_API + 'errlog', location.href).href;
+            hint.appendChild(a);
+            field.append(row, hint);
+            panelTarget.appendChild(field);
+        }
 
         document.body.appendChild(panel);
 
