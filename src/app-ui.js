@@ -1696,7 +1696,7 @@
             '  z-index: 999999; display: none; background: var(--cwfm-toolbar-bg);',
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); border-radius: 18px; padding: 2px; height: 36px; box-sizing: border-box; }',
             // v1.80：跟工具列上那組是同一份紀錄——只在工具列隱藏時出現；按 ✕ 收起
-            'html.cwfm-bars-hidden .cwfm-nav-float.cwfm-nav-visible:not(.cwfm-nav-dismissed) { display: inline-flex; }',
+            'html.cwfm-bars-hidden .cwfm-nav-float.cwfm-nav-visible.cwfm-nav-armed { display: inline-flex; }',
             // [cwfm] 關閉數字輸入框（<input type="number">）瀏覽器原生的上下
             // 微調箭頭。查證過往 z-library_直接下載按鈕 專案用過的標準寫法
             // 直接沿用：WebKit 系瀏覽器（Chrome/Edge）用 -webkit-appearance
@@ -1944,7 +1944,8 @@
             // [cwfm] 刪除上傳字型的確認對話框，獨立蓋在整個畫面最上層。
             '.cwfm-confirm-overlay {',
             '  position: fixed; inset: 0; background: rgba(0,0,0,0.6);',
-            '  z-index: 1000000; display: flex; align-items: center; justify-content: center;',
+            // v1.80.2：要在書籤卡片（1000001）之上——從卡片按〔編輯〕／〔刪除〕時對話框不能被卡片壓住
+            '  z-index: 1000002; display: flex; align-items: center; justify-content: center;',
             '}',
             '.cwfm-confirm-box {',
             '  background: var(--cwfm-surface-elevated); border: 1px solid var(--cwfm-border-light); border-radius: 8px;',
@@ -4033,8 +4034,11 @@
                 // v1.79.2：最多保留 50 筆，超過丟掉最舊的
                 const over = this.entries.length - 50;
                 if (over > 0) { this.entries.splice(0, over); this.idx -= over; }
-                // 有新的跳轉：之前按 ✕ 收起的浮動組重新出現
-                document.querySelectorAll('.cwfm-nav-float.cwfm-nav-dismissed').forEach((g) => g.classList.remove('cwfm-nav-dismissed'));
+                // v1.80.2：浮動組只在「工具列已隱藏時又發生跳轉」才出現（重新整理讀回紀錄、工具列顯示時跳轉都不出現）；
+                // 工具列一被喚醒就收回（cwfmShowBars），之後再自動隱藏也不會自己冒出來，要等下一次跳轉
+                if (document.documentElement.classList.contains('cwfm-bars-hidden')) {
+                    document.querySelectorAll('.cwfm-nav-float').forEach((g) => g.classList.add('cwfm-nav-armed'));
+                }
                 cwfmDiag('NAV-RECORD', 'kind=' + kind + ' idx=' + this.idx + ' from=' + cwfmCfiText(cur));
                 this.changed();
             },
@@ -6249,7 +6253,7 @@
         // v1.79.2：只有右上角書內連結那組保留 ✕（看完註解、關掉這組）；其他組跟瀏覽器上一頁一樣不放清除鈕，
         // 每組最多保留 50 筆，要清除到設定面板「清除這本書的跳轉紀錄」。
         // v1.80：浮動組（工具列隱藏時才出現）的 ✕ 只是收起來，不清紀錄、不確認；下次有新跳轉再出現
-        const clr = !float ? null : mk(ICONS.navClear, t('nav_hide'), () => { group.classList.add('cwfm-nav-dismissed'); });
+        const clr = !float ? null : mk(ICONS.navClear, t('nav_hide'), () => { group.classList.remove('cwfm-nav-armed'); });
         function update() {
             back.b.disabled = h.backCount === 0;
             fwd.b.disabled = h.forwardCount === 0;
@@ -6498,6 +6502,7 @@
         // 不然工具列滑走時背景層會卡在原地不動。
         document.querySelector('.cwfm-toolbar-bg')?.classList.remove('cwfm-autohidden');
         document.querySelector('.cwfm-toolbar-top-bg')?.classList.remove('cwfm-autohidden');
+        document.querySelectorAll('.cwfm-nav-float').forEach((g) => g.classList.remove('cwfm-nav-armed')); // 工具列看得到就用工具列那組
     }
     function cwfmHideBars() {
         if (cwfmAutoHideHoveringBar) return;
@@ -6650,7 +6655,7 @@
             '.cwfm-preview-bar button { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 4px 12px; cursor: pointer;',
             '  background: var(--cwfm-accent); color: #fff; font: inherit; }',
             // 提示訊息
-            '.cwfm-toast { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 1000002;',
+            '.cwfm-toast { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 1000003;',
             '  padding: 8px 16px; border-radius: 18px; font: 13px sans-serif; background: var(--cwfm-toolbar-bg); color: var(--cwfm-text);',
             '  box-shadow: 0 2px 10px var(--cwfm-shadow-soft), 0 0 0 1px var(--cwfm-shadow-ring); pointer-events: none;',
             '  opacity: 0; transition: opacity 0.2s ease; }',
@@ -7210,6 +7215,8 @@
         clearTimeout(cwfmCard.openTimer);
         clearTimeout(cwfmCard.closeTimer);
         if (!cwfmCard.el || cwfmCard.pinned) return;
+        // 對話框（編輯、刪除確認）蓋上來時滑鼠會「離開」卡片，這時不能把卡片關掉
+        if (document.querySelector('.cwfm-confirm-overlay')) return;
         cwfmCard.closeTimer = setTimeout(() => { if (!cwfmCard.pinned) cwfmCloseCard(); }, CWFM_CARD_HOVER_CLOSE_MS);
     }
     function cwfmCardRow() { return cwfmCard.id && tocPanel ? tocPanel.querySelector('.cwfm-bm-row[data-id="' + cwfmCard.id + '"]') : null; }
@@ -7238,6 +7245,8 @@
         card.className = 'cwfm-bm-card';
         card.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') cwfmCancelCardTimers(); });
         card.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') cwfmScheduleCardHoverClose(); });
+        // 在卡片裡按了任何東西（編輯、複製連結…）就釘住，不再因滑鼠離開而關
+        card.addEventListener('click', () => { cwfmCard.pinned = true; cwfmCancelCardTimers(); });
         card.dataset.type = type;
         card.dataset.cwfmOwned = 'true';
         const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
