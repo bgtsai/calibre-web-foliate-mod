@@ -7236,9 +7236,20 @@
             // v1.80.5：iPad 全螢幕時，名稱欄自動聚焦叫出螢幕鍵盤，系統會退出全螢幕（使用者確認保留自動聚焦）。
             // 開對話框時在全螢幕、關閉時（儲存／取消／點外面／Esc——都是使用者動作，允許重新進入）已不在 → 自動回全螢幕
             const fsAtOpen = !!document.fullscreenElement;
+            // v1.80.7：Esc 一次只關最上層。原本 Esc 掛在名稱／備註欄，對話框關掉、移除遮罩後，同一個事件
+            // 冒泡到 document 的卡片 Esc 處理，那時已檢查不到 .cwfm-confirm-overlay，卡片跟著被關；
+            // 焦點在按鈕上時 Esc 又完全沒作用。改在 document 捕獲階段處理並停止傳遞，焦點在哪都有效。
+            function onEsc(e) {
+                if (e.key !== 'Escape') return;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                close(null);
+            }
+            document.addEventListener('keydown', onEsc, true);
             function close(result) {
                 if (done) return;
                 done = true;
+                document.removeEventListener('keydown', onEsc, true);
                 shell.overlay.remove();
                 if (fsAtOpen && !document.fullscreenElement && typeof document.documentElement.requestFullscreen === 'function') {
                     try {
@@ -7253,8 +7264,7 @@
             save.addEventListener('click', () => close(Object.assign({}, bm, {
                 name: name.value.trim(), note: note.value.trim(), excerpt,
             })));
-            name.addEventListener('keydown', (e) => { if (e.key === 'Enter') save.click(); else if (e.key === 'Escape') close(null); });
-            note.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(null); });
+            name.addEventListener('keydown', (e) => { if (e.key === 'Enter') save.click(); });
             shell.closeOnOutsideClick(() => close(null));
             shell.btnRow.classList.add('cwfm-bm-dialog-buttons');
             shell.btnRow.append(cancel, save);
@@ -7825,7 +7835,12 @@
     function cwfmExportHtml(list) {
         const { title, authors } = cwfmBookMeta();
         const counts = { pos: 0, excerpt: 0, note: 0 };
-        list.forEach((b) => counts[cwfmBmType(b)]++);
+        // v1.80.7：「備註＋摘錄」兩邊都計入（使用者決定），所以三項加總可能大於書籤數
+        list.forEach((b) => {
+            const ty = cwfmBmType(b);
+            counts[ty]++;
+            if (ty === 'note' && b.excerpt) counts.excerpt++;
+        });
         const badge = { pos: ['#FCEBEB', '#A32D2D'], excerpt: ['#FAEEDA', '#633806'], note: ['#E1F5EE', '#085041'] }; // 跟閱讀器同一套顏色
         let html = '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             + '<title>' + cwfmEsc(title) + ' — ' + cwfmEsc(t('export_title')) + '</title><style>'
