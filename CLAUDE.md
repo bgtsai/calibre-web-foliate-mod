@@ -37,8 +37,8 @@
 - 換章節時 foliate 會重新呼叫套用設定、shadow root 裡可能同時有新舊 iframe——取目前章節一律用
   `getBookIframeDocument()`（優先走 `renderer.getContents()`）。
 
-## 交接（2026-10-27，v1.81.1）
-- **目前版本**：v1.81.1（mod 本次 commit；Docker 仍指向 v1.81.0 `ebb4bda`）。v1.80.7＝書籤對話框 Esc 只關最上層、匯出頁首「備註＋摘錄」兩邊計入；v1.80.8＝書籤列 hover 只亮指到的那塊（類型淡色）；v1.81.0＝設定面板「關於」分組；v1.81.1＝「關於」簡化（版本、發布日期、安裝方式、說明頁（GitHub）、TM 版檢查更新點下去才加時間戳記），字級對齊其他分組。
+## 交接（2026-10-27，v1.81.2）
+- **目前版本**：v1.81.2（Docker 已指向，見 Docker repo）。v1.80.7＝書籤對話框 Esc 只關最上層、匯出頁首「備註＋摘錄」兩邊計入；v1.80.8＝書籤列 hover 只亮指到的那塊（類型淡色）；v1.81.0～.1＝設定面板「關於」（版本、發布日期、安裝方式、說明頁（GitHub）、TM 版檢查更新點下去才加時間戳記）；v1.81.2＝一開頁就藏原生閱讀介面（TM 外殼 document-start 插 cwfm-early-hide 樣式，規則跟 Docker 的 patch_read_html.py EARLY_HIDE 同一條，改一邊要改另一邊）。
 - **測試**：功能測試放在 Docker repo 的 `test/reader/`（見該資料夾 README）。環境要先 `npm install`（build/legacy）與 `playwright install webkit firefox`，沒裝齊會跑出 0 項而不報錯。已知失敗：`feat_test`「縮放後重算…標題固定」（v1.79 起）、Firefox「電腦首次預設 540×648」（此環境視窗尺寸差 12px，v1.80.6 也失敗）。
 - **待使用者實機確認**：iPad 跨章節點擊翻頁、編輯書籤後自動回全螢幕、載入提示在黑底的可讀性、開啟速度、iPad 全螢幕時工具列左側讓出 64px 是否足夠、iPad 藍牙鍵盤按 Esc 只關對話框、白底上摘錄（琥珀）hover 淡色看不看得出來、Tampermonkey 版「關於」的內容與檢查更新。
 - 經驗已歸檔進知識庫（03 ⑮、27 ⑰、29 ㉒、31 v1.12）；v1.80.8 的經驗在未歸檔草稿 `_pending/20261027-1627_calibre-web-foliate-mod.md`。

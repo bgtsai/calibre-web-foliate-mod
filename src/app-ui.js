@@ -813,7 +813,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.81.1', '2026-10-27'];
+    const CWFM_RELEASE = ['1.81.2', '2026-10-27'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
