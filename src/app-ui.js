@@ -817,7 +817,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.82.0', '2026-10-27'];
+    const CWFM_RELEASE = ['1.82.1', '2026-10-28'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1988,8 +1988,11 @@
             '.cwfm-keychip:focus-within { outline: none; box-shadow: none; }',
             '.cwfm-keychip-remove {',
             '  background: none; border: none; color: var(--cwfm-text-secondary); cursor: pointer;',
-            '  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 3px;',
+            '  display: inline-flex; align-items: center; justify-content: center;',
+            '  width: 17px; height: 17px; padding: 0; line-height: 0; border-radius: 3px; flex: 0 0 auto;',
             '}',
+            // v1.82.1：圖示是 SVG，用 block 消掉行內元素的基線空隙，置中只看方框幾何
+            '.cwfm-keychip-remove svg, .cwfm-keychip-rename svg, .cwfm-keychip-icon svg { display: block; }',
             '.cwfm-keychip-remove:hover { color: var(--cwfm-text); background: var(--cwfm-border); }',
             '.cwfm-keychip-add {',
             '  background: none; border: 1px dashed var(--cwfm-border-light); border-radius: 4px;',
@@ -2023,7 +2026,7 @@
             '  display: inline-flex; align-items: center; justify-content: center;',
             '  width: 14px; height: 14px; border-radius: 50%;',
             '  background: rgba(78,161,255,0.25); color: var(--cwfm-accent);',
-            '  font-size: 9px; line-height: 1; margin-right: 2px; flex-shrink: 0;',
+            '  line-height: 0; margin-right: 2px; flex-shrink: 0;',
             '}',
             '.cwfm-keychip-text { cursor: pointer; }',
             // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
@@ -2032,7 +2035,8 @@
             // 排在一起、靠最後面的慣例，操作時滑鼠移動距離也比較短）。
             '.cwfm-keychip-rename {',
             '  background: none; border: none; color: var(--cwfm-text-secondary); cursor: pointer;',
-            '  font-size: 11px; line-height: 1; padding: 2px 3px; border-radius: 3px;',
+            '  display: inline-flex; align-items: center; justify-content: center;',
+            '  width: 17px; height: 17px; padding: 0; line-height: 0; border-radius: 3px; flex: 0 0 auto;',
             '  opacity: 0; transition: opacity 0.15s ease;',
             '}',
             '.cwfm-keychip:hover .cwfm-keychip-rename { opacity: 1; }',
@@ -2185,6 +2189,8 @@
             '.cwfm-stepper-btn { flex: 0 0 auto; width: 24px; height: 100%; padding: 0; margin: 0; border: none; background: transparent;',
             '  color: var(--cwfm-text-secondary); font-size: 15px; line-height: 1; cursor: pointer; user-select: none;',
             '  display: flex; align-items: center; justify-content: center; }',
+            '.cwfm-stepper-btn { display: inline-flex; align-items: center; justify-content: center; line-height: 0; }',
+            '.cwfm-stepper-btn svg { display: block; }',
             '.cwfm-stepper-btn:hover { background: var(--cwfm-border-light); color: var(--cwfm-text); }',
             '.cwfm-panel .cwfm-stepper .cwfm-value-input { width: 3.4em !important; height: 100% !important; padding: 0 2px !important;',
             '  border: none !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important;',
@@ -3326,13 +3332,28 @@
     // 的標籤不該有改名功能，那裡呼叫這支函式時不傳 onRename 就好）；
     // 改名圖示平常隱藏，只有滑鼠移到整個標籤上面才淡入顯示（CSS 處理，
     // 見 .cwfm-keychip:hover .cwfm-keychip-rename）。
+    // v1.82.1：標籤上的小按鈕（改名、覆蓋更新、刪除、上傳字型徽章）一律用同一套 Lucide 線條圖示
+    // （ISC 授權，座標照抄原圖示庫，不自己畫），線寬 2、圓端點——原本鉛筆 ✎、叉叉 × 是字型裡的符號，
+    // 筆畫粗細由字型決定、跟磁碟 SVG 不像一組，而且是用文字行高置中（置中字框、不是墨水），三個圖示上下差約 2px。
+    // 圖示 display:block、按鈕固定方框置中，位置只看幾何，不受字型影響。
+    const CWFM_CHIP_ICON_PATHS = {
+        pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+        save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/>',
+        x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+        minus: '<path d="M5 12h14"/>',
+        plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+        arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+    };
+    function cwfmChipIcon(name, size = 11) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="' + size + '" height="' + size + '" aria-hidden="true">' + CWFM_CHIP_ICON_PATHS[name] + '</svg>';
+    }
     function cwfmBuildChip(text, opts) {
         const chip = document.createElement('span');
         chip.className = 'cwfm-keychip' + (opts.extraClass ? ' ' + opts.extraClass : '');
         if (opts.icon) {
             const icon = document.createElement('span');
             icon.className = 'cwfm-keychip-icon';
-            icon.textContent = opts.icon;
+            icon.innerHTML = cwfmChipIcon(opts.icon, 10);
             chip.appendChild(icon);
         }
         const textEl = document.createElement('span');
@@ -3345,7 +3366,7 @@
             const renameBtn = document.createElement('button');
             renameBtn.type = 'button';
             renameBtn.className = 'cwfm-keychip-rename';
-            renameBtn.textContent = '\u270e';
+            renameBtn.innerHTML = cwfmChipIcon('pencil');
             renameBtn.setAttribute('aria-label', t('btn_rename'));
             renameBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -3364,7 +3385,7 @@
             updateBtn.className = 'cwfm-keychip-rename';
             // [cwfm] 用 SVG 畫磁碟片(儲存)圖示，比原本的重新整理箭頭更
             //直觀——這個動作的意義是「存檔覆蓋」，不是「重新整理」。
-            updateBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/></svg>';
+            updateBtn.innerHTML = cwfmChipIcon('save');
             if (opts.updateLabel) updateBtn.setAttribute('aria-label', opts.updateLabel);
             updateBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -3376,7 +3397,7 @@
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'cwfm-keychip-remove';
-        removeBtn.textContent = '\u00d7';
+        removeBtn.innerHTML = cwfmChipIcon('x');
         if (opts.removeLabel) removeBtn.setAttribute('aria-label', opts.removeLabel);
         removeBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRemove(); });
         chip.appendChild(removeBtn);
@@ -5069,10 +5090,10 @@
             const wrap = document.createElement('span');
             wrap.className = 'cwfm-stepper';
             const dec = document.createElement('button');
-            dec.type = 'button'; dec.className = 'cwfm-stepper-btn'; dec.textContent = '−'; dec.tabIndex = -1;
+            dec.type = 'button'; dec.className = 'cwfm-stepper-btn'; dec.innerHTML = cwfmChipIcon('minus', 12); dec.tabIndex = -1; // v1.82.1：原本是文字 −，Firefox／Safari 會偏下約 1px
             dec.setAttribute('aria-label', '-');
             const inc = document.createElement('button');
-            inc.type = 'button'; inc.className = 'cwfm-stepper-btn'; inc.textContent = '+'; inc.tabIndex = -1;
+            inc.type = 'button'; inc.className = 'cwfm-stepper-btn'; inc.innerHTML = cwfmChipIcon('plus', 12); inc.tabIndex = -1;
             inc.setAttribute('aria-label', '+');
             const input = document.createElement('input');
             input.type = 'number';
@@ -5254,7 +5275,7 @@
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
                     removeBtn.className = 'cwfm-keychip-remove';
-                    removeBtn.textContent = '\u00d7';
+                    removeBtn.innerHTML = cwfmChipIcon('x');
                     removeBtn.setAttribute('aria-label', t('aria_delete_key_combo'));
                     removeBtn.addEventListener('click', () => {
                         list.splice(idx, 1);
@@ -5845,7 +5866,7 @@
                 });
                 (settings.uploadedFonts || []).forEach((entry, index) => {
                     const chip = cwfmBuildChip(entry.name, {
-                        icon: '\u2191',
+                        icon: 'arrowUp',
                         // [cwfm] 「藍色」在其他標籤清單(佈景主題、配色)裡
                         // 代表「目前選中」，這個標籤不管有沒有被選中都是
                         // 藍色，會混淆——拿掉專屬色，套用中的時候一樣用
