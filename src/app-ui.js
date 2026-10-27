@@ -296,7 +296,7 @@
             btn_clear_navhist: "清除",
             dlg_clear_navhist_msg: "清除目錄、搜尋、進度條、書內連結的上一步／下一步紀錄（只影響這本書）。",
             group_errlog: '錯誤紀錄',
-            group_about: '關於', about_version: '版本', about_build: '打包方式', about_docs: '說明頁', about_update: '檢查更新',
+            group_about: '關於', about_version: '版本', about_date: '發布日期', about_install: '安裝方式', about_tm_script: 'Tampermonkey 腳本', about_docs: '說明頁（GitHub）', about_update: '檢查更新',
             loading_downloading: '正在下載書籍',
             loading_opening: '正在開啟書籍…',
             errlog_caution_title: '隱私說明',
@@ -617,7 +617,7 @@
             btn_clear_navhist: "Clear",
             dlg_clear_navhist_msg: "Clears the back/forward history of contents, search, progress bar and in-book links (this book only).",
             group_errlog: 'Error log',
-            group_about: 'About', about_version: 'Version', about_build: 'Build', about_docs: 'Documentation', about_update: 'Check for updates',
+            group_about: 'About', about_version: 'Version', about_date: 'Release date', about_install: 'Install method', about_tm_script: 'Tampermonkey script', about_docs: 'Documentation (GitHub)', about_update: 'Check for updates',
             loading_downloading: 'Downloading book',
             loading_opening: 'Opening book…',
             errlog_caution_title: 'Privacy notice',
@@ -812,6 +812,8 @@
     //     不影響原本流程。
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
+    // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
+    const CWFM_RELEASE = ['1.81.1', '2026-10-27'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1841,10 +1843,11 @@
             '  background: var(--cwfm-bg);',
             '}',
             '.cwfm-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; }',
-            '.cwfm-about-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 16px; }',
-            '.cwfm-about-row > span:first-child { color: var(--cwfm-text-secondary); }',
-            '.cwfm-about-row > span:last-child { color: var(--cwfm-text); text-align: right; user-select: text; }',
-            '.cwfm-about-links { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 6px; font-size: 16px; }',
+            // v1.81.1：字級跟其他分組一致——名稱同欄位說明 12px 灰、內容與連結同控制項 13px
+            '.cwfm-about-row { display: flex; align-items: baseline; gap: 12px; padding: 3px 0; }',
+            '.cwfm-about-row > span:first-child { flex: 0 0 auto; font-size: 12px; color: var(--cwfm-text-secondary); }',
+            '.cwfm-about-row > span:last-child { margin-left: auto; font-size: 13px; color: var(--cwfm-text); text-align: right; user-select: text; }',
+            '.cwfm-about-links { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 6px; font-size: 13px; }',
             '.cwfm-about-links a { color: var(--cwfm-accent); text-decoration: none; } .cwfm-about-links a:hover { text-decoration: underline; }',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 32px; height: 32px;',
@@ -6304,18 +6307,26 @@
                 r.append(a, b);
                 panelTarget.appendChild(r);
             };
+            // v1.81.1：簡化——只顯示版本、發布日期、安裝方式，不顯示 commit（使用者決定）
             row(t('about_version'), 'v' + (dm ? dm[1] : CWFM_VERSION));
-            row(t('about_build'), isDocker ? 'Docker' + (dm ? '（mod ' + dm[2] + '）' : '') : 'Tampermonkey');
+            row(t('about_date'), CWFM_RELEASE[1]);
+            row(t('about_install'), isDocker ? 'Docker' : t('about_tm_script'));
             const links = document.createElement('div');
             links.className = 'cwfm-about-links';
             const link = (text, href) => {
                 const a = document.createElement('a');
                 a.textContent = text; a.href = href; a.target = '_blank'; a.rel = 'noopener';
                 links.appendChild(a);
+                return a;
             };
             link(t('about_docs'), isDocker ? 'https://github.com/bgtsai/calibre-web-foliate-docker' : 'https://github.com/bgtsai/calibre-web-foliate-mod');
-            // 安裝連結加時間參數避開快取；點了 Tampermonkey 會跳出安裝／更新確認
-            if (!isDocker) link(t('about_update'), 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/calibre-web-foliate-mod.user.js?t=' + Date.now());
+            if (!isDocker) {
+                // 點下去那一刻才加時間戳記（面板只在開書時建一次，書可能開著很久），避開快取拿到舊版。
+                // Tampermonkey 會攔下 .user.js 網址，跳出自己的安裝／更新確認頁。
+                const RAW = 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/calibre-web-foliate-mod.user.js';
+                const up = link(t('about_update'), RAW);
+                up.addEventListener('click', () => { up.href = RAW + '?t=' + Date.now(); });
+            }
             panelTarget.appendChild(links);
         }
 

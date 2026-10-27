@@ -14,8 +14,15 @@
   python3 tools/pack.py --check    # 只檢查是否同步，不寫入（不同步時 exit 1）
 
 @version 不在這裡處理，請另外手動修改 user.js 標頭。
+
+發布日期（v1.81.1 起）：打包 app 時，若 user.js 的 @version 跟 src/app-ui.js 裡
+CWFM_RELEASE 記的版本不同，就把 CWFM_RELEASE 改成 [新版本, 今天（台北時間）]。
+同一版本重複打包不會改日期；--check 只比對、不改。
 """
+import datetime
 import json
+import re
+import zoneinfo
 import pathlib
 import shutil
 import subprocess
@@ -40,6 +47,27 @@ def decode(line, prefix):
     return json.loads(line[len(prefix):].rstrip().rstrip(";"))
 
 
+RELEASE_RE = re.compile(r"^    const CWFM_RELEASE = \['([^']*)', '(\d{4}-\d{2}-\d{2})'\];", re.M)
+
+
+def stamp_release(src_path, user_js_text):
+    """版本變了才寫入發布日期（台北時間），回傳 (原始碼內容, 說明文字)。"""
+    m = re.search(r"^// @version\s+(\S+)", user_js_text, re.M)
+    if not m:
+        sys.exit("錯誤：user.js 找不到 @version")
+    ver = m.group(1)
+    src = src_path.read_text(encoding="utf-8")
+    hits = RELEASE_RE.findall(src)
+    if len(hits) != 1:
+        sys.exit(f"錯誤：{src_path.name} 裡 CWFM_RELEASE 宣告有 {len(hits)} 處（應該剛好 1 處）")
+    if hits[0][0] == ver:
+        return src, f"發布日期維持 {hits[0][1]}（v{ver}）"
+    today = datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d")
+    src = RELEASE_RE.sub(f"    const CWFM_RELEASE = ['{ver}', '{today}'];", src)
+    src_path.write_text(src, encoding="utf-8")
+    return src, f"發布日期寫入 {today}（v{hits[0][0]} → v{ver}）"
+
+
 def main(argv):
     check_only = "--check" in argv
     names = [a for a in argv if not a.startswith("--")] or list(TARGETS)
@@ -54,6 +82,9 @@ def main(argv):
     for n in names:
         prefix, src_path = TARGETS[n]
         src = src_path.read_text(encoding="utf-8")
+        if n == "app" and not check_only:
+            src, note = stamp_release(src_path, text)
+            print(note)
         idx = find_line(lines, prefix)
         same = decode(lines[idx], prefix) == src
         rel = src_path.relative_to(ROOT)
