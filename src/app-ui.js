@@ -291,6 +291,8 @@
             btn_clear_navhist: "清除",
             dlg_clear_navhist_msg: "清除目錄、搜尋、進度條、書內連結的上一步／下一步紀錄（只影響這本書）。",
             group_errlog: '錯誤紀錄',
+            loading_downloading: '正在下載書籍',
+            loading_opening: '正在開啟書籍…',
             errlog_caution_title: '隱私說明',
             errlog_caution_items: [
                 '記錄什麼：出錯那次開書的步驟與錯誤訊息，包含網址、書號、瀏覽器版本。',
@@ -303,8 +305,12 @@
             dlg_errlog_consent_title: '開啟錯誤紀錄',
             dlg_errlog_consent_msg: '開啟後，閱讀器出錯時會把這次開書的紀錄存在這台伺服器。你自己和這台伺服器的管理員都看得到這些紀錄。可以隨時關閉或清除。',
             btn_errlog_consent: '同意並開啟',
-            btn_errlog_download: '下載我的錯誤紀錄',
-            btn_errlog_clear: '清除我的錯誤紀錄',
+            btn_errlog_download: '下載記錄',
+            btn_errlog_clear: '清除記錄',
+            dlg_errlog_off_title: '關閉錯誤紀錄',
+            dlg_errlog_off_msg: '關閉後不再記錄，也無法從這裡下載或清除。伺服器上目前存的紀錄要一併清除嗎？',
+            btn_errlog_off_only: '只關閉',
+            btn_errlog_off_clear: '清除並關閉',
             dlg_errlog_clear_msg: '刪除這台伺服器上你的所有錯誤紀錄，無法復原。',
             toast_errlog_cleared: '已清除錯誤紀錄',
             toast_errlog_failed: '錯誤紀錄讀取或清除失敗',
@@ -600,6 +606,8 @@
             btn_clear_navhist: "Clear",
             dlg_clear_navhist_msg: "Clears the back/forward history of contents, search, progress bar and in-book links (this book only).",
             group_errlog: 'Error log',
+            loading_downloading: 'Downloading book',
+            loading_opening: 'Opening book…',
             errlog_caution_title: 'Privacy notice',
             errlog_caution_items: [
                 'What: the steps and error messages of the session that failed, including URLs, book IDs and browser version.',
@@ -612,8 +620,12 @@
             dlg_errlog_consent_title: 'Turn on error logging',
             dlg_errlog_consent_msg: 'When the reader hits an error, the log of that session will be stored on this server. You and the administrator of this server can see it. You can turn it off or clear it at any time.',
             btn_errlog_consent: 'Agree and turn on',
-            btn_errlog_download: 'Download my error log',
-            btn_errlog_clear: 'Clear my error log',
+            btn_errlog_download: 'Download log',
+            btn_errlog_clear: 'Clear log',
+            dlg_errlog_off_title: 'Turn off error logging',
+            dlg_errlog_off_msg: 'Once off, nothing is logged and you cannot download or clear logs from here. Also delete the logs currently stored on the server?',
+            btn_errlog_off_only: 'Turn off only',
+            btn_errlog_off_clear: 'Clear and turn off',
             dlg_errlog_clear_msg: 'Deletes all of your error logs on this server. This cannot be undone.',
             toast_errlog_cleared: 'Error log cleared',
             toast_errlog_failed: 'Failed to read or clear the error log',
@@ -1220,15 +1232,44 @@
     window.addEventListener('pagehide', cwfmNavFlush);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cwfmNavFlush(); });
 
+    // v1.80.5：載入提示（#cwfm-loading，Docker 版寫在 read.html、Tampermonkey 外層插入）——
+    // 大檔案下載／解壓時不要只看到一片黑；開書完成移除。下載時顯示百分比（伺服器有給大小才有）。
+    function cwfmLoadingText(text) {
+        try { const el = document.getElementById('cwfm-loading-text'); if (el) el.textContent = text; } catch (e) { /* 提示不能影響開書 */ }
+    }
+    function cwfmLoadingDone() {
+        try { document.getElementById('cwfm-loading')?.remove(); } catch (e) { /* ignore */ }
+    }
+    async function cwfmReadBodyWithProgress(res) {
+        const total = +res.headers.get('content-length') || 0;
+        if (!total || !res.body || !res.body.getReader) { cwfmLoadingText(t('loading_downloading')); return res.blob(); }
+        const reader = res.body.getReader();
+        const chunks = [];
+        let got = 0, lastPct = -1;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            got += value.length;
+            const pct = Math.min(100, Math.floor(got * 100 / total));
+            if (pct !== lastPct) { lastPct = pct; cwfmLoadingText(t('loading_downloading') + ' ' + pct + '%'); }
+        }
+        return new Blob(chunks, { type: 'application/epub+zip' });
+    }
     let book;
     let cwfmRestoredCfi = null; // 開書還原到的位置；精準定位開啟時用它當初始鎖定點（見檔尾 LOCK-SET）
     // v1.79：書籤／跳轉紀錄跟書檔同時下載；在還原位置之前等它讀好（這時還沒有掛任何 relocate 監聽器，
     // 等待期間不會碰到後面才宣告的變數）
     const cwfmBookdataReady = cwfmBookdataLoad().catch((e) => console.error(t('err_bookdata_load'), e));
     try {
-        const res = await fetch('/show/' + BOOK_ID + '/epub/file.epub', { credentials: 'same-origin' });
+        // v1.80.5：書檔改成頁面一開始就先下載（Docker 開機段落／Tampermonkey 外層先發出請求，放在
+        // window.__cwfmBookPrefetch），跟閱讀器程式本身的下載重疊；沒有預先請求（或失敗）就照舊自己抓
+        let res = null;
+        try { if (window.__cwfmBookPrefetch) res = await window.__cwfmBookPrefetch; } catch (e) { console.error('[cwfm:load] 預先下載失敗，改自己下載', e); }
+        if (!res || !res.ok || res.bodyUsed) res = await fetch('/show/' + BOOK_ID + '/epub/file.epub', { credentials: 'same-origin' });
         if (!res.ok) throw new Error(t('err_download_failed2') + res.status);
-        const blob = await res.blob();
+        const blob = await cwfmReadBodyWithProgress(res);
+        cwfmLoadingText(t('loading_opening'));
         const file = new File([blob], BOOK_ID + '.epub', { type: 'application/epub+zip' });
 
         await view.open(file);
@@ -1270,8 +1311,10 @@
         if (!cwfmRestoredCfi) view.renderer.next();
         cwfmProgress.lastHead = cwfmSafe(() => cwfmPageStartCfi().cfi, null); // 還原到的位置本來就是存著的，不用再寫一次
         cwfmDiag('INIT-RESTORED', 'path=' + cwfmRestorePath + ' preview=' + cwfmPreview + ' || ' + cwfmSnap());
+        cwfmLoadingDone(); // 第一頁已經排好
     } catch (e) {
         console.error(t('err_open_book2'), e);
+        cwfmLoadingDone(); // 讓下面的錯誤訊息看得到
         viewerContainer.innerHTML = '';
         viewerContainer.textContent = t('err_book_load_ui2');
         return;
@@ -2008,10 +2051,19 @@
             '.cwfm-confirm-cancel:hover { border-color: var(--cwfm-text-secondary); color: var(--cwfm-text); }',
             '.cwfm-confirm-ok { background: #b03030; border: 1px solid #d04040; color: #fff; }',
             // v1.80.4：錯誤紀錄區——琥珀色「注意」框（知情說明，不是紅色危險）、刪除鈕紅框、同意對話框琥珀框
-            '.cwfm-caution { margin: 2px 0 10px; padding: 10px 12px 8px; border: 1px solid rgba(250,199,117,0.55); border-left: 4px solid #FAC775;',
-            '  border-radius: 8px; background: rgba(250,199,117,0.10); font-size: 12px; line-height: 1.6; color: var(--cwfm-text); }',
-            '.cwfm-caution-title { font-weight: 600; margin-bottom: 4px; }',
-            '.cwfm-caution ul { margin: 0; padding-left: 18px; }',
+            // 錯誤紀錄卡（深色為預設、淺色另一套；色值取自 YouTube Channel Memory 的 warn：#f5a623）
+            '.cwfm-errlog-card { margin: 2px 0 4px; border: 1px solid rgba(245,166,35,0.40); border-radius: 10px; overflow: hidden; }',
+            '.cwfm-errlog-head { padding: 9px 12px 8px; background: rgba(245,166,35,0.14); border-bottom: 1px solid rgba(245,166,35,0.30);',
+            '  color: #ffc861; font-weight: 700; font-size: 13px; }',
+            '.cwfm-errlog-body { padding: 8px 12px 10px; font-size: 12px; line-height: 1.6; color: var(--cwfm-text); }',
+            '.cwfm-errlog-body ul { margin: 0 0 4px; padding-left: 18px; }',
+            '.cwfm-errlog-toggle .cwfm-checkbox-row label:first-child { font-weight: 600; color: #ffc861; }',
+            'html[data-cwfm-scheme="light"] .cwfm-errlog-card { border-color: rgba(245,166,35,0.45); }',
+            'html[data-cwfm-scheme="light"] .cwfm-errlog-head { background: rgba(245,166,35,0.12); border-bottom-color: rgba(245,166,35,0.30); color: #8a5300; }',
+            'html[data-cwfm-scheme="light"] .cwfm-errlog-toggle .cwfm-checkbox-row label:first-child { color: #8a5300; }',
+            '.cwfm-errlog-card .cwfm-field.cwfm-errlog-toggle { padding-bottom: 2px; margin-bottom: 0; }',
+            '.cwfm-errlog-deps.cwfm-disabled { opacity: 0.4; }',
+            '.cwfm-errlog-deps.cwfm-disabled button, .cwfm-errlog-deps.cwfm-disabled a { pointer-events: none; cursor: default; }',
             '.cwfm-errlog-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }',
             '.cwfm-errlog-buttons button { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }',
             '.cwfm-btn-danger-outline { background: none; border: 1px solid #d04040; color: #e05555; }',
@@ -3067,6 +3119,20 @@
             okBtn.addEventListener('click', () => close(true));
             shell.closeOnOutsideClick(() => close(false));
             shell.btnRow.append(cancelBtn, okBtn);
+            shell.box.append(p, shell.btnRow);
+            shell.mount();
+        });
+    }
+    // v1.80.5：關閉錯誤紀錄時問要不要一併清除伺服器上的紀錄 → 'clear'／'off'／null（取消）
+    function cwfmErrlogOffDialog() {
+        return new Promise((resolve) => {
+            const shell = cwfmBuildDialogShell(t('dlg_errlog_off_title'));
+            const p = document.createElement('p');
+            p.textContent = t('dlg_errlog_off_msg');
+            const mk = (label, cls, v) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.addEventListener('click', () => close(v)); return b; };
+            const close = (v) => { shell.overlay.remove(); resolve(v); };
+            shell.closeOnOutsideClick(() => close(null));
+            shell.btnRow.append(mk(t('dlg_cancel'), 'cwfm-confirm-cancel', null), mk(t('btn_errlog_off_only'), 'cwfm-confirm-cancel', 'off'), mk(t('btn_errlog_off_clear'), 'cwfm-confirm-ok', 'clear'));
             shell.box.append(p, shell.btnRow);
             shell.mount();
         });
@@ -6116,30 +6182,30 @@
         });
 
         // v1.80.4：錯誤紀錄（只有 Docker 版有伺服器）——放在最後：不是閱讀設定、平常用不到，出問題時才找。
-        // 知情同意：琥珀色「注意」框列出記什麼／存哪／誰看得到／保留多久；開啟時再確認一次（同意＝也同意管理員可看）
+        // v1.80.5：整區做成一張橘色「注意」卡片（結構參考 YouTube Home Filter 的警告卡：有底色的標題列＋內容；
+        // 配色參考 YouTube Channel Memory 的橘色 warn，深淺兩套）。開關放在卡片裡、說明下方——打開就是同意上面這段說明；
+        // 卡片內不放分隔線（全部講同一件事）；開關關閉時，下載／清除／備援網址一起停用（沒在記錄就沒有東西可下載）。
+        // 紅色只留給〔清除記錄〕（會刪資料）。Tampermonkey 版沒有伺服器（CWFM_API 為 null），整區不出現。
         if (CWFM_API) {
             beginGroup(t('group_errlog'));
-            const caution = document.createElement('div');
-            caution.className = 'cwfm-caution';
-            const ct = document.createElement('div');
-            ct.className = 'cwfm-caution-title';
-            ct.textContent = '⚠ ' + t('errlog_caution_title');
+            const card = document.createElement('div');
+            card.className = 'cwfm-errlog-card';
+            const head = document.createElement('div');
+            head.className = 'cwfm-errlog-head';
+            head.textContent = '⚠ ' + t('errlog_caution_title');
+            const body = document.createElement('div');
+            body.className = 'cwfm-errlog-body';
             const ul = document.createElement('ul');
             for (const line of t('errlog_caution_items')) { const li = document.createElement('li'); li.textContent = line; ul.appendChild(li); }
-            caution.append(ct, ul);
-            panelTarget.appendChild(caution);
+            body.appendChild(ul);
+            card.append(head, body);
+            panelTarget.appendChild(card);
             const upCb = addCheckboxField(t('field_errlog_upload'), 'errlogUpload');
-            // 從關→開要先同意（攔下這一次點擊，同意後才真的打勾並觸發原本的儲存）；關閉不用確認
-            upCb.addEventListener('click', async (e) => {
-                if (upCb.checked === false) return; // 這次點擊會變成「關」
-                e.preventDefault();
-                const ok = await cwfmConsentDialog(t('dlg_errlog_consent_title'), t('dlg_errlog_consent_msg'), t('btn_errlog_consent'));
-                if (!ok) return;
-                upCb.checked = true;
-                upCb.dispatchEvent(new Event('change'));
-            });
-            const field = document.createElement('div');
-            field.className = 'cwfm-field';
+            const upField = upCb.closest('.cwfm-field');
+            upField.classList.add('cwfm-field-no-divider', 'cwfm-errlog-toggle');
+            body.appendChild(upField); // 開關搬進卡片
+            const deps = document.createElement('div');
+            deps.className = 'cwfm-errlog-deps';
             const row = document.createElement('div');
             row.className = 'cwfm-errlog-buttons';
             const dl = document.createElement('button');
@@ -6151,13 +6217,17 @@
             clr.type = 'button';
             clr.className = 'cwfm-btn-danger-outline';
             clr.textContent = t('btn_errlog_clear');
-            clr.addEventListener('click', async () => {
-                if (!(await cwfmConfirmDialog(t('btn_errlog_clear'), t('dlg_errlog_clear_msg'), t('btn_errlog_clear')))) return;
+            async function clearOnServer() {
                 try {
                     const res = await cwfmApi('DELETE', 'errlog');
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     cwfmToast(t('toast_errlog_cleared'));
-                } catch (err) { console.error('[cwfm:errlog] 清除失敗', err); cwfmToast(t('toast_errlog_failed')); }
+                    return true;
+                } catch (err) { console.error('[cwfm:errlog] 清除失敗', err); cwfmToast(t('toast_errlog_failed')); return false; }
+            }
+            clr.addEventListener('click', async () => {
+                if (!(await cwfmConfirmDialog(t('btn_errlog_clear'), t('dlg_errlog_clear_msg'), t('btn_errlog_clear')))) return;
+                await clearOnServer();
             });
             row.append(dl, clr);
             const hint = document.createElement('div');
@@ -6169,8 +6239,32 @@
             a.rel = 'noopener';
             a.textContent = new URL(CWFM_API + 'errlog', location.href).href;
             hint.appendChild(a);
-            field.append(row, hint);
-            panelTarget.appendChild(field);
+            deps.append(row, hint);
+            body.appendChild(deps);
+            function syncDeps() {
+                const on = !!settings.errlogUpload;
+                deps.classList.toggle('cwfm-disabled', !on);
+                dl.disabled = !on; clr.disabled = !on;
+                a.tabIndex = on ? 0 : -1;
+            }
+            syncDeps();
+            upCb.addEventListener('change', syncDeps);
+            // 關→開：先同意（攔下這次點擊，同意後才打勾並觸發原本的儲存）。
+            // 開→關：伺服器上可能還有之前的紀錄，關掉後按鈕就停用了——問要不要一併清除。
+            upCb.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (upCb.checked) { // 這次點擊原本會變成「開」（preventDefault 後 checked 會還原）
+                    const ok = await cwfmConsentDialog(t('dlg_errlog_consent_title'), t('dlg_errlog_consent_msg'), t('btn_errlog_consent'));
+                    if (!ok) return;
+                    upCb.checked = true;
+                } else {
+                    const choice = await cwfmErrlogOffDialog();
+                    if (!choice) return;
+                    if (choice === 'clear') await clearOnServer();
+                    upCb.checked = false;
+                }
+                upCb.dispatchEvent(new Event('change'));
+            });
         }
 
         document.body.appendChild(panel);
@@ -7124,10 +7218,20 @@
             save.className = 'cwfm-confirm-ok cwfm-ok-primary';
             save.textContent = t('bm_save');
             let done = false;
+            // v1.80.5：iPad 全螢幕時，名稱欄自動聚焦叫出螢幕鍵盤，系統會退出全螢幕（使用者確認保留自動聚焦）。
+            // 開對話框時在全螢幕、關閉時（儲存／取消／點外面／Esc——都是使用者動作，允許重新進入）已不在 → 自動回全螢幕
+            const fsAtOpen = !!document.fullscreenElement;
             function close(result) {
                 if (done) return;
                 done = true;
                 shell.overlay.remove();
+                if (fsAtOpen && !document.fullscreenElement && typeof document.documentElement.requestFullscreen === 'function') {
+                    try {
+                        cwfmDiag('FULLSCREEN-RESTORE', '書籤對話框關閉，回到全螢幕');
+                        const pr = document.documentElement.requestFullscreen();
+                        if (pr && pr.catch) pr.catch((e) => console.error('[cwfm:bm] 回到全螢幕失敗', e));
+                    } catch (e) { console.error('[cwfm:bm] 回到全螢幕失敗', e); }
+                }
                 resolve(result);
             }
             cancel.addEventListener('click', () => close(null));
@@ -8558,6 +8662,22 @@
     function cwfmAttachTouchTap(doc) {
         if (!CWFM_TOUCH_UI || !doc || cwfmTouchTapDocs.has(doc)) return;
         cwfmTouchTapDocs.add(doc);
+        // v1.80.5：引擎自己有「手指滑動翻頁」，每次手指離開都會把頁面對齊到最近一頁（snap），單純點一下也會。
+        // 我們點擊翻頁（往下一頁走）時引擎同時把它拉回原頁；跨章節後每一下都被拉回，看起來就是卡死
+        // （連直接呼叫翻頁都無效，只能重新整理）。測試：手機尺寸跨章後連點 12 下都停在原位，攔下後每下都前進。
+        // 對策：手指沒有移動的「點一下」，不讓 touchend 傳到引擎（在 window 捕獲階段攔）；真的滑動照常交給引擎。
+        // 外層頁面只攔落在閱讀器本體（foliate-view）上的，免得擋到設定面板等自己的 touchend（例如數值鈕長按）。
+        {
+            const win = doc.defaultView;
+            let moved = false;
+            win.addEventListener('touchstart', () => { moved = false; }, { capture: true, passive: true });
+            win.addEventListener('touchmove', () => { moved = true; }, { capture: true, passive: true });
+            win.addEventListener('touchend', (e) => {
+                if (moved) return;
+                if (doc === document && !(e.target && e.target.closest && e.target.closest('foliate-view'))) return;
+                e.stopPropagation();
+            }, true);
+        }
         let start = null;
         doc.addEventListener('pointerdown', (e) => {
             if (e.pointerType === 'mouse' || !e.isPrimary) { start = null; return; }
