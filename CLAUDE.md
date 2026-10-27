@@ -37,9 +37,8 @@
 - 換章節時 foliate 會重新呼叫套用設定、shadow root 裡可能同時有新舊 iframe——取目前章節一律用
   `getBookIframeDocument()`（優先走 `renderer.getContents()`）。
 
-## 交接（2026-10-27，v1.80.6）
-- **目前版本**：v1.80.6（mod `cd6a3ae`；Docker `4ba4488` 已指向它、建置成功）。功能說明以 README（中英）為準，已更新到 v1.80.6。
-- **測試**：功能測試放在 Docker repo 的 `test/reader/`（見該資料夾 README：先 `build.sh` 組出測試用閱讀器，再跑 ft179／ft180／ft_load／ft_empty／feat_test 等，三種瀏覽器）。`feat_test` 的「縮放後重算…標題固定」是 v1.79 起就失敗的舊測試。
-- **待使用者實機確認**：iPad 跨章節點擊翻頁（v1.80.5 攔掉引擎對「點一下」的 snap）、編輯書籤後自動回全螢幕、載入提示在黑底的可讀性、開啟速度、iPad 全螢幕時工具列左側讓出 64px 是否足夠。
-- **未歸檔草稿**：知識庫 `_pending/20261027-1200_calibre-web-foliate-mod.md`（v1.80.5～v1.80.6、README 更新的經驗）。歸檔時順便把 31 號「待辦 A（觸控不自動聚焦）」刪掉——使用者已取消，改成保留自動聚焦、關閉對話框時回全螢幕。
-- **已知小問題（使用者尚未決定要不要修）**：在書籤對話框按 Esc，會連後面的書籤卡片一起關掉。
+## 交接（2026-10-27，v1.80.7）
+- **目前版本**：v1.80.7（mod `335089a`）。Docker 的 `CWFM_MOD_REF` 仍指向 v1.80.6（`cd6a3ae`），**等使用者用 Tampermonkey 版實測 OK 後**才更新。v1.80.7＝書籤對話框 Esc 只關最上層、匯出頁首「備註＋摘錄」兩邊計入。
+- **測試**：功能測試放在 Docker repo 的 `test/reader/`（見該資料夾 README）。環境要先 `npm install`（build/legacy）與 `playwright install webkit firefox`，沒裝齊會跑出 0 項而不報錯。已知失敗：`feat_test`「縮放後重算…標題固定」（v1.79 起）、Firefox「電腦首次預設 540×648」（此環境視窗尺寸差 12px，v1.80.6 也失敗）。
+- **待使用者實機確認**：iPad 跨章節點擊翻頁、編輯書籤後自動回全螢幕、載入提示在黑底的可讀性、開啟速度、iPad 全螢幕時工具列左側讓出 64px 是否足夠、iPad 藍牙鍵盤按 Esc 只關對話框。
+- 經驗已歸檔進知識庫（03 ⑮、27 ⑰、29 ㉒、31 v1.12），沒有未歸檔草稿。
