@@ -6,7 +6,7 @@ A Tampermonkey userscript that replaces Calibre-Web's built-in, epub.js-based re
 
 > Developed and tested against [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web). If you don't want to install the userscript, or your browser can't run Tampermonkey (e.g. on iOS), use the [Docker image](#cant-or-dont-want-to-install-the-userscript-use-the-docker-image) instead.
 
-![Settings panel (English)](docs/screenshot_en.png)
+![Settings panel (English, Old Gold colors)](docs/screenshot_en.png)
 
 ## Why this exists
 
@@ -14,72 +14,91 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ## Features
 
-### Typography
+### Bookmarks: positions, excerpts and notes
 
-- **Font size**: adjustable from 70% to 300%.
-- **Letter spacing**: adjustable from −0.05em to 0.5em.
-- **Line spacing**: adjustable from 1× to 5×.
-- **Justification**: toggle full justification on or off.
-- **Auto-hyphenation**: toggle automatic hyphenation on or off.
-- **Disable ligatures**: turn off OpenType ligature substitution. Useful when a font uses the ligature mechanism for advanced purposes such as glyph-level character mapping (common in fonts that implement display-layer script conversion, e.g. simplified-to-traditional Chinese). When letter spacing is applied, such fonts may show uneven spacing within certain word groups; enabling this option normalizes spacing at the cost of disabling those substitutions.
+![Bookmarks in the table of contents, with the pop-out card](docs/bookmarks_en.png)
 
-> [!NOTE]
-> If you notice certain words or character groups appearing noticeably tighter than the surrounding text when using a custom letter spacing, try enabling **Disable Ligatures**. This is most commonly seen with fonts that perform glyph substitution for script conversion.
+- **Add a bookmark** with the bookmark button on the toolbar or **Ctrl+M**. Selected text becomes the excerpt; you can also write a note and a name (leave it empty to name it automatically). When the current page already has a bookmark, the toolbar icon turns red.
+- **Three types**: **Position** (red) only marks a place, **Excerpt** (amber) has selected text, and **Note** (teal) has a note — with a small quote badge when it also has an excerpt. While adding or editing, the dialog's frame changes color live to show which type will be saved.
+- **In the table of contents**, bookmarks sit under their chapter with a flag that shows the type. The filter buttons on top show only chapters or one bookmark type, with a count for each. Click a bookmark to jump to it; click › on its right — or, with a mouse, just hover — to open a detail card with **Go to**, **Edit**, **Copy link** and **Delete**.
+- **In the text**, excerpts are highlighted with a soft background (can be turned off). Tapping a highlight opens the table of contents at that bookmark.
+- **Storage**: the Tampermonkey version keeps bookmarks in Tampermonkey's storage; the Docker version keeps them on the server, tied to your Calibre-Web account, so they follow you across devices.
 
-> [!TIP]
-> Every numeric field can be typed into directly or adjusted with the **− / +** buttons on either side (hold to repeat). After clicking a slider or number box to focus it, you can also fine-tune with the arrow keys or the mouse wheel: ↑→ / ↓← on sliders, ↑ / ↓ in number boxes. The step follows the decimal places of the current value (e.g. line spacing 1.25 steps by 0.01), but is never coarser than the field's own minimum step.
+### Search
 
-### Layout
+- The magnifier on the toolbar. Search the text, the bookmarks (names, excerpts and notes), or both.
+- Case-insensitive, treats full-width and half-width characters as the same, and **matches Traditional and Simplified Chinese** (searching 書籤 also finds 书签).
+- Results are grouped by chapter with surrounding text, position and highlighted keywords. Click a result to jump there; every match in the text is highlighted too.
 
-- **Page flow**: switch between Paginated and Scroll mode.
-- **Default margins**: left/right margins default to 120px, the same as the default tap-zone width, so the tap zones never cover the text.
-- **Horizontal mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content width). In Content Priority mode, set the target content width in pixels; the margin absorbs any leftover space, keeping content width consistent when toggling fullscreen.
-- **Vertical mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content height), with the same logic as horizontal mode.
-- **Column control**: set the maximum number of columns and the gap between them in paginated mode. Both settings are automatically disabled in scroll mode (locked to 1 column).
+### Export
 
-### Themes and colors
+- **Export** above the table of contents saves this book's bookmarks as **HTML** (formatted, ready to read or print), **Markdown** or **CSV**, optionally only the types currently filtered. Each entry includes a position link that opens the book right at that spot.
 
-- **Themes**: save your current typography, layout and color settings as a named theme and switch between them in one click. Themes can be reordered by drag-and-drop, and an existing theme can be overwritten with your current settings.
-- **Apply Colors**: five built-in color presets (Follow System, Light, Dark, Sepia, Old Gold) plus any color schemes you save. Clicking a preset fills its colors into the custom text and background color fields and turns both on; the preset stays highlighted until you change a color or toggle a field yourself. While **Follow System** is highlighted, the colors are refilled automatically whenever your system switches between light and dark mode.
-- **Custom colors**: text and background colors each have their own on/off switch — on applies the color you set, off keeps the book's own color. Colors can be entered in HEX / RGB / HSV format or chosen with the built-in color picker. **+ Save Current Color Scheme** stores the current pair; saved schemes can be renamed and reordered by drag-and-drop.
-- **Toolbar and panels follow the page**: the toolbar, settings panel and table of contents switch between light and dark based on the actual background color of the page you're reading.
+### Position links (preview mode)
 
-### Fonts
+- **Copy link** on a bookmark card gives an address that points at that exact character. Opening a book with it enters **preview mode**: it jumps to that spot **without changing your reading progress**. A notice at the top lets you choose **Start reading here** to make it your new reading position.
 
-- Manually enter the name of a font already installed on your system, or upload a font file (.ttf / .otf / .woff) to embed it directly. Font files are stored in the browser's IndexedDB and persist across sessions. The font list supports drag-and-drop reordering.
+### Reading progress
 
-### Page-turn shortcuts
-
-- Fully customizable keyboard shortcuts for previous/next page. Multiple key combinations can be recorded per direction. Defaults: ← / Page Up for the previous page, → / Page Down for the next page.
-- **Page-flip debounce**: set a minimum interval (in milliseconds) between consecutive page-turn triggers from the same shortcut, to prevent accidental double-flips.
-- Pages can also be turned with the **mouse wheel** (over the page, or over the progress bar at the bottom).
-- While the settings panel is open, page-turn shortcuts and wheel paging are paused so the arrow keys and wheel can adjust values instead; shortcuts keep working while the table of contents is open.
-
-### Reading behavior
-
-- **Precise page alignment** (on by default): after toggling fullscreen, resizing the window or changing typography settings, the **first character** of the page you were on stays exactly at the top of the new layout, and paging forward or back continues from there. Going back through the jump history (below) also returns to that exact first character. Jumping via the table of contents, a link or the progress bar restores the chapter's normal pagination. Automatically disabled in scroll mode.
-- **Local reading progress**: reading position is saved locally on every page turn. On reopening a book, the reader restores the last position automatically.
-- **Auto-sync to server**: optionally sync the local reading position back to Calibre-Web's server-side bookmark after a configurable idle period. Can also be triggered manually.
-- **Auto-hide cursor**: the cursor hides automatically after a configurable number of seconds of inactivity, and reappears on mouse movement. It never hides while the pointer is over the toolbars, the table of contents, the settings panel or the jump button, and stays hidden when you move to the next chapter.
-- **Auto-hide toolbar**: the toolbar and progress bar slide out of view after a few seconds of inactivity and reappear on hover or click.
-- **Left/right tap zones**: clickable zones on the left and right edges of the screen for previous/next page navigation. The zone can be enabled (click-to-page) independently of its visual hint (whether the zone boundary is visible). Zone width is configurable in pixels. Automatically disabled in scroll mode.
-- **Page-turn animation**: a brief directional chevron animation plays at the tap zone position on each page turn, confirming the direction. Color is configurable, or set to **Auto** (the default) to follow the text color actually shown on the page. Automatically disabled when the tap-zone visual hint is on.
+- **Always saved locally** on every page turn.
+- **Sync reading progress to the server** (on by default): every page turn is synced back to Calibre-Web so you can continue on another device; anything not yet sent is sent when you leave the page.
+- **Prefer server progress** (on by default): on open, use the server's progress first, then the local one.
+- With precise alignment on, the saved character is placed at the top of the page when the book opens.
 
 ### Jump history (back / forward)
 
-Every way of jumping somewhere else in the book keeps its own history, with **↩ Back**, **↪ Forward** and a clear button. Each history can go back several steps (the number of remaining steps is shown on the icon), and going somewhere new drops the old "forward" path, like a web browser.
+- Jumps from the table of contents, bookmarks, in-book links (such as footnote `[284]`), search results and dragging the progress bar all go into **one** history. Use **↩ Back** and **↪ Forward** at the top right of the toolbar (the number shows how many steps are left); up to 50 entries are kept.
+- If a jump happens while the toolbar is auto-hidden, a small ↩ ↪ ✕ group floats at the top right so you can get back from a footnote quickly. ✕ only hides it; the history stays.
+- Clear this book's jump history under "Reading Behavior" in the settings. With precise alignment on, back and forward return to the first character of that page.
 
-- **Footnotes and other in-book links**: after you click a link (e.g. a footnote marker like `[284]`), a small floating button appears at the top right. Click ↩ to return to where you were reading; once you're back at the starting point it disappears on its own. ✕ closes it early (with a confirmation).
-- **Table of contents**: the buttons sit in the table-of-contents header and record chapter jumps made from the table of contents. The table of contents now stays open after you pick a chapter; close it with its ✕ or by clicking outside it.
-- **Progress bar**: the buttons sit at the far left of the bottom bar and record jumps made by dragging the progress bar (one entry per release).
+### Typography
 
-With precise page alignment on, every back/forward step returns to the exact first character of the page — even if you toggled fullscreen or changed the layout in between.
+- **Font size** 70%–300%, **letter spacing** −0.05em–0.5em, **line spacing** 1×–5×.
+- **Justify** and **auto-hyphenate** toggles.
+- **Disable ligatures** turns off OpenType ligature substitution. Some fonts use ligatures to convert text (common in display-level Traditional/Simplified Chinese conversion fonts); with custom letter spacing, certain words can look tighter than the text around them. Turning this on evens the spacing, at the cost of the font's substitution features.
+
+> [!TIP]
+> Every number field accepts typing, and the **− / +** buttons on either side step the value (hold to repeat). Focus a slider or a number box to fine-tune with the arrow keys or the mouse wheel.
+
+### Layout
+
+- **Page flow**: paginated or scrolled.
+- **Horizontal / vertical mode**: margin priority (fixed margins) or content priority (fixed content width / height; margins absorb the rest, so the content keeps its size when you go fullscreen or rotate the screen).
+- **Columns**: maximum columns and the gap between them in paginated mode; scrolled mode is always one column.
+- **Defaults for first-time users** are calculated per device to look like an e-reader: one column; on computers and tablets, content priority with a content box and font size based on the screen (the farther away you read, the more characters per line); on phones, the text fills the screen. Everything can be adjusted afterwards.
+
+### Themes and colors
+
+- **Themes** save typography, layout and colors under a name for one-click switching; reorder by dragging or overwrite with current settings.
+- **Apply colors**: built-in Follow System, Light, Dark, Sepia and Old Gold, plus your own saved schemes; one click fills the custom text and background colors below.
+- **Custom colors**: separate switches for text and background (off uses the book's own colors), HEX / RGB / HSV input and a color picker.
+- The toolbar and panels switch between dark and light to match the page's actual background.
+
+### Fonts
+
+- Type the name of an installed font, or upload a font file (.ttf / .otf / .woff, stored in the browser's IndexedDB). Reorder the list by dragging.
+
+### Page turning and shortcuts
+
+- Shortcuts for previous page, next page and add bookmark are customizable, with several keys per action (defaults: ← and Page Up, → and Page Down, Ctrl+M). **Page-turn debounce** prevents accidental double turns.
+- The mouse wheel turns pages too. While the settings panel is open, shortcuts and the wheel adjust setting values instead.
+- **Left/right tap zones**: tap the left or right side to turn pages; the width is adjustable and the visual hint is a separate switch. On computers this is a click zone; **on phones and tablets it works by gesture** — a tap turns the page, while a long press still selects text (even inside the tap zone), and the blank margins outside the content box work too.
+- **Page-turn animation**: an arrow plays on the tap zone when turning pages; its color is customizable or follows the text color.
+
+### Fullscreen and auto-hide
+
+- **Fullscreen**: when the browser does not support web fullscreen (for example some third-party browsers on iOS 15), the button is shown disabled and explains why when tapped. In fullscreen on iPad Safari, the toolbar moves aside for the system ✕ button. Editing a bookmark in fullscreen on iPad brings up the on-screen keyboard, which makes the system leave fullscreen; fullscreen is restored when the dialog closes.
+- **Auto-hide toolbar** and **hide cursor on idle** are off by default and can be turned on in the settings.
 
 ### Interface
 
-- **Settings panel**: groups keep their designed order and are split into columns so the tallest column is as short as possible, using the fewest columns that fit; if they still don't fit, the panel scrolls vertically only. The panel header stays fixed while scrolling, and the layout recalculates automatically when content changes (adding tags, uploading fonts, collapsing groups) or the window is resized.
-- **Buttons**: all icon buttons share one size and style; the toolbar and panel headers line up at the same height.
-- **Language**: defaults to Traditional Chinese or English based on your browser's preferred language for web content. Can be manually set to either language; a page reload is required for the change to take effect.
+- **Loading indicator**: large books show "Loading" with a download percentage instead of a blank screen. The book starts downloading as soon as the page opens, in parallel with loading the reader itself.
+- **Settings panel**: columns adapt to the available width and the header stays fixed while scrolling; all icon buttons share one size and style.
+- **Language**: Traditional Chinese or English based on the browser's preferred content language, or set manually at the bottom of the settings (reload to apply).
+
+## Error log (Docker version)
+
+"Save error logs to the server", downloading and clearing logs need a server, so they are **only in the Docker version**; the Tampermonkey version's settings panel does not show this section. To turn it on, check logs when the reader will not open, or report a problem, see [the calibre-web-foliate-docker README](https://github.com/bgtsai/calibre-web-foliate-docker#when-something-goes-wrong-error-logs-and-reporting).
 
 ## Can't or don't want to install the userscript? Use the Docker image
 
@@ -89,7 +108,8 @@ The image builds this reader directly into Calibre-Web on the server side, so no
 
 - **Image**: `ghcr.io/bgtsai/calibre-web-foliate-docker:latest`
 - Based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) and used the same way: just replace the image in your existing compose file (config and library paths stay the same). See that repo's README for a full compose example.
-- The reader is built from this repo's source, so the features are the same; the only difference is that settings are stored in the browser's `localStorage` instead of Tampermonkey storage.
+- The reader is built from this repo's source, so the features are the same; the differences are that settings are stored in the browser's `localStorage`, bookmarks and jump history are stored on the server, and there is a server-side error log.
+- **Having both installed is fine**: the Tampermonkey version (v1.80.5 or later) detects that this Calibre-Web is already the Docker build and stops itself.
 
 ## Requirements
 
@@ -98,7 +118,7 @@ You'll need the [Tampermonkey](https://www.tampermonkey.net/) browser extension 
 ## Usage
 
 1. Install Tampermonkey (see above).
-2. Install this script: [calibre-web-foliate-mod.user.js](https://cdn.jsdelivr.net/gh/bgtsai/calibre-web-foliate-mod@main/calibre-web-foliate-mod.user.js)
+2. Install this script: [calibre-web-foliate-mod.user.js](https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/calibre-web-foliate-mod.user.js) (Tampermonkey shows its install page; later versions update automatically)
 3. Open any EPUB in Calibre-Web — the reader will automatically switch to the foliate-js version. Click the gear icon in the top-right corner to open the settings panel.
 
 ## Interface language not as expected?
