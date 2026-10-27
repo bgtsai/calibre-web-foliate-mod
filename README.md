@@ -6,7 +6,7 @@ A Tampermonkey userscript that replaces Calibre-Web's built-in, epub.js-based re
 
 > Developed and tested against [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web). If you don't want to install the userscript, or your browser can't run Tampermonkey (e.g. on iOS), use the [Docker image](#cant-or-dont-want-to-install-the-userscript-use-the-docker-image) instead.
 
-![Settings panel (English, Old Gold colors)](docs/screenshot_en.png)
+![Settings panel (English, Old Gold colors)](docs/settings_en.png)
 
 ## Why this exists
 

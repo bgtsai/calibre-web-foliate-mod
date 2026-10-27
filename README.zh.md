@@ -6,7 +6,7 @@
 
 > 本腳本針對 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) 開發與測試。不想安裝腳本或瀏覽器無法安裝 Tampermonkey（例如 iOS）時，請改用 [Docker 鏡像版](#不想裝腳本或瀏覽器無法安裝-tampermonkey改用-docker-鏡像)。
 
-![設定面板（繁體中文，墨金配色）](docs/screenshot_zh.png)
+![設定面板（繁體中文，墨金配色）](docs/settings_zh.png)
 
 ## 這是為了什麼寫的
 
