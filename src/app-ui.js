@@ -280,6 +280,11 @@
             search_progress: "搜尋中…第 {a} / {b} 章",
             search_done: "共 {n} 筆",
             search_none: "找不到符合的結果",
+            search_searching: "搜尋中…",
+            search_empty: "沒有符合搜尋條件的資料",
+            filter_empty: "沒有符合篩選條件的資料",
+            quote_open: "「",
+            quote_close: "」",
             search_current: "目前位置",
             search_prev: "上一個",
             search_next: "下一個",
@@ -595,6 +600,11 @@
             search_progress: "Searching… chapter {a} / {b}",
             search_done: "{n} results",
             search_none: "No matches",
+            search_searching: "Searching…",
+            search_empty: "Nothing matches your search",
+            filter_empty: "Nothing matches the current filter",
+            quote_open: "\u201C",
+            quote_close: "\u201D",
             search_current: "Current",
             search_prev: "Previous",
             search_next: "Next",
@@ -2903,7 +2913,11 @@
             const S = Math.min(window.screen.width, window.screen.height) || Math.min(window.innerWidth, window.innerHeight);
             const kind = !CWFM_TOUCH_UI ? 'desktop' : (S >= CWFM_FIRST_RUN.tabletMinShortSidePx ? 'tablet' : 'phone');
             const N = CWFM_FIRST_RUN.chars[kind];
-            const out = { maxColumnCount: 1, letterSpacing: 0.2, lineSpacing: 1.8, autoHideToolbar: false, cursorAutoHideEnabled: false, tapZoneEnabled: true };
+            // v1.80.6：排版預設跟介面語言掛鉤——中文（方塊字）字距 0.2em、行距 1.8 比較好讀；
+            // 其他語言（英文等拼音文字）字距加大會讓單字散開，改成字距 0、行距 1.5。
+            // 字級仍用同一個公式（以中文字寬為準），兩種語言看起來一樣大。
+            const isZh = CWFM_LOCALE === 'zh';
+            const out = { maxColumnCount: 1, letterSpacing: isZh ? 0.2 : 0, lineSpacing: isZh ? 1.8 : 1.5, autoHideToolbar: false, cursorAutoHideEnabled: false, tapZoneEnabled: true };
             let W;
             if (kind === 'phone') {
                 const p = CWFM_FIRST_RUN.phonePaddingPx;
@@ -2917,7 +2931,7 @@
                 Object.assign(out, { horizontalSizeMode: 'content', verticalSizeMode: 'content', targetContentWidthPx: W, targetContentHeightPx: H,
                     tapZoneWidthPx: CWFM_FIRST_RUN.sideReservePx });
             }
-            out.fontSize = Math.max(70, Math.min(300, Math.round(W / (N * (1 + out.letterSpacing)) / 16 * 10) * 10)); // 設定欄範圍 70～300
+            out.fontSize = Math.max(70, Math.min(300, Math.round(W / (N * 1.2) / 16 * 10) * 10)); // 設定欄範圍 70～300；1.2＝中文預設字距 0.2em 下的字寬
             try { cwfmDiag('FIRST-RUN', 'kind=' + kind + ' S=' + S + ' ' + JSON.stringify(out)); } catch (e) { /* 診斷紀錄還沒就緒 */ }
             return out;
         } catch (e) {
@@ -7053,6 +7067,7 @@
             '.cwfm-search-scope { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }',
             '.cwfm-search-status { margin-left: auto; font-size: 11px; color: var(--cwfm-text-secondary); }',
             '.cwfm-search-results { padding: 0 18px 18px; flex: 1 1 auto; min-height: 0; overflow: auto; }',
+            '.cwfm-empty-state { padding: 28px 12px; text-align: center; font-size: 13px; color: var(--cwfm-text-secondary); }',
             '.cwfm-search-group { margin: 10px 0 2px; font-size: 12px; color: var(--cwfm-text-secondary); }',
             '.cwfm-search-hit { padding: 6px 4px; border-bottom: 1px solid var(--cwfm-border); font-size: 13px; line-height: 1.5; cursor: pointer; color: var(--cwfm-text); }',
             '.cwfm-search-hit:hover { background: var(--cwfm-surface-elevated); }',
@@ -7375,6 +7390,21 @@
                 if (c) c.textContent = counts[k] ? String(counts[k]) : '';
             }
         }
+        // v1.80.6：篩選後一筆都不剩時明講，不要只留空白（篩選是即時的，沒有「篩選中」的過渡）
+        try {
+            const counts = { pos: 0, excerpt: 0, note: 0 };
+            for (const b of cwfmBD.bookmarks) counts[cwfmBmType(b)]++;
+            const empty = !f.chapters && !['pos', 'excerpt', 'note'].some((k) => f[k] && counts[k]);
+            let el = host.querySelector('.cwfm-toc-empty');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'cwfm-empty-state cwfm-toc-empty';
+                const tv = host.querySelector('.cwfm-toc-view');
+                if (tv) tv.parentNode.insertBefore(el, tv); else host.appendChild(el);
+            }
+            el.textContent = t('filter_empty');
+            el.style.display = empty ? '' : 'none';
+        } catch (e) { console.error('[cwfm:toc] 篩選空狀態更新失敗', e); }
     }
     function cwfmBuildBmRow(bm) {
         const type = cwfmBmType(bm);
@@ -7392,7 +7422,7 @@
         body.className = 'cwfm-bm-body';
         const nm = document.createElement('div');
         nm.className = 'cwfm-bm-name';
-        nm.textContent = type === 'excerpt' && !bm.name ? '「' + cwfmBmClip(bm.excerpt, 40) + '」' : cwfmBmName(bm);
+        nm.textContent = type === 'excerpt' && !bm.name ? t('quote_open') + cwfmBmClip(bm.excerpt, 40) + t('quote_close') : cwfmBmName(bm); // 引號依介面語言（中文「」、英文 “ ”）
         const sub = document.createElement('div');
         sub.className = 'cwfm-bm-sub';
         sub.textContent = cwfmFmtTime(bm.created);
@@ -8045,6 +8075,14 @@
         s.scopeBtns.all.querySelector('.cwfm-chip-count').textContent = s.query ? String(s.hits.length + s.bmHits.length) : '';
         s.results.classList.toggle('cwfm-search-hide-text', s.scope === 'bm');
         s.results.classList.toggle('cwfm-search-hide-bm', s.scope === 'text');
+        // v1.80.6：結果區不要一片空白——還在搜就說「搜尋中」，搜完這個範圍沒有結果就明講
+        const visible = s.scope === 'bm' ? s.bmHits.length : s.scope === 'text' ? s.hits.length : s.hits.length + s.bmHits.length;
+        const stillSearching = s.searching && s.scope !== 'bm';
+        const msg = !s.query || visible ? '' : (stillSearching ? t('search_searching') : t('search_empty'));
+        if (!s.emptyEl) { s.emptyEl = document.createElement('div'); s.emptyEl.className = 'cwfm-empty-state'; }
+        s.emptyEl.textContent = msg;
+        s.emptyEl.style.display = msg ? '' : 'none';
+        if (!s.results.contains(s.emptyEl)) s.results.prepend(s.emptyEl);
     }
     function cwfmSearchUpdateCount() {
         const s = cwfmSearch;
@@ -8115,7 +8153,9 @@
         s.results.textContent = '';
         s.status.textContent = '';
         cwfmSafe(() => view.clearSearch());
+        s.searching = false;
         if (!q) { cwfmSearchRenderScope(); cwfmSearchUpdateCount(); return; }
+        s.searching = true;
         cwfmSearchBookmarksOnly();
         const total = cwfmSafe(() => book.sections.length, 0);
         try {
@@ -8151,12 +8191,14 @@
                 }
             }
             if (token !== s.token) return;
+            s.searching = false;
             const n = s.hits.length + s.bmHits.length;
             s.status.textContent = n ? t('search_done').replace('{n}', n) : t('search_none');
             cwfmSearchRenderScope();
             cwfmSearchUpdateCount();
         } catch (e) {
             console.error(t('err_search'), e);
+            if (token === s.token) { s.searching = false; cwfmSearchRenderScope(); }
             s.status.textContent = t('search_none');
         }
     }
