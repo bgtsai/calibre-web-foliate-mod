@@ -7,12 +7,14 @@
     // 之後才計算，見那裡的說明。
     const CWFM_LANG = {
         zh: {
-            group_theme: '\u4f48\u666f\u4e3b\u984c',
+            group_theme: '設定檔',
             group_color: '\u5957\u7528\u984f\u8272',
             group_font: '\u5b57\u9ad4',
             group_typography: '\u6587\u5b57\u6392\u7248',
             group_layout: '\u7248\u9762\u914d\u7f6e',
-            group_keybindings: '\u7ffb\u9801\u5feb\u901f\u9375',
+            group_keybindings: '快速鍵',
+            group_page_turn: '翻頁設定',
+            group_ui_hide: '介面隱藏',
             group_reading_behavior: '\u95b1\u8b80\u884c\u70ba',
             field_prefer_original_text_color: '\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09',
             field_font_size: '\u5B57\u7D1A',
@@ -51,7 +53,7 @@
             btn_add_scheme: '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272',
             btn_add_font_name: '+ \u65b0\u589e\u5b57\u578b\u540d\u7a31',
             btn_upload_font: '+ \u4e0a\u50b3\u5b57\u578b',
-            btn_add_theme: '+ \u65b0\u589e\uff0f\u53e6\u5b58\u4e3b\u984c',
+            btn_add_theme: '+ 新增／另存設定檔',
             theme_auto: '\u8ddf\u96a8\u7cfb\u7d71',
             theme_light: '\u4eae\u8272',
             theme_dark: '\u6697\u8272',
@@ -143,20 +145,20 @@
             dlg_got_it: '知道了',
             btn_rename: '重新命名',
             alert_uploaded_font_deleted: '上傳字型已刪除',
-            txt_theme_font_deleted_pre: '這個主題原本使用的上傳字型「',
+            txt_theme_font_deleted_pre: '這個設定檔原本使用的上傳字型「',
             txt_theme_font_deleted_post: '」已經被刪除，這次套用改用預設字型。',
-            dlg_overwrite_theme_title: '覆蓋更新佈景主題',
+            dlg_overwrite_theme_title: '覆蓋更新設定檔',
             dlg_overwrite_theme_pre: '確定要用目前畫面上的設定，覆蓋「',
-            dlg_overwrite_theme_post: '」這個佈景主題原本儲存的內容嗎？名稱不會改變，但原本儲存的設定值會被取代、無法往回。',
+            dlg_overwrite_theme_post: '」這個設定檔原本儲存的內容嗎？名稱不會改變，但原本儲存的設定值會被取代、無法往回。',
             dlg_overwrite_confirm: '確定覆蓋',
             alert_updated: '已更新',
             txt_theme_updated_post: '」已經更新成目前的設定。',
-            aria_overwrite_theme: '用目前設定覆蓋更新這個佈景主題',
-            dlg_delete_theme_title: '刪除佈景主題',
+            aria_overwrite_theme: '用目前設定覆蓋更新這個設定檔',
+            dlg_delete_theme_title: '刪除設定檔',
             dlg_delete_pre: '確定要刪除「',
-            dlg_delete_theme_post: '」這個佈景主題嗎？這只會刪除主題記錄本身，不會影響目前畫面上已經套用的設定。',
-            aria_delete_theme: '刪除這個佈景主題',
-            prompt_theme_name_title: '這個佈景主題要叫什麼名字？',
+            dlg_delete_theme_post: '」這個設定檔嗎？這只會刪除設定檔記錄本身，不會影響目前畫面上已經套用的設定。',
+            aria_delete_theme: '刪除這個設定檔',
+            prompt_theme_name_title: '這個設定檔要叫什麼名字？',
             prompt_theme_name_example: '例如：讀小說用',
             aria_delete_key_combo: '刪除這組快速鍵',
             dlg_delete_scheme_title: '刪除自訂配色',
@@ -328,12 +330,14 @@
             err_bookdata_load: "[cwfm:bookdata] 讀取失敗，改用本機資料",
         },
         en: {
-            group_theme: 'Theme',
+            group_theme: 'Profile',
             group_color: 'Apply Colors',
             group_font: 'Font',
             group_typography: 'Typography',
             group_layout: 'Layout',
-            group_keybindings: 'Page-turn Shortcuts',
+            group_keybindings: 'Shortcuts',
+            group_page_turn: 'Page Turning',
+            group_ui_hide: 'Auto-Hide',
             group_reading_behavior: 'Reading Behavior',
             field_prefer_original_text_color: 'Prefer the books original text style (do not force-override text color)',
             field_font_size: 'Font Size',
@@ -372,7 +376,7 @@
             btn_add_scheme: '+ Save Current Color Scheme',
             btn_add_font_name: '+ Add Font Name',
             btn_upload_font: '+ Upload Font',
-            btn_add_theme: '+ New / Save As Theme',
+            btn_add_theme: '+ New / Save As Profile',
             theme_auto: 'Follow System',
             theme_light: 'Light',
             theme_dark: 'Dark',
@@ -465,19 +469,19 @@
             btn_rename: 'Rename',
             alert_uploaded_font_deleted: 'Uploaded Font Deleted',
             txt_theme_font_deleted_pre: 'The uploaded font “',
-            txt_theme_font_deleted_post: '” originally used by this theme has been deleted; falling back to the default font this time.',
-            dlg_overwrite_theme_title: 'Overwrite Theme',
+            txt_theme_font_deleted_post: '” originally used by this profile has been deleted; falling back to the default font this time.',
+            dlg_overwrite_theme_title: 'Overwrite Profile',
             dlg_overwrite_theme_pre: 'Overwrite “',
             dlg_overwrite_theme_post: '” with the current on-screen settings? The name will stay the same, but the previously saved values will be replaced and cannot be undone.',
             dlg_overwrite_confirm: 'Confirm Overwrite',
             alert_updated: 'Updated',
             txt_theme_updated_post: '” has been updated to the current settings.',
-            aria_overwrite_theme: 'Overwrite this theme with the current settings',
-            dlg_delete_theme_title: 'Delete Theme',
+            aria_overwrite_theme: 'Overwrite this profile with the current settings',
+            dlg_delete_theme_title: 'Delete Profile',
             dlg_delete_pre: 'Delete “',
-            dlg_delete_theme_post: '”? This only removes the theme record; it won’t affect the settings currently applied on screen.',
-            aria_delete_theme: 'Delete this theme',
-            prompt_theme_name_title: 'What should this theme be named?',
+            dlg_delete_theme_post: '”? This only removes the profile record; it won’t affect the settings currently applied on screen.',
+            aria_delete_theme: 'Delete this profile',
+            prompt_theme_name_title: 'What should this profile be named?',
             prompt_theme_name_example: 'e.g. For reading novels',
             aria_delete_key_combo: 'Delete this shortcut',
             dlg_delete_scheme_title: 'Delete Color Scheme',
@@ -813,7 +817,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.81.2', '2026-10-27'];
+    const CWFM_RELEASE = ['1.82.0', '2026-10-27'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -2621,11 +2625,10 @@
         // 合集格式那樣處理一個檔案多個名稱的情況。format 存副檔名，
         // 套用時要組對應的 MIME type。
         uploadedFonts: [], // [{ id, fileName, format, name }]
-        // [cwfm] 使用者自己另存的「主題」——只存排版/外觀相關那 13 個
-        // 欄位（見 CWFM_THEME_FIELD_KEYS），不含快速鍵、自動隱藏這類
-        // 裝置操作偏好，也不含字型記憶清單/上傳字型這個素材庫本身
-        // （素材庫全部主題共用同一份，不會各存一份）。
-        savedThemes: [], // [{ id, name, values: { ...13 個欄位 } }]
+        // [cwfm] 使用者自己另存的「設定檔」（v1.82 前叫「佈景主題」，內部名稱沿用 theme 以免讀不到舊資料）——
+        // v1.82 起存設定面板上除了語言、錯誤紀錄以外的全部設定（見 CWFM_THEME_FIELD_KEYS），
+        // 不含字型記憶清單/上傳字型/自訂配色這些素材庫本身（全部設定檔共用同一份，不會各存一份）。
+        savedThemes: [], // [{ id, name, values: { ...CWFM_THEME_FIELD_KEYS }, fontWasUpload }]
         // [cwfm] 使用者自己存的自訂配色組合，可以存不止一組——內建的
         // 跟隨系統/亮色/暗色/復古黃這四個是固定選項，不能刪、不能改名；
         // 這份清單專門放「自訂」類型的顏色組合，跟其他標籤清單（字型、
@@ -3412,20 +3415,41 @@
         return chip;
     }
 
-    // [cwfm] 「主題」只涵蓋排版/外觀相關的欄位——跟使用者一起確認過的
-    // 分類：不含快速鍵、自動隱藏、自動同步這類裝置操作偏好，也不含
-    // 字型記憶清單/上傳字型這個所有主題共用的素材庫本身。存主題、套用
-    // 主題都只動這份清單裡列出的欄位，其餘設定不受影響。
+    // [cwfm] 「設定檔」存的欄位。v1.82 前只存排版/外觀 19 欄（當時叫「佈景主題」）；
+    // v1.82 使用者要求改成「設定面板上的全部設定」，只排除：語言（改了要重新整理）、
+    // 錯誤紀錄（要另外同意），以及非設定值的素材庫／介面狀態（savedThemes 本身、
+    // savedColorSchemes、uploadedFonts、fontNameHistory、groupCollapsedState、colorPickerModeByKey）。
+    // 面板新增設定時要加進這裡，否則存不進設定檔。
     const CWFM_THEME_FIELD_KEYS = [
+        // 字型、文字排版、配色
         'fontFamily', 'fontSize', 'letterSpacing', 'lineSpacing', 'justify',
-        'hyphenate', 'disableLigatures', 'flow', 'topBottomPadding',
-        'leftRightPadding', 'maxColumnCount', 'themeName', 'customTextColor',
+        'hyphenate', 'disableLigatures', 'themeName', 'customTextColor',
         'customBackgroundColor', 'customTextColorEnabled', 'customBackgroundColorEnabled',
-        'pageFlipAnimColor', 'pageFlipAnimEnabled', 'activeColorTheme',
+        'activeColorTheme',
+        // 版面配置
+        'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
+        'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
+        // 翻頁設定
+        'tapZoneEnabled', 'tapZoneWidthPx', 'tapZoneVisible', 'pageFlipAnimColor', 'pageFlipAnimEnabled',
+        // 介面隱藏
+        'cursorAutoHideEnabled', 'cursorAutoHideDelaySeconds', 'autoHideToolbar',
+        // 閱讀行為
+        'preciseAnchorAlign', 'autoSyncEnabled', 'cloudFirst', 'showBookmarkHighlights',
+        // 快速鍵
+        'pagingKeys', 'bookmarkKeys', 'pageFlipDebounceMs',
     ];
-    function cwfmSaveCurrentAsTheme(settings, name) {
+    // 快速鍵是陣列／物件：存的時候要深拷貝，否則設定檔跟目前設定指向同一個陣列，
+    // 之後在面板增刪按鍵會連存好的設定檔一起改掉。
+    function cwfmThemeSnapshot(settings) {
         const values = {};
-        CWFM_THEME_FIELD_KEYS.forEach((key) => { values[key] = settings[key]; });
+        CWFM_THEME_FIELD_KEYS.forEach((key) => {
+            const v = settings[key];
+            values[key] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+        });
+        return values;
+    }
+    function cwfmSaveCurrentAsTheme(settings, name) {
+        const values = cwfmThemeSnapshot(settings);
         // [cwfm] 存主題的當下，順便記一個布林值：目前這個字型名稱，是不
         // 是對應到「此刻」素材庫裡真的存在的一筆上傳字型——這樣套用時
         // 才分得出「是上傳字型、可以查存不存在」還是「是手動輸入的名稱、
@@ -3441,8 +3465,7 @@
     // 原本存的 values，名稱、id 都不變——不用像之前那樣，只能先刪除
     // 再新增一個同名的。
     function cwfmUpdateTheme(settings, theme) {
-        const values = {};
-        CWFM_THEME_FIELD_KEYS.forEach((key) => { values[key] = settings[key]; });
+        const values = cwfmThemeSnapshot(settings);
         const fontWasUpload = !!values.fontFamily && settings.uploadedFonts.some((f) => f.name === values.fontFamily);
         theme.values = values;
         theme.fontWasUpload = fontWasUpload;
@@ -3461,9 +3484,23 @@
     function cwfmApplyTheme(settings, theme) {
         const fontName = theme.values.fontFamily;
         CWFM_THEME_FIELD_KEYS.forEach((key) => {
-            // [cwfm] 舊主題可能沒有新加的 key（如游標顏色、翻頁動畫），
+            // [cwfm] 舊設定檔可能沒有新加的 key（v1.82 前只存 19 欄），
             // undefined 不覆蓋，保留使用者目前的設定值。
-            if (theme.values[key] !== undefined) settings[key] = theme.values[key];
+            const v = theme.values[key];
+            if (v === undefined) return;
+            // 快速鍵陣列要就地換內容：設定面板的按鍵欄位綁的是這幾個陣列本身，
+            // 換成新陣列的話，之後在面板增刪的按鍵會寫到已經沒人用的舊陣列。
+            if (key === 'pagingKeys' && v && settings.pagingKeys) {
+                ['prev', 'next'].forEach((dir) => {
+                    if (Array.isArray(v[dir]) && Array.isArray(settings.pagingKeys[dir])) settings.pagingKeys[dir].splice(0, Infinity, ...v[dir]);
+                });
+                return;
+            }
+            if (key === 'bookmarkKeys' && Array.isArray(v) && Array.isArray(settings.bookmarkKeys)) {
+                settings.bookmarkKeys.splice(0, Infinity, ...v);
+                return;
+            }
+            settings[key] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
         });
         // v1.77 前存的主題沒有 activeColorTheme：比照舊設定轉換（固定配色→填入並標示）
         if (theme.values.activeColorTheme === undefined) {
@@ -3481,6 +3518,8 @@
         }
         saveSettings(settings);
         applySettings(settings);
+        // v1.82：設定檔涵蓋整個面板，套用後讓面板上每個控制項重新讀一次目前的值
+        try { window.__cwfm?.refreshSettingsPanel?.(); } catch (e) { console.error('[cwfm:profile] refresh panel failed', e); }
     }
     // [cwfm] 上傳字型解析的統一入口。.woff2 內部用 Brotli 壓縮、資料排列
     // 方式也不一樣，沒有現成的簡單做法可以解出名稱——查證過、已跟使用者
@@ -4855,6 +4894,8 @@
         // 指向這個卡片內部的容器，接下來呼叫的 addXxxField() 就會塞進
         // 這一組，不用每個函式各自多傳一個「要塞去哪裡」的參數。
         let panelTarget = fieldsWrap; // add*Field() 系列函式改成往這裡塞
+        // v1.82：每個控制項登記一個「從 settings 重新讀值」的函式，套用設定檔後一起呼叫
+        const panelRefreshers = [];
         function beginGroup(title, defaultCollapsed = false) {
             const group = document.createElement('div');
             group.className = 'cwfm-group';
@@ -5040,6 +5081,7 @@
             input.max = String(max);
             input.step = 'any'; // 允許使用者輸入比步進更細的數值（方案 B），也避免瀏覽器的步進驗證
             input.value = String(settings[key]);
+            panelRefreshers.push(() => { input.value = String(settings[key]); });
             wrap.append(dec, input, inc);
             cwfmBindHold(dec, () => cwfmStepValue(input, -1, opts));
             cwfmBindHold(inc, () => cwfmStepValue(input, 1, opts));
@@ -5088,6 +5130,7 @@
             slider.max = String(max);
             slider.step = String(step);
             slider.value = String(settings[key]);
+            panelRefreshers.push(() => { slider.value = String(settings[key]); });
 
             // [cwfm] 滑桿列：滑桿 + 調整器同一列，調整器靠右
             const sliderRow = document.createElement('div');
@@ -5168,6 +5211,7 @@
             const input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = !!settings[key];
+            panelRefreshers.push(() => { input.checked = !!settings[key]; });
             input.addEventListener('change', () => {
                 settings[key] = input.checked;
                 saveSettings(settings);
@@ -5262,6 +5306,7 @@
             }
 
             render();
+            panelRefreshers.push(render);
             field.appendChild(listEl);
             field.appendChild(hintEl);
             panelTarget.appendChild(field);
@@ -5287,6 +5332,7 @@
                 applySettings(settings);
             });
             field.appendChild(select);
+            panelRefreshers.push(() => { select.value = settings[key]; });
             panelTarget.appendChild(field);
             return select;
         }
@@ -5569,6 +5615,7 @@
                 if (toggleInput) { toggleInput.checked = !!settings[toggleKey]; updateToggleLock(); }
                 else refreshValueInput();
             };
+            panelRefreshers.push(() => { swatchBtn.cwfmSync(); refreshValueInput(); });
             return swatchBtn;
         }
 
@@ -5876,6 +5923,7 @@
             });
 
             render();
+            panelRefreshers.push(render);
         })();
         beginGroup(t('group_typography'));
         addRangeField(t('field_font_size'), 'fontSize', 70, 300, 5, '%');
@@ -5978,6 +6026,7 @@
                 updateTabs();
             });
             updateTabs();
+            panelRefreshers.push(updateTabs);
             return { marginTab, contentTab, marginFieldWrap, contentFieldWrap, marginSlider, contentSlider };
         }
 
@@ -6067,57 +6116,9 @@
         flowSelect.addEventListener('change', updateVerticalModeLock);
         updateVerticalModeLock();
 
-        beginGroup(t('group_keybindings'));
-        if (!Array.isArray(settings.bookmarkKeys)) settings.bookmarkKeys = DEFAULT_SETTINGS.bookmarkKeys.slice();
-        else if (settings.bookmarkKeys === DEFAULT_SETTINGS.bookmarkKeys) settings.bookmarkKeys = settings.bookmarkKeys.slice();
-        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next, settings.bookmarkKeys]);
-        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev, settings.bookmarkKeys]);
-        addKeyListField(t('field_key_bookmark'), settings.bookmarkKeys, [settings.pagingKeys.prev, settings.pagingKeys.next]);
-        addNumberField(t('field_page_flip_debounce'), 'pageFlipDebounceMs', 0, 3000, 50, 'ms');
-
-        beginGroup(t('group_reading_behavior'));
-        // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
-        // ——現在已經穩定到不會弄壞整個介面，改用一般的 addCheckboxField()，
-        // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
-        addCheckboxField(t('field_precise_anchor_align'), 'preciseAnchorAlign');
-
-        // v1.79：閱讀進度——同步開關在上、雲端紀錄優先在下（附說明）；本機一律記錄、不再有開關，
-        // 也不再有「停留幾秒」的延遲（見 docs/spec-v1.79.md §1）。
-        const autoSyncCheckbox = addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
-        autoSyncCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
-        const cloudFirstCheckbox = addCheckboxField(t('field_cloud_first'), 'cloudFirst');
-        {
-            const hint = document.createElement('div');
-            hint.className = 'cwfm-field-hint';
-            hint.textContent = t('hint_cloud_first');
-            cloudFirstCheckbox.closest('.cwfm-field').appendChild(hint);
-        }
-        addCheckboxField(t('field_show_bm_highlight'), 'showBookmarkHighlights');
-        // v1.79.2：跳轉紀錄的清除不放工具列（跟瀏覽器上一頁一樣只有 ↩ ↪），改放這裡
-        {
-            const field = document.createElement('div');
-            field.className = 'cwfm-field';
-            const row = document.createElement('div');
-            row.className = 'cwfm-checkbox-row';
-            const label = document.createElement('label');
-            label.textContent = t('field_clear_navhist');
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'cwfm-confirm-cancel';
-            btn.textContent = t('btn_clear_navhist');
-            btn.addEventListener('click', async () => {
-                const ok = await cwfmConfirmDialog(t('field_clear_navhist'), t('dlg_clear_navhist_msg'), t('btn_clear_navhist'));
-                if (ok) window.__cwfm.clearNavHistory?.();
-            });
-            row.append(label, btn);
-            field.appendChild(row);
-            panelTarget.appendChild(field);
-        }
-        const cursorAutoHideCheckbox = addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
-        addNumberField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
-        cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
-        addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
-
+        // v1.82：原本的「閱讀行為」拆成「翻頁設定」「介面隱藏」「閱讀行為」三組；快速鍵移到閱讀行為之後。
+        // 順序：版面配置 → 翻頁設定 → 介面隱藏 → 閱讀行為 → 快速鍵 → 語言 → 錯誤紀錄
+        beginGroup(t('group_page_turn'));
         // [cwfm] 左右翻頁點擊區：功能開關 → 寬度 → 顯示開關（順序調整：
         // 顯示開關移到寬度後面，因為「顯示視覺提示」開啟時會 disable 下方
         // 翻頁動畫整區，邏輯上靠近翻頁動畫比靠近寬度更合理）。
@@ -6184,6 +6185,64 @@
         tapZoneEnabledCheckbox.addEventListener('change', updateTapZoneDisabledStates);
         tapZoneVisibleCheckbox.addEventListener('change', updatePageFlipAnimDisabledState);
         updateTapZoneDisabledStates();
+        // v1.82：套用設定檔後讓面板每個控制項重新讀值；最後觸發一次翻頁模式的 change，
+        // 讓依賴它的鎖定狀態（欄數、內容優先、點擊區、翻頁動畫）跟著更新。
+        window.__cwfm.refreshSettingsPanel = () => {
+            panelRefreshers.forEach((fn) => { try { fn(); } catch (e) { console.error('[cwfm:profile] refresher failed', e); } });
+            flowSelect.dispatchEvent(new Event('change'));
+        };
+
+        beginGroup(t('group_ui_hide'));
+        const cursorAutoHideCheckbox = addCheckboxField(t('field_cursor_auto_hide_enabled'), 'cursorAutoHideEnabled');
+        addNumberField(t('field_cursor_auto_hide_delay'), 'cursorAutoHideDelaySeconds', 1, 30, 1, t('unit_seconds'));
+        cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
+        addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
+
+        beginGroup(t('group_reading_behavior'));
+        // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
+        // ——現在已經穩定到不會弄壞整個介面，改用一般的 addCheckboxField()，
+        // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
+        addCheckboxField(t('field_precise_anchor_align'), 'preciseAnchorAlign');
+
+        // v1.79：閱讀進度——同步開關在上、雲端紀錄優先在下（附說明）；本機一律記錄、不再有開關，
+        // 也不再有「停留幾秒」的延遲（見 docs/spec-v1.79.md §1）。
+        const autoSyncCheckbox = addCheckboxField(t('field_auto_sync_enabled'), 'autoSyncEnabled');
+        autoSyncCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
+        const cloudFirstCheckbox = addCheckboxField(t('field_cloud_first'), 'cloudFirst');
+        {
+            const hint = document.createElement('div');
+            hint.className = 'cwfm-field-hint';
+            hint.textContent = t('hint_cloud_first');
+            cloudFirstCheckbox.closest('.cwfm-field').appendChild(hint);
+        }
+        addCheckboxField(t('field_show_bm_highlight'), 'showBookmarkHighlights');
+        // v1.79.2：跳轉紀錄的清除不放工具列（跟瀏覽器上一頁一樣只有 ↩ ↪），改放這裡
+        {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const row = document.createElement('div');
+            row.className = 'cwfm-checkbox-row';
+            const label = document.createElement('label');
+            label.textContent = t('field_clear_navhist');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cwfm-confirm-cancel';
+            btn.textContent = t('btn_clear_navhist');
+            btn.addEventListener('click', async () => {
+                const ok = await cwfmConfirmDialog(t('field_clear_navhist'), t('dlg_clear_navhist_msg'), t('btn_clear_navhist'));
+                if (ok) window.__cwfm.clearNavHistory?.();
+            });
+            row.append(label, btn);
+            field.appendChild(row);
+            panelTarget.appendChild(field);
+        }
+        beginGroup(t('group_keybindings'));
+        if (!Array.isArray(settings.bookmarkKeys)) settings.bookmarkKeys = DEFAULT_SETTINGS.bookmarkKeys.slice();
+        else if (settings.bookmarkKeys === DEFAULT_SETTINGS.bookmarkKeys) settings.bookmarkKeys = settings.bookmarkKeys.slice();
+        addKeyListField(t('field_key_prev'), settings.pagingKeys.prev, [settings.pagingKeys.next, settings.bookmarkKeys]);
+        addKeyListField(t('field_key_next'), settings.pagingKeys.next, [settings.pagingKeys.prev, settings.bookmarkKeys]);
+        addKeyListField(t('field_key_bookmark'), settings.bookmarkKeys, [settings.pagingKeys.prev, settings.pagingKeys.next]);
+        addNumberField(t('field_page_flip_debounce'), 'pageFlipDebounceMs', 0, 3000, 50, 'ms');
 
         // [cwfm] 語言分組移到最後——查過業界慣例(Matomo 自己 GitHub 上的
         // 討論)：語言這種使用者最多只改一次、改完就不會再碰的設定，
