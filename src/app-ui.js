@@ -1839,6 +1839,7 @@
             '  background: var(--cwfm-bg);',
             '}',
             '.cwfm-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; }',
+            '.cwfm-version-line { padding: 8px 16px 12px; font-size: 16px; color: var(--cwfm-text-secondary); text-align: right; user-select: text; }',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 32px; height: 32px;',
             '  color: var(--cwfm-text);',
@@ -4839,6 +4840,13 @@
         const panelBody = document.createElement('div');
         panelBody.className = 'cwfm-panel-body';
         panelBody.appendChild(fieldsWrap);
+        // v1.80.8：面板最底下顯示版本，分得出現在跑的是哪一版、哪一種打包（Docker 的 image 標籤
+        // 永遠是 latest，看不出來）。Docker 建置時版本字串已是「1.80.x (docker, mod <commit>)」；
+        // Tampermonkey 版只有版號，補上來源。
+        const verLine = document.createElement('div');
+        verLine.className = 'cwfm-version-line';
+        verLine.textContent = 'cwfm v' + CWFM_VERSION + (/docker/i.test(CWFM_VERSION) ? '' : ' (Tampermonkey)');
+        panelBody.appendChild(verLine);
         panel.appendChild(panelBody);
         // [cwfm] panelTarget 改成可以依組別切換——beginGroup() 建立一個
         // 新的分組卡片（見上面 .cwfm-group CSS），並把 panelTarget 重新
@@ -6989,6 +6997,13 @@
             '.cwfm-bm-exp { flex: 0 0 30px; display: flex; align-items: center; justify-content: center; border: 0; border-left: 1px dashed var(--cwfm-border-light);',
             '  background: none; color: var(--cwfm-text-secondary); cursor: pointer; padding: 0; }',
             '.cwfm-bm-exp svg { width: 16px; height: 16px; }',
+            // v1.80.8：滑鼠移上去時，只有指到的那一塊（左邊跳轉區／右邊 › 彈出卡片）疊上該書籤類型的淡色，
+            // 分得出點下去會做什麼。顏色沿用卡片抬頭的 --cwfm-card-tint（類型色 15%），半透明疊上去，深淺主題通用。
+            // 用 inset 陰影疊一層、不換底色——卡片打開時整列的類型色外框（.cwfm-bm-active）維持原樣。
+            // 只在有滑鼠的裝置生效，避免觸控點過後卡在高亮。
+            '.cwfm-bm-row[data-type="pos"] { --cwfm-bm-tint: rgba(226,75,74,0.15); } .cwfm-bm-row[data-type="excerpt"] { --cwfm-bm-tint: rgba(250,199,117,0.15); } .cwfm-bm-row[data-type="note"] { --cwfm-bm-tint: rgba(159,225,203,0.15); }',
+            '@media (hover: hover) { .cwfm-bm-body:hover, .cwfm-bm-exp:hover { box-shadow: inset 0 0 0 999px var(--cwfm-bm-tint); }',
+            '  .cwfm-bm-exp:hover { color: var(--cwfm-text); } }',
             '.cwfm-bm-detail { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cwfm-border); cursor: default; }',
             '.cwfm-bm-detail blockquote { margin: 0 0 6px; padding: 0 0 0 8px; border-left: 2px solid #EF9F27; font: 14px/1.6 serif; color: var(--cwfm-text); white-space: pre-wrap; }',
             '.cwfm-bm-detail .cwfm-bm-note { margin: 0 0 6px; color: var(--cwfm-text); white-space: pre-wrap; }',
