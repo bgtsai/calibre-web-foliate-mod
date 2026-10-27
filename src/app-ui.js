@@ -296,6 +296,7 @@
             btn_clear_navhist: "清除",
             dlg_clear_navhist_msg: "清除目錄、搜尋、進度條、書內連結的上一步／下一步紀錄（只影響這本書）。",
             group_errlog: '錯誤紀錄',
+            group_about: '關於', about_version: '版本', about_build: '打包方式', about_docs: '說明頁', about_update: '檢查更新',
             loading_downloading: '正在下載書籍',
             loading_opening: '正在開啟書籍…',
             errlog_caution_title: '隱私說明',
@@ -616,6 +617,7 @@
             btn_clear_navhist: "Clear",
             dlg_clear_navhist_msg: "Clears the back/forward history of contents, search, progress bar and in-book links (this book only).",
             group_errlog: 'Error log',
+            group_about: 'About', about_version: 'Version', about_build: 'Build', about_docs: 'Documentation', about_update: 'Check for updates',
             loading_downloading: 'Downloading book',
             loading_opening: 'Opening book…',
             errlog_caution_title: 'Privacy notice',
@@ -1839,7 +1841,11 @@
             '  background: var(--cwfm-bg);',
             '}',
             '.cwfm-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; }',
-            '.cwfm-version-line { padding: 8px 16px 12px; font-size: 16px; color: var(--cwfm-text-secondary); text-align: right; user-select: text; }',
+            '.cwfm-about-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 16px; }',
+            '.cwfm-about-row > span:first-child { color: var(--cwfm-text-secondary); }',
+            '.cwfm-about-row > span:last-child { color: var(--cwfm-text); text-align: right; user-select: text; }',
+            '.cwfm-about-links { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 6px; font-size: 16px; }',
+            '.cwfm-about-links a { color: var(--cwfm-accent); text-decoration: none; } .cwfm-about-links a:hover { text-decoration: underline; }',
             '.cwfm-panel-header h3 {',
             '  margin: 0; font-size: 15px; line-height: 32px; height: 32px;',
             '  color: var(--cwfm-text);',
@@ -4840,20 +4846,13 @@
         const panelBody = document.createElement('div');
         panelBody.className = 'cwfm-panel-body';
         panelBody.appendChild(fieldsWrap);
-        // v1.80.8：面板最底下顯示版本，分得出現在跑的是哪一版、哪一種打包（Docker 的 image 標籤
-        // 永遠是 latest，看不出來）。Docker 建置時版本字串已是「1.80.x (docker, mod <commit>)」；
-        // Tampermonkey 版只有版號，補上來源。
-        const verLine = document.createElement('div');
-        verLine.className = 'cwfm-version-line';
-        verLine.textContent = 'cwfm v' + CWFM_VERSION + (/docker/i.test(CWFM_VERSION) ? '' : ' (Tampermonkey)');
-        panelBody.appendChild(verLine);
         panel.appendChild(panelBody);
         // [cwfm] panelTarget 改成可以依組別切換——beginGroup() 建立一個
         // 新的分組卡片（見上面 .cwfm-group CSS），並把 panelTarget 重新
         // 指向這個卡片內部的容器，接下來呼叫的 addXxxField() 就會塞進
         // 這一組，不用每個函式各自多傳一個「要塞去哪裡」的參數。
         let panelTarget = fieldsWrap; // add*Field() 系列函式改成往這裡塞
-        function beginGroup(title) {
+        function beginGroup(title, defaultCollapsed = false) {
             const group = document.createElement('div');
             group.className = 'cwfm-group';
             // [cwfm] 標題列做成可點擊的收合開關——左側一個三角形圖示，
@@ -4887,7 +4886,9 @@
                 triangle.classList.toggle('collapsed', isCollapsed);
                 heading.style.marginBottom = isCollapsed ? '0' : '';
             }
-            const collapsed = !!(settings.groupCollapsedState && settings.groupCollapsedState[title]);
+            // v1.81.0：沒有記錄過的分組用 defaultCollapsed（「關於」預設收起）
+            const st = settings.groupCollapsedState;
+            const collapsed = st && Object.prototype.hasOwnProperty.call(st, title) ? !!st[title] : defaultCollapsed;
             applyCollapsedVisual(collapsed);
             heading.addEventListener('click', () => {
                 const nowCollapsed = body.style.display !== 'none';
@@ -6287,6 +6288,35 @@
                 }
                 upCb.dispatchEvent(new Event('change'));
             });
+        }
+
+        // v1.81.0：「關於」分組（預設收起）——版本、打包方式、說明頁；Tampermonkey 版多一個檢查更新。
+        // 取代 v1.80.8 放在面板最底下的那一行（常駐佔空間）。Docker 建置時版本字串是「1.80.x (docker, mod <commit>)」。
+        {
+            beginGroup(t('group_about'), true);
+            const dm = /^(\S+)\s*\(docker,\s*mod\s+([0-9a-f]+)\)/i.exec(CWFM_VERSION);
+            const isDocker = !!dm || !!window.__cwfmBoot;
+            const row = (label, value) => {
+                const r = document.createElement('div');
+                r.className = 'cwfm-about-row';
+                const a = document.createElement('span'); a.textContent = label;
+                const b = document.createElement('span'); b.textContent = value;
+                r.append(a, b);
+                panelTarget.appendChild(r);
+            };
+            row(t('about_version'), 'v' + (dm ? dm[1] : CWFM_VERSION));
+            row(t('about_build'), isDocker ? 'Docker' + (dm ? '（mod ' + dm[2] + '）' : '') : 'Tampermonkey');
+            const links = document.createElement('div');
+            links.className = 'cwfm-about-links';
+            const link = (text, href) => {
+                const a = document.createElement('a');
+                a.textContent = text; a.href = href; a.target = '_blank'; a.rel = 'noopener';
+                links.appendChild(a);
+            };
+            link(t('about_docs'), isDocker ? 'https://github.com/bgtsai/calibre-web-foliate-docker' : 'https://github.com/bgtsai/calibre-web-foliate-mod');
+            // 安裝連結加時間參數避開快取；點了 Tampermonkey 會跳出安裝／更新確認
+            if (!isDocker) link(t('about_update'), 'https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/main/calibre-web-foliate-mod.user.js?t=' + Date.now());
+            panelTarget.appendChild(links);
         }
 
         document.body.appendChild(panel);
