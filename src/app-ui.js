@@ -817,7 +817,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.82.1', '2026-10-28'];
+    const CWFM_RELEASE = ['1.82.2', '2026-10-28'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1376,7 +1376,12 @@
         try {
             // v1.79：在輸入框（搜尋、書籤名稱／備註）裡打字時不要翻頁
             const tg = e.target;
-            if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.isContentEditable)) return;
+            // v1.82.2：只排除「真的在打字」的欄位。原本任何 <input> 都排除，連底部進度條（range）也算：
+            // 點過進度條後焦點停在上面，方向鍵／PageUp／PageDown 變成瀏覽器原生的推滑桿（跳的是進度百分比，
+            // Firefox 一按就到全書最後、PageDown 方向還相反），Ctrl+M 也被擋掉。滑桿類照常處理快速鍵，
+            // 命中快速鍵時下面的 preventDefault 會擋掉原生推滑桿。設定面板裡的滑桿不受影響（面板開著時整個停用）。
+            const CWFM_TYPING_INPUT = /^(|text|search|number|email|url|tel|password)$/i;
+            if (tg && ((tg.tagName === 'INPUT' && CWFM_TYPING_INPUT.test(tg.type || '')) || tg.tagName === 'TEXTAREA' || tg.isContentEditable)) return;
             // [cwfm] 設定面板開著時，翻頁快速鍵完全停用（面板裡的滑桿／數值框會用方向鍵
             // 調整數值，不能同時翻頁）。目錄面板開著時照常翻頁——使用者可能想邊看目錄邊翻。
             if (document.querySelector('.cwfm-settings-panel.cwfm-open')) return;
@@ -1415,8 +1420,18 @@
         }
     }
     document.addEventListener('keydown', handleKeydown);
+    // v1.82.2：書本 iframe 也要掛（焦點在書本裡時按鍵只送到那份 document）。這段跑到時第一章早就載入完了
+    // （load 已觸發過），原本只靠 load 事件掛，第一章從頭到尾沒有監聽——Safari／Firefox 開書後焦點落在書本裡，
+    // 快速鍵全部沒反應，要換章或點工具列按鈕（焦點回到外層）才恢復。滾輪同理。補掛已載入的章節，WeakSet 防重複。
+    const cwfmInputDocs = new WeakSet();
+    function cwfmAttachDocInput(doc) {
+        if (!doc || cwfmInputDocs.has(doc)) return;
+        cwfmInputDocs.add(doc);
+        doc.addEventListener('keydown', handleKeydown);
+        doc.addEventListener('wheel', handleWheel, { passive: true });
+    }
     view.addEventListener('load', ({ detail }) => {
-        detail.doc.addEventListener('keydown', handleKeydown);
+        try { cwfmAttachDocInput(detail.doc); } catch (e) { console.error('[cwfm:key] 掛章節快速鍵失敗', e); }
     });
     // [cwfm] 滾輪翻頁——分頁模式限定（捲動模式下條件 1 擋掉）。
     // 面板開啟時不觸發（條件 2），滑鼠在底部 bar 上時不觸發（條件 3）。
@@ -1479,8 +1494,9 @@
         }
     }
     document.addEventListener('wheel', handleWheel, { passive: true });
+    // v1.82.2：已載入章節的補掛（快速鍵＋滾輪）放在滾輪段落之後，跟外層的掛法放在一起好對照
+    try { for (const c of view.renderer.getContents()) cwfmAttachDocInput(c.doc); } catch (e) { console.error('[cwfm:key] 補掛章節快速鍵失敗', e); }
     view.addEventListener('load', ({ detail }) => {
-        detail.doc.addEventListener('wheel', handleWheel, { passive: true });
         // [cwfm] 游標自動隱藏：detail.doc 是章節 load 完成後確定可用的
         // iframe document，在這裡掛 mousemove listener 比透過
         // getBookIframeDocument() 更可靠，初始載入和換章節都覆蓋到。
