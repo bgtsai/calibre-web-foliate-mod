@@ -47,7 +47,7 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ### Jump history (back / forward)
 
-- Jumps from the table of contents, bookmarks, in-book links (such as footnote `[284]`), search results and dragging the progress bar all go into **one** history. Use **↩ Back** and **↪ Forward** at the top right of the toolbar (the number shows how many steps are left); up to 50 entries are kept.
+- Jumps from the table of contents, bookmarks, in-book links (such as footnote `[284]`), search results and dragging the progress bar all go into **one** history. Use **↩ Back** and **↪ Forward** at the top right of the toolbar (the number shows how many steps are left); up to 99 steps are kept (the number shows "99+" once older ones start being removed); the Back button flashes each time a jump is recorded.
 - If a jump happens while the toolbar is auto-hidden, a small ↩ ↪ ✕ group floats at the top right so you can get back from a footnote quickly. ✕ only hides it; the history stays.
 - Clear this book's jump history under "Reading Behavior" in the settings. With precise alignment on, back and forward return to the first character of that page.
 

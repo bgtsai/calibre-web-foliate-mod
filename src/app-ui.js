@@ -48,6 +48,7 @@
             field_key_bookmark: '加入書籤快速鍵',
             nav_back: '返回上一個位置',
             nav_forward: '前往下一個位置',
+            nav_full_hint: '最多保留 99 筆，較舊的會自動移除',
             nav_clear: '清空紀錄',
             nav_hide: '收起（紀錄保留，工具列上也能用）',
             btn_add_scheme: '+ \u5132\u5b58\u76ee\u524d\u81ea\u8a02\u914d\u8272',
@@ -371,6 +372,7 @@
             field_key_bookmark: 'Add Bookmark Shortcut',
             nav_back: 'Back',
             nav_forward: 'Forward',
+            nav_full_hint: 'Up to 99 steps are kept; older ones are removed automatically',
             nav_clear: 'Clear history',
             nav_hide: 'Hide (history kept; also on the toolbar)',
             btn_add_scheme: '+ Save Current Color Scheme',
@@ -702,6 +704,12 @@
     // 這種真正的失敗訊息會保留，日後排查問題還是需要。預設關閉，不是
     // 直接刪掉這些 log，需要除錯時改成 true 就會恢復印出。
     const CWFM_DEBUG = true;
+    // v1.83.0：跳轉紀錄最多 100 格＝最多 99 步「上一步」；丟過最舊的紀錄後數字顯示「99+」
+    const CWFM_NAV_HISTORY_MAX = 100;
+    // v1.83.0：「存了東西」的回饋動畫（沿用 YouTube Channel Memory 書籤的做法，03 第⑬節）：
+    // 由下往上描亮／填滿，接著放大 1.15 倍再縮回；系統開了「減少動態效果」改成原地淡入（不移動、不縮放）
+    const CWFM_SAVE_ANIM_RISE_MS = 250;
+    const CWFM_SAVE_ANIM_PULSE_MS = 200;
     function dlog(...args) { if (CWFM_DEBUG) console.log(...args); }
     // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
     // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
@@ -817,7 +825,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.82.2', '2026-10-28'];
+    const CWFM_RELEASE = ['1.83.0', '2026-10-29'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1804,6 +1812,20 @@
             '.cwfm-nav-group > button.cwfm-nav-btn:disabled { opacity: 0.35; cursor: default; }',
             '.cwfm-nav-group > button.cwfm-nav-btn svg { width: 20px; height: 20px; display: block; }',
             '.cwfm-nav-count { position: absolute; top: 1px; right: 1px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; }',
+            // v1.83.0：存檔回饋動畫（cwfmPlaySaveAnim）；99+ 比兩位數寬，數字不換行
+            '.cwfm-nav-count { white-space: nowrap; }',
+            // 「99+」靠右對齊會往左長、壓到箭頭頭部（WebKit／Firefox 實測），改成往右凸出按鈕 4px（右邊是「下一步」按鈕的內距）
+            '.cwfm-nav-count.cwfm-nav-count-full { right: -4px; }',
+            '[data-cwfm-anim] .cwfm-anim-rise { animation: cwfm-anim-rise ' + CWFM_SAVE_ANIM_RISE_MS + 'ms ease-out both; }',
+            '[data-cwfm-anim] > svg { animation: cwfm-anim-pulse ' + CWFM_SAVE_ANIM_PULSE_MS + 'ms ease-out ' + CWFM_SAVE_ANIM_RISE_MS + 'ms; transform-origin: 50% 50%; overflow: visible; }',
+            '@keyframes cwfm-anim-rise { from { transform: translateY(24px); } to { transform: translateY(0); } }',
+            '@keyframes cwfm-anim-pulse { 50% { transform: scale(1.15); } }',
+            '@keyframes cwfm-anim-glow { from { opacity: 0; } to { opacity: 1; } }',
+            '@media (prefers-reduced-motion: reduce) {',
+            '  [data-cwfm-anim] .cwfm-anim-rise { animation: none; }',
+            '  [data-cwfm-anim] > svg { animation: none; }',
+            '  [data-cwfm-anim] .cwfm-anim-top { animation: cwfm-anim-glow ' + CWFM_SAVE_ANIM_RISE_MS + 'ms ease-out both; }',
+            '}',
             '.cwfm-nav-group-bottom { margin-right: 14px; }',
             '.cwfm-panel-header .cwfm-nav-group { margin-left: auto; }',
             '.cwfm-toolbar-top .cwfm-nav-group:not(.cwfm-nav-visible), .cwfm-panel-header .cwfm-nav-group:not(.cwfm-nav-visible) { display: none; }',
@@ -4277,7 +4299,7 @@
         kind = 'toc';
         if (cwfmNavHistories[kind]) return cwfmNavHistories[kind];
         const h = {
-            kind, entries: [], idx: -1, listeners: [],
+            kind, entries: [], idx: -1, listeners: [], recordListeners: [], trimmed: false,
             get backCount() { return Math.max(0, this.idx); },
             get forwardCount() { return this.idx < 0 ? 0 : this.entries.length - 1 - this.idx; },
             changed() {
@@ -4292,9 +4314,9 @@
                 else { this.entries[this.idx] = cur; this.entries.length = this.idx + 1; }
                 this.entries.push(null); // 目的地：離開時才填入實際讀到的位置
                 this.idx++;
-                // v1.79.2：最多保留 50 筆，超過丟掉最舊的
-                const over = this.entries.length - 50;
-                if (over > 0) { this.entries.splice(0, over); this.idx -= over; }
+                // v1.79.2：超過上限丟掉最舊的（v1.83.0 從 50 改成 CWFM_NAV_HISTORY_MAX）；丟過就記 trimmed，數字改顯示「99+」
+                const over = this.entries.length - CWFM_NAV_HISTORY_MAX;
+                if (over > 0) { this.entries.splice(0, over); this.idx -= over; this.trimmed = true; }
                 // v1.80.2：浮動組只在「工具列已隱藏時又發生跳轉」才出現（重新整理讀回紀錄、工具列顯示時跳轉都不出現）；
                 // 工具列一被喚醒就收回（cwfmShowBars），之後再自動隱藏也不會自己冒出來，要等下一次跳轉
                 if (document.documentElement.classList.contains('cwfm-bars-hidden')) {
@@ -4302,6 +4324,8 @@
                 }
                 cwfmDiag('NAV-RECORD', 'kind=' + kind + ' idx=' + this.idx + ' from=' + cwfmCfiText(cur));
                 this.changed();
+                // v1.83.0：記下一筆時「上一步」播存檔動畫——數字到 99+ 不會再變，動畫是唯一的回饋
+                this.recordListeners.forEach((fn) => { try { fn(this); } catch (e) { console.error(e); } });
             },
             async back() { if (this.idx > 0) await this.move(-1); },
             async forward() { if (this.idx >= 0 && this.idx < this.entries.length - 1) await this.move(1); },
@@ -4314,13 +4338,14 @@
                 cwfmDiag('NAV-MOVE', 'kind=' + kind + ' dir=' + dir + ' idx=' + this.idx + ' to=' + cwfmCfiText(target));
                 if (target) await cwfmNavGoToPos(target);
             },
-            clear() { this.entries = []; this.idx = -1; this.changed(); },
+            clear() { this.entries = []; this.idx = -1; this.trimmed = false; this.changed(); },
         };
         // v1.79：讀回上次保存的紀錄
         const saved = cwfmBD.navhist && cwfmBD.navhist[kind];
         if (saved && Array.isArray(saved.entries) && saved.entries.length && saved.idx >= 0 && saved.idx < saved.entries.length) {
             h.entries = saved.entries.slice();
             h.idx = saved.idx;
+            h.trimmed = !!saved.trimmed;
         }
         cwfmNavHistories[kind] = h;
         return h;
@@ -4355,7 +4380,7 @@
             const h = cwfmNavHistories[kind];
             const entries = h.entries.slice();
             if (h.idx >= 0 && cur) entries[h.idx] = cur;
-            out[kind] = { entries: entries.map((e) => e || cur || null), idx: h.idx };
+            out[kind] = { entries: entries.map((e) => e || cur || null), idx: h.idx, trimmed: h.trimmed };
         }
         // 還沒建立的組（例如還沒開過搜尋）沿用上次保存的內容
         if (cwfmBD.navhist && !out.toc && cwfmBD.navhist.toc) out.toc = cwfmBD.navhist.toc; // 還沒建立時沿用上次保存的（舊的 link／search 不再保存）
@@ -6657,18 +6682,22 @@
         const fwd = mk(ICONS.navForward, t('nav_forward'), () => h.forward());
         // 清空紀錄用垃圾桶；右上角那組按下去整個關掉，維持 ✕（與面板關閉鈕的圓形 ✕ 分開）
         // v1.79.2：只有右上角書內連結那組保留 ✕（看完註解、關掉這組）；其他組跟瀏覽器上一頁一樣不放清除鈕，
-        // 每組最多保留 50 筆，要清除到設定面板「清除這本書的跳轉紀錄」。
+        // 每組最多保留 CWFM_NAV_HISTORY_MAX 格（v1.83.0 起 99 步），要清除到設定面板「清除這本書的跳轉紀錄」。
         // v1.80：浮動組（工具列隱藏時才出現）的 ✕ 只是收起來，不清紀錄、不確認；下次有新跳轉再出現
         const clr = !float ? null : mk(ICONS.navClear, t('nav_hide'), () => { group.classList.remove('cwfm-nav-armed'); });
         function update() {
             back.b.disabled = h.backCount === 0;
             fwd.b.disabled = h.forwardCount === 0;
-            back.cnt.textContent = h.backCount > 1 ? String(h.backCount) : '';
+            const full = h.trimmed && h.backCount >= CWFM_NAV_HISTORY_MAX - 1;
+            back.cnt.textContent = full ? (CWFM_NAV_HISTORY_MAX - 1) + '+' : (h.backCount > 1 ? String(h.backCount) : '');
+            back.cnt.classList.toggle('cwfm-nav-count-full', full);
+            back.b.title = full ? t('nav_back') + '\n' + t('nav_full_hint') : t('nav_back');
             fwd.cnt.textContent = h.forwardCount > 1 ? String(h.forwardCount) : '';
             // 右上角（書內連結）與工具列上（目錄、搜尋）那幾組：沒有紀錄時整組不顯示
             group.classList.toggle('cwfm-nav-visible', h.entries.length > 0);
         }
         h.listeners.push(update);
+        h.recordListeners.push(() => cwfmPlaySaveAnim(back.b, 'nav'));
         update();
         return group;
     }
@@ -6797,8 +6826,11 @@
         window.__cwfm.setBookmarkBtnFilled = (on) => {
             if (bookmarkBtn.dataset.filled === String(!!on)) return;
             bookmarkBtn.dataset.filled = String(!!on);
+            // 動畫播放中不換圖示；播完由 cwfmPlaySaveAnim 換回 dataset.filled 對應的那一張
+            if (bookmarkBtn.dataset.cwfmAnim) return;
             bookmarkBtn.innerHTML = on ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
         };
+        window.__cwfm.playBookmarkSaveAnim = () => cwfmPlaySaveAnim(bookmarkBtn, 'bookmark');
 
         const settingsBtn = document.createElement('button');
         settingsBtn.innerHTML = ICONS.settings;
@@ -7245,6 +7277,39 @@
         return d.getFullYear() + '-' + cwfmPad2(d.getMonth() + 1) + '-' + cwfmPad2(d.getDate()) + ' '
             + cwfmPad2(d.getHours()) + ':' + cwfmPad2(d.getMinutes()) + ':' + cwfmPad2(d.getSeconds());
     }
+    // v1.83.0：存檔回饋動畫。動畫也當成一種狀態（03 第⑬節）：播放期間把按鈕裡的 svg 整張換成動畫專用圖示，
+    // 播完再換回該狀態的圖示——不在同一個 svg 疊層開關（Chrome 不一定因 clipPath 內部變化重畫）。
+    // kind：'nav'＝上一步箭頭（線條圖示，淡色底＋由下往上描亮）；'bookmark'＝書籤（外框＋紅色由下往上填滿）
+    let cwfmSaveAnimSeq = 0;
+    function cwfmPlaySaveAnim(btn, kind) {
+        if (!btn || !btn.isConnected) return;
+        const old = btn.querySelector(':scope > svg');
+        if (!old) return;
+        const id = 'cwfm-rise-' + (++cwfmSaveAnimSeq);
+        const BM = 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z';
+        const NAV = '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'; // 照抄 ICONS.navBack
+        const attrs = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+        const clip = '<defs><clipPath id="' + id + '"><rect class="cwfm-anim-rise" y="-1" width="24" height="26"/></clipPath></defs>';
+        const html = kind === 'bookmark'
+            ? '<svg ' + attrs + '>' + clip + '<path d="' + BM + '"/><path class="cwfm-anim-top" d="' + BM + '" fill="#E24B4A" stroke="#E24B4A" clip-path="url(#' + id + ')"/></svg>'
+            : '<svg ' + attrs + '>' + clip + '<g opacity=".35">' + NAV + '</g><g class="cwfm-anim-top" clip-path="url(#' + id + ')">' + NAV + '</g></svg>';
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        old.replaceWith(tpl.content.firstChild);
+        btn.dataset.cwfmAnim = '1';
+        clearTimeout(btn.__cwfmAnimTimer);
+        btn.__cwfmAnimTimer = setTimeout(() => {
+            delete btn.dataset.cwfmAnim;
+            const cur = btn.querySelector(':scope > svg');
+            if (!cur) return;
+            const normal = kind === 'bookmark'
+                ? (btn.dataset.filled === 'true' ? ICONS.bookmarkFilled : ICONS.bookmarkOutline)
+                : ICONS.navBack;
+            tpl.innerHTML = normal;
+            cur.replaceWith(tpl.content.firstChild);
+        }, CWFM_SAVE_ANIM_RISE_MS + CWFM_SAVE_ANIM_PULSE_MS + 20);
+    }
+
     function cwfmToast(msg) {
         const el = document.createElement('div');
         el.className = 'cwfm-toast';
@@ -7451,6 +7516,8 @@
             try { sel?.doc?.getSelection()?.removeAllRanges(); } catch (e) { /* ignore */ }
             cwfmBookmarkPut(res);
             cwfmToast(t('toast_bm_saved'));
+            // v1.83.0：這頁已經有書籤時按鈕早就是紅的、看不出又存了一個，播存檔動畫當回饋
+            try { window.__cwfm.playBookmarkSaveAnim?.(); } catch (e) { console.error(e); }
         } catch (e) { console.error(t('err_sync_bookmark'), e); }
     };
     async function cwfmEditBookmark(bm) {
