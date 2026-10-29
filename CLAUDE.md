@@ -42,35 +42,17 @@
 - 設定面板新增設定時，要一併加進 `CWFM_THEME_FIELD_KEYS`，否則存不進「設定檔」。
 - 標籤小按鈕、步進器等圖示一律用 `cwfmChipIcon()`（Lucide SVG、線寬 2），不要用文字符號。
 
-## 交接（2026-10-29，v1.86.0）
-- **目前版本**：v1.86.0（v1.85.0 之上依使用者回饋）。
-  - **翻頁方向改成一般設定**：`pageDirection`＋新開關 `preferBookDirection`（優先套用書籍標示，預設開；開著且書有標示時選單停用、提示「依書籍標示」）。都進設定檔與 `CWFM_BUILTIN_PROFILE_KEYS`。開書前的值由 `cwfmEarlySetting()` 讀 INITIAL_SETTINGS（不能碰 DEFAULT_SETTINGS：TDZ），內建值在 `CWFM_EARLY_BUILTIN`；改了由 `applySettings` → `cwfmDirOnSettings` 重排。v1.84～85 記在 `bookSettings[書].b.pageDirection` 的照舊（＝不看書的標示）。
-  - **內建「圖片書」**：右翻、反轉點擊區、上下左右留白 0（工具列蓋到圖片沒關係，使用者定案）。
-  - **虛擬頁紙色**：`.cwfm-ib-paper` 用更具體的選擇器＋!important 蓋過閱讀配色的 `* { … !important }`；沒有統一紙色＝白紙黑字。
-  - **扉頁方案甲**：`.cwfm-tp-grp` 整組（含出版社）中心在 44%（版心 1/9:2/9），沒有出版社時隱藏該行、位置不變；字級以 486px 紙寬為準（書名 60px）依 `--tp` 等比（`cwfmTpScale`），`CWFM_TP_CSS` 圖片書與文字書共用。
-  - **面板**：「是否插頁」→「插頁設定」；補一頁與插入空白頁之間有分隔線；〔清除〕跳轉紀錄紅框；「新書開啟時套用」名稱一行、選單一行（只有兩項之間有分隔線）；自動隱藏工具列說明補觸控。
-  - **滑桿不卡**：拖動中數字立刻更新、重排只排最新值且最多每 `CWFM_SLIDER_APPLY_MS`（觸控 250／滑鼠 120ms）一次，放開（change）才套用最終值並存檔。原本每格同步整本重排（桌機 WebKit 50～115ms／格）。
-  - 不做：升級後保留舊全域字級（使用者自己逐本調整）。v1.85 的內容見 git log。
-- **測試**：Docker repo `test/reader/ft184.py`、`ft185.py`、`ft186.py`（`CWFM_EPUB` 指定圖片書，預設 `/home/claude/testbook/manga30.epub`，從知識庫 handoff 分支抓（指令見下方「下一階段待做」））。
-- **待使用者實機確認（iPad，Docker）**：動畫 E、圖片書兩欄／右翻、虛擬頁、文字書書名頁。
-- **之後再議**：面板上顯示「這本書有自己的設定／還原」。
+## 交接（2026-10-29 晚，v1.87.0）
+- **目前版本**：v1.87.0——設定檔改成「目前使用中的那一組，調整自動存回」（類似瀏覽器使用者設定檔）。
+  - **自動儲存**：`cwfmPrepareSettingsForSave` 跟 `cwfmBookTrack.baseline` 比對，有差就寫回 `cwfmBookTrack.ref` 指的設定檔。磁碟（覆蓋更新）鈕、內建的恢復預設值都拿掉。
+  - **內建唯讀、內容完整**：`cwfmBuiltinProfileValues(id)` 每次重算全部 `CWFM_THEME_FIELD_KEYS`（DEFAULT_SETTINGS＋首次預設＋跟隨系統配色＋內建排版；圖片書另加 `CWFM_IMAGE_PROFILE_OVERRIDES`，含動畫黑色 `#000000`）。選中內建時第一次調整 → 自動建「〈內建名〉（已調整）」（重名「（已調整 2）」…）並切過去。`settings.builtinProfiles` 開書與存檔時刪掉。
+  - **書指向設定檔**：`bookSettings[書] = { profile, b, t }`，同一個設定檔的書共用調整；舊的 `v` 直接丟掉（使用者定案，這些書回到「新書開啟時套用」）。指向的設定檔被刪 → 退回新書預設；刪的是使用中的 → 當場切到新書預設（`cwfmDeleteTheme`）。
+  - **v1.84～85 記在書上的方向**（`b.pageDirection`）：不再寫進設定值（會污染共用的設定檔），只在 `cwfmDirOnSettings`／開書時優先；使用者在面板改翻頁方向就清掉。
+  - **還原這次調整**：`openPanel` 打開設定面板 → `cwfmProfMarkStart` 記起點；面板開著時切換設定檔 → 起點改成切換當下；關面板清掉。有調整時兩處顯示：設定檔區塊標籤列下方淡橘狀態列〔還原〕＋選中標籤橘點、標題列關閉鈕左邊〔還原這次調整〕。從內建自動建立的副本 → 還原＝切回內建並刪副本（`cwfmRestoreProfileSession`）。
+  - **介面狀態不納入設定檔**（使用者定案）：分組收合、取色器模式、目錄篩選維持全域；素材庫（自訂配色、字型記憶、上傳字型）共用；語言、錯誤紀錄只留在這台裝置。
+  - **標籤前置圖示 14px**（設定檔與配色的內建標籤）；選中＝`.cwfm-keychip-selected` 藍框。
+- **測試**：Docker repo `test/reader/ft187.py`（新）；ft182、ft184、ft186 已改成新語意。圖片書改用 `test/reader/make_image_epub.py` 現場產生（ft184～187 預設，`CWFM_EPUB` 仍可指定真書）。
+- **待使用者實機確認（iPad，Docker）**：動畫 E、圖片書兩欄／右翻、虛擬頁、文字書書名頁（v1.86 留下）；v1.87 的自動存回與還原。
+- **之後再議**：面板上顯示「這本書有自己的設定／還原」（v1.87 已有「這次調整」的還原，跨開書的還原仍未做）。
 - **NAS 更新**：`bgtsai/synology-docker-update`（見知識庫 14 號第 11 節）。
-- **知識庫**：v1.84～v1.86 已歸檔（03 v1.46 第 ⑰ 節、29 v1.11 第 ㉕～㉗ 節、31 v1.18），沒有未歸檔草稿。
-
-## 下一階段待做（2026-10-29 晚，使用者已全部定案：照做到完，卡住或發現會改變預期才問）
-一個版本一起做（**v1.87.0**），全部改完、三瀏覽器測過後 **Tampermonkey 與 Docker 同時推送**。測試用純圖片 EPUB 在知識庫的 **handoff 分支**（日本兄弟修剪版，不要放公開 repo）：`mkdir -p /home/claude/testbook && git -C /home/claude/claude-knowledge-base fetch --depth 1 origin handoff:refs/remotes/origin/handoff && git -C /home/claude/claude-knowledge-base show origin/handoff:handoff/20261029_cwfm/manga30.epub > /home/claude/testbook/manga30.epub`。
-
-**設定檔改成「目前使用中的那一組，調整自動存回」**（類似瀏覽器使用者設定檔）
-1. **自動儲存**：選中的設定檔，面板上任何調整直接存回該設定檔；標籤上的磁碟（覆蓋更新）鈕全部拿掉（內建與自訂都拿）。`cwfmUpdateTheme`／內建的 `onUpdate`、`onRestore`（恢復預設值）、`builtinProfiles` 相關 UI 一併移除。
-2. **內建「文字書／圖片書」唯讀、內容完整**：不再只管排版（`CWFM_BUILTIN_PROFILE_KEYS`），改成跟自訂一樣存全部 `CWFM_THEME_FIELD_KEYS`——排版用現在的內建值，其他欄位用程式初始預設（DEFAULT_SETTINGS／`CWFM_EARLY_BUILTIN`）。選中內建時第一次調整 → 自動複製成自訂設定檔「圖片書（已調整）」（同名依序「（已調整 2）」…）並切過去，之後調整都存進這份。**舊的 `settings.builtinProfiles` 覆蓋值直接丟掉**（使用者定案），回到程式預設。
-3. **每本書記住「用哪個設定檔」**（取代 v1.84～86 的「每本書一份設定值」）：`bookSettings[書].profile = 'builtin:text'|'builtin:image'|'theme:<id>'`；同一個設定檔的書共用調整（使用者定案）；某本書要特殊設定就自己另建設定檔。書本身的屬性（`b`：插頁、紙色、舊版方向）照舊。新書（沒有紀錄）用「新書開啟時套用」。被指定的設定檔刪掉 → 退回新書預設。舊資料相容：v1.84～86 的 `bookSettings[書].v` 怎麼轉要先想清楚再做（建議：有 v 的書第一次開時，若 v 跟某個設定檔完全相同就指向它，否則轉成一個自訂設定檔「〈書名〉」並指向它——**這點未跟使用者確認，做之前先問**）。
-4. **還原這次調整**：每次打開設定面板記下目前設定檔的值當起點（面板開著時切換設定檔 → 起點改成切換當下）。跟起點不同時顯示〔還原〕；按下回到起點並存回、按鈕消失；關面板後就沒有，下次打開重記。若目前的設定檔是本次從內建自動建立的「（已調整）」，還原＝切回該內建並刪掉這份副本。
-5. **設定檔納入的範圍（最大程度包含）**：除了現有欄位，另納入介面狀態（`groupCollapsedState`、`colorPickerModeByKey`、`tocFilter`）。**素材庫共用、不跟設定檔切換**（使用者選「合併」）：`savedColorSchemes`、`fontNameHistory`、`uploadedFonts`。**只留在這台裝置**：`uiLanguage`、`errlogUpload`。存在外層（不能放進設定檔，會遞迴）：`savedThemes` 本身、`newBookProfile`。
-6. **標出目前使用中的設定檔**：選中樣式（跟配色選中同一套藍框 `.cwfm-keychip-selected`）。
-7. **標籤前置圖示 14px**（現在 12px 看不清楚；設定檔與配色的內建標籤都改，`cwfmBuildChip` 的 `leadIcon` 與配色那段 `cwfmChipIcon(..., 12)`）。改完跑 ft_icons（±0.5px）、確認標籤高度沒被撐高。
-8. **還原放兩處**（使用者定案：兩個都做）：(a) 設定檔區塊、標籤列**下方**一行淡橘狀態列：「我的小說：這次有調整（已自動儲存）」〔還原〕／從內建建立時「已從圖片書建立『圖片書（已調整）』」〔還原〕；選中標籤名稱後加橘點。(b) 面板標題列、關閉鈕左邊〔還原這次調整〕（面板捲到哪都按得到）。沒有調整時兩個都不顯示。方案圖：上一對話串【59_圖】的 ② 與 ④（橘色沿用注意類顏色，表示有變動、可處理，不是錯誤）。
-9. **內建「圖片書」的翻頁動畫顏色預設黑色**（`pageFlipAnimColor: '#000000'`，不用 AUTO）。圖片書預設顯示點擊區視覺提示，動畫要使用者關掉提示才看得到——使用者確認沒關係。
-
-10. **測試用圖片書產生器**（使用者同意）：在 Docker repo `test/reader/` 寫一支產生器，產生約 30 頁、每頁一張 1650×2390 圖的 EPUB（封面＝第一頁同圖、彩色滿版封面、內頁白底＋圖案＋頁碼、有書名／作者／出版社；可選無出版社、有 page-progression-direction 版本），ft184～187 預設用它；`CWFM_EPUB` 仍可指定真書。用完把 handoff 分支的 `handoff/20261029_cwfm/` 刪掉（或留著給實測，問使用者）。
-
-**測試**：新增 ft187（自動儲存、內建唯讀→自動建立「（已調整）」與編號、書指向設定檔且共用、還原（含刪副本）、介面狀態跟著設定檔、素材庫共用、語言不跟、選中樣式、標題列與區塊兩處還原、圖示 14px、圖片書動畫黑色）；ft182／ft184～186 裡「覆蓋更新」「恢復預設值」「每本書一份設定值」相關的斷言要跟著改。
+- **知識庫**：v1.87.0 的經驗在草稿檔，待歸檔；handoff 分支的 `handoff/20261029_cwfm/` 去留待使用者決定。

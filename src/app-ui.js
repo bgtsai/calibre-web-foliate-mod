@@ -73,11 +73,15 @@
             field_remove_here: '移除這頁前的空白頁',
             profile_text: '文字書',
             profile_image: '圖片書',
-            aria_restore_profile: '恢復預設值',
-            dlg_restore_profile_title: '恢復預設值',
-            dlg_restore_profile_pre: '要把「',
-            dlg_restore_profile_post: '」恢復成原本的預設值嗎？',
-            txt_profile_restored_post: '」已恢復預設值。',
+            profile_adj: '（已調整）',
+            profile_adj_n_pre: '（已調整 ',
+            profile_adj_n_post: '）',
+            txt_prof_adjusted: '：這次有調整（已自動儲存）',
+            txt_prof_created_pre: '已從',
+            txt_prof_created_mid: '建立「',
+            txt_prof_created_post: '」',
+            btn_restore: '還原',
+            btn_restore_session: '還原這次調整',
             field_key_bookmark: '加入書籤快速鍵',
             nav_back: '返回上一個位置',
             nav_forward: '前往下一個位置',
@@ -181,13 +185,6 @@
             alert_uploaded_font_deleted: '上傳字型已刪除',
             txt_theme_font_deleted_pre: '這個設定檔原本使用的上傳字型「',
             txt_theme_font_deleted_post: '」已經被刪除，這次套用改用預設字型。',
-            dlg_overwrite_theme_title: '覆蓋更新設定檔',
-            dlg_overwrite_theme_pre: '確定要用目前畫面上的設定，覆蓋「',
-            dlg_overwrite_theme_post: '」這個設定檔原本儲存的內容嗎？名稱不會改變，但原本儲存的設定值會被取代、無法往回。',
-            dlg_overwrite_confirm: '確定覆蓋',
-            alert_updated: '已更新',
-            txt_theme_updated_post: '」已經更新成目前的設定。',
-            aria_overwrite_theme: '用目前設定覆蓋更新這個設定檔',
             dlg_delete_theme_title: '刪除設定檔',
             dlg_delete_pre: '確定要刪除「',
             dlg_delete_theme_post: '」這個設定檔嗎？這只會刪除設定檔記錄本身，不會影響目前畫面上已經套用的設定。',
@@ -429,11 +426,15 @@
             field_remove_here: 'Remove the blank page before this page',
             profile_text: 'Text',
             profile_image: 'Images',
-            aria_restore_profile: 'Restore defaults',
-            dlg_restore_profile_title: 'Restore Defaults',
-            dlg_restore_profile_pre: 'Restore “',
-            dlg_restore_profile_post: '” to its default values?',
-            txt_profile_restored_post: '” has been restored to defaults.',
+            profile_adj: ' (adjusted)',
+            profile_adj_n_pre: ' (adjusted ',
+            profile_adj_n_post: ')',
+            txt_prof_adjusted: ': changed this time (saved automatically)',
+            txt_prof_created_pre: 'Created from ',
+            txt_prof_created_mid: ': “',
+            txt_prof_created_post: '”',
+            btn_restore: 'Restore',
+            btn_restore_session: 'Undo changes',
             field_key_bookmark: 'Add Bookmark Shortcut',
             nav_back: 'Back',
             nav_forward: 'Forward',
@@ -537,13 +538,6 @@
             alert_uploaded_font_deleted: 'Uploaded Font Deleted',
             txt_theme_font_deleted_pre: 'The uploaded font “',
             txt_theme_font_deleted_post: '” originally used by this profile has been deleted; falling back to the default font this time.',
-            dlg_overwrite_theme_title: 'Overwrite Profile',
-            dlg_overwrite_theme_pre: 'Overwrite “',
-            dlg_overwrite_theme_post: '” with the current on-screen settings? The name will stay the same, but the previously saved values will be replaced and cannot be undone.',
-            dlg_overwrite_confirm: 'Confirm Overwrite',
-            alert_updated: 'Updated',
-            txt_theme_updated_post: '” has been updated to the current settings.',
-            aria_overwrite_theme: 'Overwrite this profile with the current settings',
             dlg_delete_theme_title: 'Delete Profile',
             dlg_delete_pre: 'Delete “',
             dlg_delete_theme_post: '”? This only removes the profile record; it won’t affect the settings currently applied on screen.',
@@ -893,7 +887,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.86.0', '2026-10-29'];
+    const CWFM_RELEASE = ['1.87.0', '2026-10-29'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1401,24 +1395,25 @@
         return w / h >= CWFM_IMG_TWO_COL_MIN_RATIO ? 2 : 1;
     }
     // v1.86.0：內建設定檔裡開書前就要用到的值（翻頁方向、欄數）。這裡開書時就會被呼叫，比 DEFAULT_SETTINGS 的宣告早，
-    // 不能引用它（TDZ），所以另外寫一份；cwfmBuiltinProfileDefaults 也從這裡取，兩邊不會不一致。
+    // 不能引用它（TDZ），所以另外寫一份；cwfmBuiltinProfileValues 也從這裡取，兩邊不會不一致。
     const CWFM_EARLY_BUILTIN = {
         text: { pageDirection: 'ltr', preferBookDirection: true, reverseTapZones: false },
         image: { pageDirection: 'rtl', preferBookDirection: true, reverseTapZones: true },
     };
-    // 開書前（設定還沒載入）讀某個設定值：這本書記住的 → 「新書開啟時套用」指定的設定檔（依類型）→ 內建設定檔
+    // 開書前（設定還沒載入）讀某個設定值：這本書指向的設定檔 → 「新書開啟時套用」指定的設定檔（依類型）→ 內建設定檔。
+    // v1.87.0：每本書只記「用哪個設定檔」（bookSettings[書].profile），舊的 v 與 builtinProfiles 不再讀（使用者定案）。
     function cwfmEarlySetting(key, type) {
         const e = cwfmEarlyBookEntry();
         const s = INITIAL_SETTINGS || {};
-        if (e?.v && e.v[key] !== undefined) return e.v[key];
-        const ref = s.newBookProfile?.[type];
-        if (typeof ref === 'string' && ref.startsWith('theme:')) {
-            const v = (s.savedThemes || []).find((x) => x.id === ref.slice(6))?.values?.[key];
+        const themes = s.savedThemes || [];
+        const usable = (ref) => ref === 'builtin:text' || ref === 'builtin:image'
+            || (typeof ref === 'string' && ref.startsWith('theme:') && themes.some((x) => x.id === ref.slice(6)));
+        const ref = [e?.profile, s.newBookProfile?.[type]].find(usable);
+        if (ref && ref.startsWith('theme:')) {
+            const v = themes.find((x) => x.id === ref.slice(6))?.values?.[key];
             if (v !== undefined) return v;
         }
         const bid = ref === 'builtin:text' || ref === 'builtin:image' ? ref.slice(8) : type;
-        const bv = s.builtinProfiles?.[bid]?.[key];
-        if (bv !== undefined) return bv;
         if (key === 'maxColumnCount') return bid === 'image' ? cwfmImageDefaultCols() : 1;
         return CWFM_EARLY_BUILTIN[bid][key];
     }
@@ -1427,10 +1422,11 @@
     }
     // v1.86.0：翻頁方向改成一般設定（pageDirection＋preferBookDirection）。v1.84～85 單獨記在書上的方向
     // （bookSettings[書].b.pageDirection）照舊有效：當成「這本書選了這個方向、不看書的標示」。
+    // v1.87.0：設定值屬於設定檔（同一個設定檔的書共用），所以舊方向不再寫進設定值，只在決定實際方向時優先；
+    // 使用者在面板上改了翻頁方向之後就清掉（cwfmDirOnSettings），改由設定檔決定。
     function cwfmLegacyBookDir() {
-        const e = cwfmEarlyBookEntry();
-        const d = e?.b?.pageDirection;
-        return (d === 'rtl' || d === 'ltr') && e?.v?.pageDirection === undefined ? d : null;
+        const d = cwfmBookState.pageDirection;
+        return d === 'rtl' || d === 'ltr' ? d : null;
     }
     // 實際生效的方向：開「優先套用書籍標示」且書有標示 → 書的；否則 → 設定的
     function cwfmDirFor(pageDirection, preferBook) {
@@ -1911,7 +1907,12 @@
     let cwfmDirJob = Promise.resolve();
     function cwfmDirOnSettings(settings) {
         if (!view.book) return;
-        const eff = cwfmDirFor(settings.pageDirection, settings.preferBookDirection);
+        // v1.87.0：舊版記在書上的方向，使用者在面板上改了翻頁方向就清掉
+        if (cwfmLegacyBookDir() && cwfmBookTrack.ready && JSON.stringify([settings.pageDirection, settings.preferBookDirection]) !== cwfmBookTrack.dirBase) {
+            cwfmBookState.pageDirection = null;
+            cwfmSaveBookState();
+        }
+        const eff = cwfmLegacyBookDir() || cwfmDirFor(settings.pageDirection, settings.preferBookDirection);
         if (eff === view.book.dir) return;
         view.book.dir = eff;
         cwfmDirJob = cwfmDirJob.then(async () => {
@@ -2919,6 +2920,19 @@
             '.cwfm-keychip-bicon { display: inline-flex; align-items: center; color: var(--cwfm-text-secondary); line-height: 0; flex-shrink: 0; cursor: pointer; }',
             '.cwfm-keychip-bicon svg { display: block; }',
             '.cwfm-keychip-selected .cwfm-keychip-bicon { color: var(--cwfm-text); }',
+            // v1.87.0：設定檔「這次有調整」——選中標籤名稱後加橘點、標籤列下方淡橘狀態列、標題列〔還原這次調整〕
+            // （橘色沿用錯誤紀錄卡的注意類顏色 #f5a623：表示有變動、可處理，不是錯誤）
+            '.cwfm-keychip-adjusted .cwfm-keychip-text::after { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f5a623; margin-left: 5px; vertical-align: middle; }',
+            '.cwfm-prof-status { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; padding: 5px 6px 5px 10px; border-radius: 8px;',
+            '  background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.35); font-size: 12px; line-height: 1.5; color: #ffc861; }',
+            '.cwfm-prof-status-text { flex: 1 1 auto; min-width: 0; }',
+            '.cwfm-prof-restore { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px;',
+            '  border: 1px solid rgba(245,166,35,0.55); background: transparent; color: #ffc861; font-size: 12px; line-height: 18px; cursor: pointer; white-space: nowrap; }',
+            '.cwfm-prof-restore:hover { background: rgba(245,166,35,0.16); }',
+            '.cwfm-prof-restore svg { flex: 0 0 auto; }',
+            '.cwfm-panel-header .cwfm-prof-restore-hdr { margin-left: auto; }',
+            'html[data-cwfm-scheme="light"] .cwfm-prof-status { color: #8a5300; border-color: rgba(245,166,35,0.45); }',
+            'html[data-cwfm-scheme="light"] .cwfm-prof-restore { color: #8a5300; border-color: rgba(245,166,35,0.60); }',
             // v1.85.0：分組內的小標題、設定檔分組裡「新書開啟時套用」小區塊
             '.cwfm-subhead { font-size: 12px; font-weight: 600; color: var(--cwfm-text-secondary); margin: 14px 0 2px; }',
             '.cwfm-subhead-first { margin-top: 0; }',
@@ -3500,7 +3514,9 @@
         return dimming;
     }
     function closeAllPanels() {
+        const settingsWasOpen = !!document.querySelector('.cwfm-settings-panel.cwfm-open');
         document.querySelectorAll('.cwfm-panel.cwfm-open').forEach(p => p.classList.remove('cwfm-open'));
+        if (settingsWasOpen) { try { window.__cwfm.onSettingsPanelClose?.(); } catch (e) { console.error(e); } }
         if (dimming) dimming.classList.remove('cwfm-show');
         try { window.__cwfm.onPanelsClosed?.(); } catch (e) { console.error(e); }
         try { cwfmScheduleAutoHide(); } catch (e) { /* 工具列還沒建好 */ }
@@ -3508,6 +3524,8 @@
     function openPanel(panel) {
         closeAllPanels();
         panel.classList.add('cwfm-open');
+        // v1.87.0：打開設定面板時記下「還原這次調整」的起點
+        if (panel.classList.contains('cwfm-settings-panel')) { try { window.__cwfm.onSettingsPanelOpen?.(); } catch (e) { console.error(e); } }
         ensureDimming().classList.add('cwfm-show');
         // v1.79：面板在工具列下方，開著時工具列要一直顯示
         try { cwfmShowBars(); } catch (e) { /* 工具列還沒建好 */ }
@@ -4252,7 +4270,6 @@
     // 圖示 display:block、按鈕固定方框置中，位置只看幾何，不受字型影響。
     const CWFM_CHIP_ICON_PATHS = {
         pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
-        save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/>',
         x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
         minus: '<path d="M5 12h14"/>',
         plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
@@ -4283,7 +4300,7 @@
             // v1.84.0：內建標籤的前置圖示（跟上傳字型的圓底徽章分開：這個只是灰色線條圖示）
             const lead = document.createElement('span');
             lead.className = 'cwfm-keychip-bicon';
-            lead.innerHTML = cwfmChipIcon(opts.leadIcon, 12);
+            lead.innerHTML = cwfmChipIcon(opts.leadIcon, 14); // v1.87.0：12px 看不清楚
             if (opts.onSelect) lead.addEventListener('click', opts.onSelect);
             chip.appendChild(lead);
         }
@@ -4304,36 +4321,6 @@
                 cwfmStartChipRename(textEl, text, opts.onRename, opts.onRenameDone || (() => {}));
             });
             chip.appendChild(renameBtn);
-        }
-
-        if (opts.onUpdate) {
-            // [cwfm] 「覆蓋更新」：用目前畫面上的設定值，直接覆蓋這個既有
-            // 標籤的內容，不用先刪除再新增一個同名的。跟改名圖示共用
-            // 同一套 hover 才淡入顯示的樣式（.cwfm-keychip-rename），
-            // 只是圖示、動作不同。
-            const updateBtn = document.createElement('button');
-            updateBtn.type = 'button';
-            updateBtn.className = 'cwfm-keychip-rename';
-            // [cwfm] 用 SVG 畫磁碟片(儲存)圖示，比原本的重新整理箭頭更
-            //直觀——這個動作的意義是「存檔覆蓋」，不是「重新整理」。
-            updateBtn.innerHTML = cwfmChipIcon('save');
-            if (opts.updateLabel) updateBtn.setAttribute('aria-label', opts.updateLabel);
-            updateBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                opts.onUpdate();
-            });
-            chip.appendChild(updateBtn);
-        }
-
-        if (opts.onRestore) {
-            // v1.84.0：內建設定檔被覆蓋過才出現「恢復預設值」
-            const restoreBtn = document.createElement('button');
-            restoreBtn.type = 'button';
-            restoreBtn.className = 'cwfm-keychip-rename';
-            restoreBtn.innerHTML = cwfmChipIcon('rotateCcw');
-            if (opts.restoreLabel) { restoreBtn.setAttribute('aria-label', opts.restoreLabel); restoreBtn.title = opts.restoreLabel; }
-            restoreBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRestore(); });
-            chip.appendChild(restoreBtn);
         }
 
         // v1.84.0：內建標籤不能刪，沒有 onRemove 就不放叉叉
@@ -4415,56 +4402,76 @@
         return values;
     }
     // ============================================================
-    // [cwfm] v1.84.0 內建設定檔「文字書」「圖片書」：不能刪、不能改名，可覆蓋更新＋恢復預設值，排最前面。
-    // 只管排版（字級、文字排版、版面配置、欄數），不動配色、快速鍵、閱讀行為——
-    // 圖片書第一次開書會自動套用，不能因此把使用者的配色或快速鍵改掉。
-    // 覆蓋過的值存在 settings.builtinProfiles[id]，null＝用預設值。
+    // [cwfm] v1.87.0 設定檔改成「目前使用中的那一組，調整自動存回」（類似瀏覽器的使用者設定檔）。
+    // - 內建「文字書」「圖片書」：不能刪、不能改名、唯讀，內容完整（全部 CWFM_THEME_FIELD_KEYS）——
+    //   排版用內建值，其他欄位用程式初始預設。選中內建時第一次調整 → 自動複製成自訂設定檔
+    //   「圖片書（已調整）」（同名依序「（已調整 2）」…）並切過去，之後的調整都存進這份。
+    //   v1.84～86 的 settings.builtinProfiles（覆蓋值）直接丟掉，回到程式預設（使用者定案）。
+    // - 自訂設定檔：選中時面板上任何調整直接存回（cwfmPrepareSettingsForSave 跟基準比對，有差就寫回）。
+    //   標籤上的磁碟（覆蓋更新）鈕、內建的恢復預設值都拿掉。
+    // - 每本書記住「用哪個設定檔」：settings.bookSettings[書號] = { profile, b, t }，
+    //   profile＝'builtin:text'｜'builtin:image'｜'theme:<id>'；同一個設定檔的書共用調整（使用者定案）。
+    //   v1.84～86 的「每本書一份設定值」bookSettings[書].v 直接丟掉（使用者定案：這些書回到「新書開啟時套用」）。
+    //   被指定的設定檔刪掉 → 退回新書預設。
+    // - 介面狀態（分組收合、取色器模式、目錄篩選）不納入設定檔，維持全域共用（使用者定案）；
+    //   素材庫（自訂配色、字型記憶、上傳字型）全部設定檔共用；語言、錯誤紀錄只留在這台裝置。
     // ============================================================
-    const CWFM_BUILTIN_PROFILE_KEYS = [
-        'fontSize', 'letterSpacing', 'lineSpacing', 'justify', 'hyphenate', 'disableLigatures',
-        'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
-        'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
-        // v1.86.0：翻頁方向、反轉點擊區（圖片書預設右翻＋反轉）
-        'pageDirection', 'preferBookDirection', 'reverseTapZones',
-    ];
     // 圖片書（v1.85.0 使用者定案）：以文字書預設為底，水平垂直都改留白優先、左右留白 0、欄間距 0（兩頁貼齊書脊），
-    // 上下留白＝工具列高度（CWFM_TOOLBARS_PX 的一半，工具列預設常駐，留白 0 會蓋掉圖片上下各 48px），
     // 欄數依畫面長寬比（cwfmImageDefaultCols）。翻頁點擊區照常顯示，就算蓋到圖片邊緣——第一次看到的人才知道有這個功能，
     // 不想看到再自己關。
-    // v1.86.0（使用者定案）：上下留白也 0——圖片本身上下通常有留白，被常駐工具列蓋到沒關係；右翻＋反轉點擊區
+    // v1.86.0（使用者定案）：上下留白也 0——圖片本身上下通常有留白，被常駐工具列蓋到沒關係；右翻＋反轉點擊區。
+    // v1.87.0（使用者定案）：翻頁動畫黑色（不用 AUTO：AUTO 依閱讀配色，圖片書的頁面通常是白紙，看不清楚）。
     const CWFM_IMAGE_PROFILE_OVERRIDES = {
         flow: 'paginated', horizontalSizeMode: 'margin', verticalSizeMode: 'margin',
         leftRightPadding: 0, topBottomPadding: 0, columnGapPx: 0,
+        pageFlipAnimColor: '#000000',
         ...CWFM_EARLY_BUILTIN.image,
     };
-    function cwfmBuiltinProfileDefaults(id) {
+    const CWFM_BUILTIN_REFS = ['builtin:text', 'builtin:image'];
+    // 內建設定檔的完整內容（每次重算：首次預設與圖片書欄數依螢幕大小，跟第一次使用時的算法一致）
+    function cwfmBuiltinProfileValues(id) {
         const base = { ...DEFAULT_SETTINGS, ...cwfmFirstRunDefaults() };
+        cwfmMigrateColorSettings(base, null); // 初始配色＝跟隨系統（跟第一次使用一樣）
         Object.assign(base, CWFM_EARLY_BUILTIN.text);
         if (id === 'image') Object.assign(base, CWFM_IMAGE_PROFILE_OVERRIDES, { maxColumnCount: cwfmImageDefaultCols() });
-        const out = {};
-        CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { out[k] = base[k]; });
-        return out;
+        return cwfmThemeSnapshot(base);
     }
-    function cwfmBuiltinProfileValues(settings, id) {
-        const saved = settings.builtinProfiles && settings.builtinProfiles[id];
-        return { ...cwfmBuiltinProfileDefaults(id), ...(saved || {}) };
+    function cwfmFindThemeByRef(settings, ref) {
+        if (typeof ref !== 'string' || !ref.startsWith('theme:')) return null;
+        return (settings.savedThemes || []).find((x) => x.id === ref.slice(6)) || null;
     }
-    function cwfmApplyBuiltinValues(settings, values) {
-        CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { if (values[k] !== undefined) settings[k] = values[k]; });
+    function cwfmRefValid(settings, ref) {
+        return CWFM_BUILTIN_REFS.includes(ref) || !!cwfmFindThemeByRef(settings, ref);
+    }
+    function cwfmRefName(settings, ref) {
+        if (ref === 'builtin:text') return t('profile_text');
+        if (ref === 'builtin:image') return t('profile_image');
+        return cwfmFindThemeByRef(settings, ref)?.name || '';
+    }
+    function cwfmRefValues(settings, ref) {
+        if (CWFM_BUILTIN_REFS.includes(ref)) return cwfmBuiltinProfileValues(ref.slice(8));
+        return cwfmFindThemeByRef(settings, ref)?.values || cwfmBuiltinProfileValues('text');
+    }
+    // 「新書開啟時套用」：沒指定或指定的設定檔已刪除 → 內建同類型
+    function cwfmNewBookRef(settings, type) {
+        const ref = settings.newBookProfile && settings.newBookProfile[type];
+        return cwfmRefValid(settings, ref) ? ref : 'builtin:' + type;
     }
 
-    // ============================================================
-    // [cwfm] 設定跟著書（v1.84.0）＋新書開啟時套用（v1.85.0）。
-    // - 調整過的書：settings.bookSettings[書號] = { v: 設定檔欄位, b: 書本身的屬性, t }，之後開這本書都用它。
-    //   「調整過」＝這次開書後設定有變才算（只是收合分組之類的存檔不算）。
-    // - 新書（沒有紀錄）：依類型套用「新書開啟時套用」指定的設定檔 settings.newBookProfile.{text,image}，
-    //   值是 'builtin:text'／'builtin:image'／'theme:<自訂設定檔 id>'；沒指定或指定的設定檔已刪除 → 內建同類型。
-    //   內建只管排版欄位；自訂設定檔套用它存的全部設定（含配色、快速鍵；使用者定案）。
-    // - 升級相容（使用者定案）：舊版開過的書沒有紀錄，一律當新書，不另外建立「升級前的設定」。
-    //   v1.84.0 的 lastImageValues 不再使用（留在資料裡無害）。
-    // ============================================================
     const CWFM_BOOK_SETTINGS_MAX = 200; // 最多記幾本書（最久沒動的先丟）
-    const cwfmBookTrack = { ready: false, baseline: '', hasEntry: false, image: false };
+    // ref＝目前使用中的設定檔；baseline＝它上次存回時的值（JSON），用來判斷「有沒有調整」
+    const cwfmBookTrack = { ready: false, baseline: '', hasEntry: false, image: false, ref: 'builtin:text', dirBase: '' };
+    // 「還原這次調整」的起點：打開設定面板時記下，面板開著時切換設定檔 → 改成切換當下；關面板就清掉。
+    // created＝這次從內建自動建立的副本 { id, from }（還原＝切回內建並刪掉副本）
+    let cwfmProfStart = null;
+    function cwfmBookType() { return cwfmBookTrack.image ? 'image' : 'text'; }
+    function cwfmProfMarkStart(settings) {
+        cwfmProfStart = { ref: cwfmBookTrack.ref, values: cwfmThemeSnapshot(settings), json: JSON.stringify(cwfmThemeSnapshot(settings)), created: null };
+    }
+    function cwfmProfAdjusted(settings) {
+        if (!cwfmProfStart) return false;
+        return cwfmBookTrack.ref !== cwfmProfStart.ref || JSON.stringify(cwfmThemeSnapshot(settings)) !== cwfmProfStart.json;
+    }
     function cwfmApplyValues(settings, values) {
         CWFM_THEME_FIELD_KEYS.forEach((key) => {
             const v = values[key];
@@ -4472,68 +4479,81 @@
             settings[key] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
         });
     }
-    // 'builtin:text' 等參照 → { kind: 'builtin', id } 或 { kind: 'theme', theme }；找不到自訂的就退回內建同類型
-    function cwfmResolveNewBookProfile(settings, type) {
-        const ref = settings.newBookProfile && settings.newBookProfile[type];
-        if (typeof ref === 'string' && ref.startsWith('theme:')) {
-            const theme = (settings.savedThemes || []).find((x) => x.id === ref.slice(6));
-            if (theme) return { kind: 'theme', theme };
-        }
-        if (ref === 'builtin:text' || ref === 'builtin:image') return { kind: 'builtin', id: ref.slice(8) };
-        return { kind: 'builtin', id: type };
-    }
-    // loadSettings 讀完全域設定後呼叫：套用這本書記住的值，或新書的預設，並記下比對基準
+    // loadSettings 讀完全域設定後呼叫：套用這本書指向的設定檔（或新書預設），並記下比對基準
     function cwfmApplyBookSettings(settings) {
         try {
             const id = String(BOOK_ID);
             cwfmBookTrack.image = !!window.__cwfm.imageBook;
+            const type = cwfmBookType();
+            delete settings.builtinProfiles; // v1.84～86 的內建覆蓋值不再使用（使用者定案）
             const entry = settings.bookSettings && settings.bookSettings[id];
-            let how = 'entry';
-            if (entry && entry.v) {
-                cwfmApplyValues(settings, entry.v);
-                cwfmBookTrack.hasEntry = true;
-                // v1.86.0 以前記住的書沒有翻頁方向／反轉：照開書時決定的（舊版單獨記的方向，或該類型新書的預設）
-                const type = cwfmBookTrack.image ? 'image' : 'text';
-                const legacy = cwfmLegacyBookDir();
-                if (entry.v.pageDirection === undefined) settings.pageDirection = legacy || cwfmEarlySetting('pageDirection', type);
-                if (entry.v.preferBookDirection === undefined) settings.preferBookDirection = legacy ? false : cwfmEarlySetting('preferBookDirection', type);
-                if (entry.v.reverseTapZones === undefined) settings.reverseTapZones = cwfmEarlySetting('reverseTapZones', type);
-            } else {
-                const pr = cwfmResolveNewBookProfile(settings, cwfmBookTrack.image ? 'image' : 'text');
-                if (pr.kind === 'theme') {
-                    cwfmApplyValues(settings, pr.theme.values);
-                    how = 'theme:' + pr.theme.name;
-                    // v1.86.0 以前存的設定檔沒有這幾個值：跟開書時一樣退回內建（不然開書後方向又被換掉、重排一次）
-                    ['pageDirection', 'preferBookDirection', 'reverseTapZones'].forEach((k) => {
-                        if (pr.theme.values[k] === undefined) settings[k] = cwfmEarlySetting(k, cwfmBookTrack.image ? 'image' : 'text');
-                    });
-                }
-                else { cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, pr.id)); how = 'builtin:' + pr.id; }
-            }
+            if (entry && entry.v) delete entry.v; // v1.84～86 每本書一份設定值，直接丟掉（使用者定案）
+            const has = !!(entry && cwfmRefValid(settings, entry.profile));
+            const ref = has ? entry.profile : cwfmNewBookRef(settings, type);
+            const values = cwfmRefValues(settings, ref);
+            cwfmApplyValues(settings, values);
+            if (settings.activeColorTheme === 'auto') cwfmFillColorTheme(settings, 'auto');
+            // v1.86.0 以前存的設定檔沒有這幾個值：跟開書時一樣退回內建（不然開書後方向又被換掉、重排一次）
+            ['pageDirection', 'preferBookDirection', 'reverseTapZones'].forEach((k) => {
+                if (values[k] === undefined) settings[k] = cwfmEarlySetting(k, type);
+            });
+            cwfmBookTrack.ref = ref;
+            cwfmBookTrack.hasEntry = has;
             cwfmBookTrack.baseline = JSON.stringify(cwfmThemeSnapshot(settings));
+            cwfmBookTrack.dirBase = JSON.stringify([settings.pageDirection, settings.preferBookDirection]);
             cwfmBookTrack.ready = true;
-            cwfmDiag('BOOK-SETTINGS', 'from=' + how + ' image=' + cwfmBookTrack.image + ' cols=' + settings.maxColumnCount);
+            cwfmDiag('BOOK-SETTINGS', 'profile=' + ref + ' entry=' + has + ' image=' + cwfmBookTrack.image + ' cols=' + settings.maxColumnCount);
         } catch (e) {
             console.error('[cwfm:book-settings] 套用這本書的設定失敗', e);
         }
     }
-    // saveSettings 呼叫：回傳實際要存的物件（同時把有調整過的書記住）
+    // 內建「圖片書（已調整）」副本的名稱：同名依序「（已調整 2）」…
+    function cwfmAdjustedName(settings, baseName) {
+        const names = new Set((settings.savedThemes || []).map((x) => x.name));
+        let name = baseName + t('profile_adj');
+        for (let n = 2; names.has(name); n++) name = baseName + t('profile_adj_n_pre') + n + t('profile_adj_n_post');
+        return name;
+    }
+    function cwfmNewThemeId() { return 'cwfm-theme-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
+    function cwfmFontWasUpload(settings, values) {
+        return !!values.fontFamily && (settings.uploadedFonts || []).some((f) => f.name === values.fontFamily);
+    }
+    // saveSettings 呼叫：有調整就存回目前的設定檔（內建 → 自動建立副本），並記住這本書用哪個設定檔
     function cwfmPrepareSettingsForSave(settings, forceBookEntry) {
         if (!cwfmBookTrack.ready) return settings;
+        delete settings.builtinProfiles;
         const snap = cwfmThemeSnapshot(settings);
         const js = JSON.stringify(snap);
         const changed = js !== cwfmBookTrack.baseline;
-        if (changed || cwfmBookTrack.hasEntry || forceBookEntry) {
-            if (!settings.bookSettings || typeof settings.bookSettings !== 'object') settings.bookSettings = {};
-            settings.bookSettings[String(BOOK_ID)] = { v: snap, b: { ...cwfmBookState, insertsBefore: cwfmBookState.insertsBefore.slice(), textInserts: cwfmBookState.textInserts.slice() }, t: Date.now() };
-            cwfmBookTrack.hasEntry = true;
+        if (changed) {
+            const theme = cwfmFindThemeByRef(settings, cwfmBookTrack.ref);
+            if (theme) {
+                theme.values = snap;
+                theme.fontWasUpload = cwfmFontWasUpload(settings, snap);
+            } else {
+                // 內建唯讀（或指向的設定檔剛被刪掉）：複製成「〈名稱〉（已調整）」並切過去
+                const from = CWFM_BUILTIN_REFS.includes(cwfmBookTrack.ref) ? cwfmBookTrack.ref : 'builtin:' + cwfmBookType();
+                const id = cwfmNewThemeId();
+                if (!Array.isArray(settings.savedThemes)) settings.savedThemes = [];
+                settings.savedThemes.push({ id, name: cwfmAdjustedName(settings, cwfmRefName(settings, from)), values: snap, fontWasUpload: cwfmFontWasUpload(settings, snap) });
+                if (cwfmProfStart && cwfmProfStart.ref === from && !cwfmProfStart.created) cwfmProfStart.created = { id, from };
+                cwfmBookTrack.ref = 'theme:' + id;
+                cwfmDiag('PROFILE', 'auto-copy ' + from + ' → theme:' + id);
+            }
             cwfmBookTrack.baseline = js;
+        }
+        if (changed || cwfmBookTrack.hasEntry || forceBookEntry || cwfmBookTrack.ref !== cwfmNewBookRef(settings, cwfmBookType())) {
+            if (!settings.bookSettings || typeof settings.bookSettings !== 'object') settings.bookSettings = {};
+            settings.bookSettings[String(BOOK_ID)] = { profile: cwfmBookTrack.ref, b: { ...cwfmBookState, insertsBefore: cwfmBookState.insertsBefore.slice(), textInserts: cwfmBookState.textInserts.slice() }, t: Date.now() };
+            cwfmBookTrack.hasEntry = true;
             const ids = Object.keys(settings.bookSettings);
             if (ids.length > CWFM_BOOK_SETTINGS_MAX) {
                 ids.sort((a, b) => (settings.bookSettings[a].t || 0) - (settings.bookSettings[b].t || 0))
                     .slice(0, ids.length - CWFM_BOOK_SETTINGS_MAX).forEach((k) => { delete settings.bookSettings[k]; });
             }
         }
+        // 面板上的選中標籤、橘點、還原按鈕跟著更新（存檔可能在面板的事件處理中，晚一拍再重繪）
+        setTimeout(() => { try { window.__cwfm.refreshProfileUI?.(); } catch (e) { console.error('[cwfm:profile] refresh UI failed', e); } }, 0);
         return settings;
     }
     // 翻頁方向、插頁改了：這本書一定要有自己的紀錄
@@ -4551,38 +4571,33 @@
         // 才分得出「是上傳字型、可以查存不存在」還是「是手動輸入的名稱、
         // 沒辦法查」，不用另外用字串內容去猜（猜不出來，兩種名稱長得
         // 一樣，只是來源不同）。
-        const fontWasUpload = !!values.fontFamily && settings.uploadedFonts.some((f) => f.name === values.fontFamily);
-        const id = 'cwfm-theme-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-        settings.savedThemes.push({ id, name, values, fontWasUpload });
+        const id = cwfmNewThemeId();
+        settings.savedThemes.push({ id, name, values, fontWasUpload: cwfmFontWasUpload(settings, values) });
+        // v1.87.0：新增的設定檔就是目前使用中的（內容＝目前設定，所以不算調整）
+        cwfmBookTrack.ref = 'theme:' + id;
+        cwfmBookTrack.baseline = JSON.stringify(values);
+        if (cwfmProfStart) cwfmProfMarkStart(settings);
         saveSettings(settings);
         return id;
-    }
-    // [cwfm] 覆蓋更新既有主題：用目前畫面上的設定值，直接覆蓋這個主題
-    // 原本存的 values，名稱、id 都不變——不用像之前那樣，只能先刪除
-    // 再新增一個同名的。
-    function cwfmUpdateTheme(settings, theme) {
-        const values = cwfmThemeSnapshot(settings);
-        const fontWasUpload = !!values.fontFamily && settings.uploadedFonts.some((f) => f.name === values.fontFamily);
-        theme.values = values;
-        theme.fontWasUpload = fontWasUpload;
-        saveSettings(settings);
     }
     function cwfmDeleteTheme(settings, id) {
         const idx = settings.savedThemes.findIndex((t) => t.id === id);
         if (idx >= 0) settings.savedThemes.splice(idx, 1);
+        // 刪的是目前使用中的 → 退回新書預設
+        if (cwfmBookTrack.ref === 'theme:' + id) { cwfmActivateProfile(settings, cwfmNewBookRef(settings, cwfmBookType())); return; }
         saveSettings(settings);
     }
-    // [cwfm] 套用主題：上傳字型能百分之百確定存不存在（我們自己掌控的
+    // [cwfm] 套用設定檔的值：上傳字型能百分之百確定存不存在（我們自己掌控的
     // 素材庫，直接查 uploadedFonts 有沒有這個名稱）；手動輸入、指望本機
     // 系統已安裝的字型名稱，瀏覽器基於隱私考量沒有提供查詢字型是否已
     // 安裝的正式方式，沒辦法事先確認，只能照原本名稱設定上去，套不套
-    // 得到要使用者自己看畫面判斷。
-    function cwfmApplyTheme(settings, theme) {
-        const fontName = theme.values.fontFamily;
+    // 得到要使用者自己看畫面判斷。只改 settings，不存檔、不重排。
+    function cwfmApplyValuesFull(settings, values, fontWasUpload) {
+        const fontName = values.fontFamily;
         CWFM_THEME_FIELD_KEYS.forEach((key) => {
             // [cwfm] 舊設定檔可能沒有新加的 key（v1.82 前只存 19 欄），
             // undefined 不覆蓋，保留使用者目前的設定值。
-            const v = theme.values[key];
+            const v = values[key];
             if (v === undefined) return;
             // 快速鍵陣列要就地換內容：設定面板的按鍵欄位綁的是這幾個陣列本身，
             // 換成新陣列的話，之後在面板增刪的按鍵會寫到已經沒人用的舊陣列。
@@ -4599,22 +4614,51 @@
             settings[key] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
         });
         // v1.77 前存的主題沒有 activeColorTheme：比照舊設定轉換（固定配色→填入並標示）
-        if (theme.values.activeColorTheme === undefined) {
-            const oldName = theme.values.themeName;
+        if (values.activeColorTheme === undefined) {
+            const oldName = values.themeName;
             settings.activeColorTheme = null;
             if (oldName && oldName !== 'custom' && cwfmPresetColors(oldName)) cwfmFillColorTheme(settings, oldName);
             settings.themeName = 'custom';
         } else if (settings.activeColorTheme === 'auto') {
             cwfmFillColorTheme(settings, 'auto');
         }
+        // v1.86.0 以前存的設定檔沒有翻頁方向／反轉：退回內建同類型
+        ['pageDirection', 'preferBookDirection', 'reverseTapZones'].forEach((k) => {
+            if (values[k] === undefined) settings[k] = CWFM_EARLY_BUILTIN[cwfmBookType()][k];
+        });
         if (typeof window.__cwfmRefreshColorUI === 'function') window.__cwfmRefreshColorUI();
-        if (theme.fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
+        if (fontWasUpload && fontName && !settings.uploadedFonts.some((f) => f.name === fontName)) {
             settings.fontFamily = '';
             cwfmAlertDialog(t('alert_uploaded_font_deleted'), t('txt_theme_font_deleted_pre') + fontName + t('txt_theme_font_deleted_post'));
         }
+    }
+    // 切換到某個設定檔（點標籤、刪掉使用中的、還原）：套用它的值、記成目前使用中、這本書記住它
+    function cwfmActivateProfile(settings, ref) {
+        const theme = cwfmFindThemeByRef(settings, ref);
+        cwfmApplyValuesFull(settings, cwfmRefValues(settings, ref), theme ? theme.fontWasUpload : false);
+        cwfmBookTrack.ref = ref;
+        cwfmBookTrack.baseline = JSON.stringify(cwfmThemeSnapshot(settings));
+        if (cwfmProfStart) cwfmProfMarkStart(settings); // 面板開著時切換 → 起點改成切換當下
+        cwfmDiag('PROFILE', 'activate ' + ref);
         saveSettings(settings);
         applySettings(settings);
         // v1.82：設定檔涵蓋整個面板，套用後讓面板上每個控制項重新讀一次目前的值
+        try { window.__cwfm?.refreshSettingsPanel?.(); } catch (e) { console.error('[cwfm:profile] refresh panel failed', e); }
+    }
+    // 還原這次調整：回到打開面板（或切換設定檔）時的值並存回；本次從內建自動建立的副本 → 切回內建並刪掉副本
+    function cwfmRestoreProfileSession(settings) {
+        const st = cwfmProfStart;
+        if (!st) return;
+        if (st.created && cwfmBookTrack.ref === 'theme:' + st.created.id) {
+            const idx = settings.savedThemes.findIndex((x) => x.id === st.created.id);
+            if (idx >= 0) settings.savedThemes.splice(idx, 1);
+            cwfmActivateProfile(settings, st.created.from);
+            return;
+        }
+        const theme = cwfmFindThemeByRef(settings, cwfmBookTrack.ref);
+        cwfmApplyValuesFull(settings, st.values, theme ? theme.fontWasUpload : false);
+        saveSettings(settings); // 跟基準不同 → 自動存回目前的設定檔
+        applySettings(settings);
         try { window.__cwfm?.refreshSettingsPanel?.(); } catch (e) { console.error('[cwfm:profile] refresh panel failed', e); }
     }
     // [cwfm] 上傳字型解析的統一入口。.woff2 內部用 Brotli 壓縮、資料排列
@@ -5985,6 +6029,16 @@
         title.textContent = t('title_reading_settings');
         header.appendChild(title);
 
+        // v1.87.0：〔還原這次調整〕放在關閉鈕左邊（面板捲到哪都按得到）；有調整才顯示（見設定檔區塊的 renderStatus）
+        const hdrRestoreBtn = document.createElement('button');
+        hdrRestoreBtn.type = 'button';
+        hdrRestoreBtn.className = 'cwfm-prof-restore cwfm-prof-restore-hdr';
+        hdrRestoreBtn.innerHTML = cwfmChipIcon('rotateCcw', 14);
+        hdrRestoreBtn.appendChild(document.createTextNode(t('btn_restore_session')));
+        hdrRestoreBtn.style.display = 'none';
+        hdrRestoreBtn.addEventListener('click', () => cwfmRestoreProfileSession(settings));
+        header.appendChild(hdrRestoreBtn);
+
         const closeBtn = createCloseBtn(closeAllPanels);
         header.appendChild(closeBtn);
 
@@ -6071,73 +6125,38 @@
             wrap.className = 'cwfm-keylist';
             field.appendChild(wrap);
 
+            // v1.87.0：選中的＝目前使用中的設定檔（藍框，跟配色選中同一套）；這次有調整 → 名稱後加橘點、
+            // 標籤列下方一行淡橘狀態列〔還原〕＋標題列〔還原這次調整〕（使用者定案：兩處都放）。
+            // 磁碟（覆蓋更新）鈕、內建的恢復預設值都拿掉：調整直接自動存回。
+            let renderedRef = null;
             function render() {
                 wrap.innerHTML = '';
-                // v1.84.0：內建「文字書」「圖片書」排最前面，跟自訂的用細分隔線隔開
+                renderedRef = cwfmBookTrack.ref;
+                const adjusted = cwfmProfAdjusted(settings);
+                const sel = (ref) => (cwfmBookTrack.ref === ref ? ' cwfm-keychip-selected' + (adjusted ? ' cwfm-keychip-adjusted' : '') : '');
+                // v1.84.0：內建「文字書」「圖片書」排最前面（唯讀：不能刪、不能改名）
                 [['text', t('profile_text'), 'bookOpen'], ['image', t('profile_image'), 'image']].forEach(([id, name, icon]) => {
-                    const overridden = !!(settings.builtinProfiles && settings.builtinProfiles[id]);
+                    const ref = 'builtin:' + id;
                     const chip = cwfmBuildChip(name, {
-                        extraClass: 'cwfm-keychip-builtin',
+                        extraClass: 'cwfm-keychip-builtin' + sel(ref),
                         leadIcon: icon,
-                        onSelect: () => {
-                            cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, id));
-                            saveSettings(settings);
-                            applySettings(settings);
-                            try { window.__cwfm?.refreshSettingsPanel?.(); } catch (e) { console.error('[cwfm:profile] refresh panel failed', e); }
-                        },
-                        onUpdate: async () => {
-                            const confirmed = await cwfmConfirmDialog(
-                                t('dlg_overwrite_theme_title'),
-                                t('dlg_overwrite_theme_pre') + name + t('dlg_overwrite_theme_post'),
-                                t('dlg_overwrite_confirm')
-                            );
-                            if (!confirmed) return;
-                            if (!settings.builtinProfiles || typeof settings.builtinProfiles !== 'object') settings.builtinProfiles = {};
-                            const values = {};
-                            CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { values[k] = settings[k]; });
-                            settings.builtinProfiles[id] = values;
-                            saveSettings(settings);
-                            render();
-                            await cwfmAlertDialog(t('alert_updated'), '\u300c' + name + t('txt_theme_updated_post'));
-                        },
-                        updateLabel: t('aria_overwrite_theme'),
-                        onRestore: !overridden ? null : async () => {
-                            const confirmed = await cwfmConfirmDialog(
-                                t('dlg_restore_profile_title'),
-                                t('dlg_restore_profile_pre') + name + t('dlg_restore_profile_post'),
-                                t('aria_restore_profile')
-                            );
-                            if (!confirmed) return;
-                            settings.builtinProfiles[id] = null;
-                            saveSettings(settings);
-                            render();
-                            await cwfmAlertDialog(t('alert_updated'), '\u300c' + name + t('txt_profile_restored_post'));
-                        },
-                        restoreLabel: t('aria_restore_profile'),
+                        onSelect: () => cwfmActivateProfile(settings, ref),
                     });
+                    chip.dataset.cwfmProfile = ref;
                     wrap.appendChild(chip);
                 });
                 // v1.85.0：內建與自訂混在同一排管理（不再用分隔線隔開），內建靠前置圖示區分
                 settings.savedThemes.forEach((theme, index) => {
+                    const ref = 'theme:' + theme.id;
                     const chip = cwfmBuildChip(theme.name, {
-                        onSelect: () => cwfmApplyTheme(settings, theme),
+                        extraClass: sel(ref).trim(),
+                        onSelect: () => cwfmActivateProfile(settings, ref),
                         onRename: (newName) => { theme.name = newName; saveSettings(settings); },
                         onRenameDone: () => { render(); renderNewBook(); },
                         dragReorder: {
                             array: settings.savedThemes, index,
                             onReorder: () => { saveSettings(settings); render(); },
                         },
-                        onUpdate: async () => {
-                            const confirmed = await cwfmConfirmDialog(
-                                t('dlg_overwrite_theme_title'),
-                                t('dlg_overwrite_theme_pre') + theme.name + t('dlg_overwrite_theme_post'),
-                                t('dlg_overwrite_confirm')
-                            );
-                            if (!confirmed) return;
-                            cwfmUpdateTheme(settings, theme);
-                            await cwfmAlertDialog(t('alert_updated'), '\u300c' + theme.name + t('txt_theme_updated_post'));
-                        },
-                        updateLabel: t('aria_overwrite_theme'),
                         onRemove: async () => {
                             const confirmed = await cwfmConfirmDialog(
                                 t('dlg_delete_theme_title'),
@@ -6150,6 +6169,7 @@
                         },
                         removeLabel: t('aria_delete_theme'),
                     });
+                    chip.dataset.cwfmProfile = ref;
                     wrap.appendChild(chip);
                 });
                 const addBtn = document.createElement('button');
@@ -6164,7 +6184,44 @@
                     renderNewBook();
                 });
                 wrap.appendChild(addBtn);
+                renderStatus();
             }
+            // 標籤列下方的狀態列＋標題列的還原鈕：沒有調整時兩個都不顯示
+            const status = document.createElement('div');
+            status.className = 'cwfm-prof-status';
+            const statusText = document.createElement('span');
+            statusText.className = 'cwfm-prof-status-text';
+            const statusBtn = document.createElement('button');
+            statusBtn.type = 'button';
+            statusBtn.className = 'cwfm-prof-restore';
+            statusBtn.innerHTML = cwfmChipIcon('rotateCcw', 14);
+            statusBtn.appendChild(document.createTextNode(t('btn_restore')));
+            statusBtn.addEventListener('click', () => cwfmRestoreProfileSession(settings));
+            status.append(statusText, statusBtn);
+            field.appendChild(status);
+            function renderStatus() {
+                const adjusted = cwfmProfAdjusted(settings);
+                status.style.display = adjusted ? '' : 'none';
+                hdrRestoreBtn.style.display = adjusted ? '' : 'none';
+                if (!adjusted) return;
+                const st = cwfmProfStart;
+                if (st.created && cwfmBookTrack.ref === 'theme:' + st.created.id) {
+                    statusText.textContent = t('txt_prof_created_pre') + cwfmRefName(settings, st.created.from)
+                        + t('txt_prof_created_mid') + cwfmRefName(settings, cwfmBookTrack.ref) + t('txt_prof_created_post');
+                } else {
+                    statusText.textContent = cwfmRefName(settings, cwfmBookTrack.ref) + t('txt_prof_adjusted');
+                }
+            }
+            // 每次存檔後呼叫：目前使用中的換了（自動建立副本、刪除）→ 標籤整排重繪；否則只換選中標籤的橘點
+            window.__cwfm.refreshProfileUI = () => {
+                if (renderedRef !== cwfmBookTrack.ref) { render(); renderNewBook(); return; }
+                const adjusted = cwfmProfAdjusted(settings);
+                wrap.querySelectorAll('.cwfm-keychip-selected').forEach((c) => c.classList.toggle('cwfm-keychip-adjusted', adjusted));
+                renderStatus();
+            };
+            // 打開設定面板：記下還原起點；關面板：清掉（下次打開重記）
+            window.__cwfm.onSettingsPanelOpen = () => { cwfmProfMarkStart(settings); window.__cwfm.refreshProfileUI(); };
+            window.__cwfm.onSettingsPanelClose = () => { cwfmProfStart = null; window.__cwfm.refreshProfileUI(); };
 
             // v1.85.0：「新書開啟時套用」——常駐顯示，不管目前開的是哪種書都能改
             const nb = document.createElement('div');
@@ -6195,8 +6252,7 @@
                             o.textContent = txt;
                             select.appendChild(o);
                         });
-                    const pr = cwfmResolveNewBookProfile(settings, type);
-                    select.value = pr.kind === 'theme' ? 'theme:' + pr.theme.id : 'builtin:' + pr.id;
+                    select.value = cwfmNewBookRef(settings, type);
                     select.addEventListener('change', () => {
                         if (!settings.newBookProfile || typeof settings.newBookProfile !== 'object') settings.newBookProfile = {};
                         settings.newBookProfile[type] = select.value;
@@ -6913,7 +6969,7 @@
                         + (settings.activeColorTheme === value ? ' cwfm-keychip-selected' : '');
                     const lead = document.createElement('span');
                     lead.className = 'cwfm-keychip-bicon';
-                    lead.innerHTML = cwfmChipIcon(builtinIcons[value] || 'sun', 12);
+                    lead.innerHTML = cwfmChipIcon(builtinIcons[value] || 'sun', 14); // v1.87.0：12px 看不清楚
                     const txt = document.createElement('span');
                     txt.textContent = labelText;
                     chip.append(lead, txt);
