@@ -15,7 +15,7 @@
             group_keybindings: '快速鍵',
             group_page_turn: '翻頁設定',
             group_ui_hide: '介面隱藏',
-            group_reading_behavior: '\u95b1\u8b80\u884c\u70ba',
+            group_reading_behavior: '閱讀紀錄',
             field_prefer_original_text_color: '\u512a\u5148\u5957\u7528\u66f8\u7c4d\u539f\u59cb\u6587\u5b57\u6a23\u5f0f\uff08\u4e0d\u5f37\u5236\u8986\u84cb\u6587\u5b57\u984f\u8272\uff09',
             field_font_size: '\u5B57\u7D1A',
             field_letter_spacing: '\u5B57\u8DDD',
@@ -47,6 +47,15 @@
             field_key_next: '往右翻頁快速鍵',
             // v1.84.0：翻頁方向、反轉點擊區、插頁、內建設定檔、圖片書
             group_page_insert: '是否插頁',
+            tp_by_pre: '',
+            tp_by_post: '　著',
+            subhead_page_mode: '翻頁方式',
+            subhead_tap_zone: '左右點擊區',
+            group_new_book: '新書開啟時套用',
+            hint_new_book: '第一次打開、還沒調整過的書，依類型套用這裡選的設定檔。',
+            field_new_book_text: '文字書籍',
+            field_new_book_image: '圖片書籍',
+            opt_builtin_suffix: '（內建）',
             field_page_direction: '翻頁方向',
             dir_ltr: '左翻（橫排書）',
             dir_rtl: '右翻（直排書、日本漫畫）',
@@ -60,9 +69,6 @@
             btn_insert_blank: '插入',
             btn_remove_blank: '移除',
             field_remove_here: '移除這頁前的空白頁',
-            hint_insert_only_image: '只適用於圖片書（漫畫）。',
-            imgbook_start: '開始閱讀 →',
-            imgbook_start_rtl: '← 開始閱讀',
             profile_text: '文字書',
             profile_image: '圖片書',
             aria_restore_profile: '恢復預設值',
@@ -364,7 +370,7 @@
             group_keybindings: 'Shortcuts',
             group_page_turn: 'Page Turning',
             group_ui_hide: 'Auto-Hide',
-            group_reading_behavior: 'Reading Behavior',
+            group_reading_behavior: 'Reading Records',
             field_prefer_original_text_color: 'Prefer the books original text style (do not force-override text color)',
             field_font_size: 'Font Size',
             field_letter_spacing: 'Letter Spacing',
@@ -395,6 +401,15 @@
             field_key_prev: 'Page Left Shortcut',
             field_key_next: 'Page Right Shortcut',
             group_page_insert: 'Page Insertion',
+            tp_by_pre: 'by ',
+            tp_by_post: '',
+            subhead_page_mode: 'Page Turning Mode',
+            subhead_tap_zone: 'Tap Zones',
+            group_new_book: 'Apply to New Books',
+            hint_new_book: 'Books opened for the first time (not yet adjusted) use the profile chosen here for their type.',
+            field_new_book_text: 'Text books',
+            field_new_book_image: 'Image books',
+            opt_builtin_suffix: ' (built-in)',
             field_page_direction: 'Page Direction',
             dir_ltr: 'Left-to-right',
             dir_rtl: 'Right-to-left',
@@ -408,9 +423,6 @@
             btn_insert_blank: 'Insert',
             btn_remove_blank: 'Remove',
             field_remove_here: 'Remove the blank page before this page',
-            hint_insert_only_image: 'Image books (comics) only.',
-            imgbook_start: 'Start reading →',
-            imgbook_start_rtl: '← Start reading',
             profile_text: 'Text',
             profile_image: 'Images',
             aria_restore_profile: 'Restore defaults',
@@ -877,7 +889,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.84.0', '2026-10-29'];
+    const CWFM_RELEASE = ['1.85.0', '2026-10-29'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1369,14 +1381,33 @@
             pageDirection: b.pageDirection === 'rtl' || b.pageDirection === 'ltr' ? b.pageDirection : null, // null＝照書的標示
             frontInsert: !!b.frontInsert,
             insertsBefore: Array.isArray(b.insertsBefore) ? b.insertsBefore.filter((k) => Number.isInteger(k) && k >= 0) : [],
+            // v1.85.0：文字書的「在這頁前插入空白頁」——存插入點的原書 CFI（文字書沒有固定頁序可以用序號）
+            textInserts: Array.isArray(b.textInserts) ? b.textInserts.filter((c) => typeof c === 'string' && c.startsWith('epubcfi(')) : [],
+            // v1.85.0：圖片書虛擬頁的紙色（'#rrggbb'／'none'＝沒有統一紙色／null＝還沒算）
+            paperColor: typeof b.paperColor === 'string' && /^(#[0-9a-f]{6}|none)$/.test(b.paperColor) ? b.paperColor : null,
         };
     })();
     window.__cwfm.bookState = cwfmBookState;
+    // v1.85.0：內建「圖片書」的欄數依畫面長寬比：可用區域（扣掉上下工具列）寬 ≥ 高 → 2 欄，否則 1 欄。
+    // 一般漫畫單頁約 0.69（1650×2390），兩頁並排約 1.38；橫向畫面兩頁會略縮但仍比一頁大，直向兩頁會太小。
+    const CWFM_IMG_TWO_COL_MIN_RATIO = 1;
+    const CWFM_TOOLBARS_PX = 96; // 上下工具列各 48px
+    function cwfmImageDefaultCols() {
+        const w = window.innerWidth || 1, h = Math.max(1, (window.innerHeight || 1) - CWFM_TOOLBARS_PX);
+        return w / h >= CWFM_IMG_TWO_COL_MIN_RATIO ? 2 : 1;
+    }
+    // 開書前（分段大小）就要知道欄數：這本書記住的 → 「圖片書籍」新書預設指定的設定檔 → 內建圖片書（依長寬比）
     function cwfmImgEarlyCols() {
         const e = cwfmEarlyBookEntry();
         const s = INITIAL_SETTINGS || {};
-        const v = e?.v?.maxColumnCount ?? s.lastImageValues?.maxColumnCount ?? s.builtinProfiles?.image?.maxColumnCount ?? 2;
-        return Math.max(1, Math.min(6, parseInt(v, 10) || 2));
+        let v = e?.v?.maxColumnCount;
+        if (v === undefined) {
+            const ref = s.newBookProfile?.image;
+            if (typeof ref === 'string' && ref.startsWith('theme:')) v = (s.savedThemes || []).find((x) => x.id === ref.slice(6))?.values?.maxColumnCount;
+            else v = s.builtinProfiles?.image?.maxColumnCount;
+        }
+        if (v === undefined) v = cwfmImageDefaultCols();
+        return Math.max(1, Math.min(6, parseInt(v, 10) || 1));
     }
     function cwfmImgSegSizeFor(cols) { return cols * Math.ceil(CWFM_IMG_SEG_BASE / cols); }
 
@@ -1481,9 +1512,10 @@
                 out.push(sec);
                 return;
             }
-            if (firstPage && cwfmBookState.frontInsert) run.push({ type: 'start' });
+            // ref＝這張虛擬頁要模擬哪一頁的大小（後面那一頁）
+            if (firstPage && cwfmBookState.frontInsert) run.push({ type: 'start', ref: k });
             firstPage = false;
-            if (inserts.has(k)) run.push({ type: 'blank' });
+            if (inserts.has(k)) run.push({ type: 'blank', ref: k });
             run.push({ type: 'page', k });
         });
         flush();
@@ -1595,13 +1627,12 @@
         const parts = await Promise.all(seg.cwfmSeg.items.map(async (it, i) => {
             // 兩欄時圖片靠向書脊（左頁靠右、右頁靠左），中間不留縫；畫面實際只排一欄時置中（cwfmImgMarkSpread 切換 .cwfm-ib-spread）
             const side = !two ? '' : ((i % 2 === 0) !== rtl ? ' cwfm-ib-l' : ' cwfm-ib-r');
-            if (it.type === 'blank') return '<div class="cwfm-ib-p cwfm-ib-blank' + side + '"></div>';
-            if (it.type === 'start') {
-                const title = cwfmImgMetaText(bk.metadata?.title);
-                const author = cwfmImgMetaText(bk.metadata?.author);
-                return '<div class="cwfm-ib-p cwfm-ib-start' + side + '"><div class="cwfm-ib-title">' + cwfmImgEsc(title) + '</div>'
-                    + (author ? '<div class="cwfm-ib-author">' + cwfmImgEsc(author) + '</div>' : '')
-                    + '<button type="button" class="cwfm-ib-startbtn">' + cwfmImgEsc(t(rtl ? 'imgbook_start_rtl' : 'imgbook_start')) + '</button></div>';
+            // 虛擬頁（開始頁、插入的空白頁）：做成一張跟後面那頁「畫出來一樣大」的紙（cwfmImgSizePapers 依圖片長寬比算），
+            // 填紙色、加細框，文字放在紙的正中央——不然整欄都是背景色，看起來比實體頁大
+            if (it.type === 'blank' || it.type === 'start') {
+                const ratio = await cwfmImgRatio(it.ref);
+                const inner = it.type === 'start' ? cwfmStartPageInner(rtl) : '';
+                return '<div class="cwfm-ib-p cwfm-ib-virtual cwfm-ib-' + it.type + side + '"><div class="cwfm-ib-paper" data-ratio="' + ratio.toFixed(5) + '">' + inner + '</div></div>';
             }
             const href = cwfmImg.infos[it.k].href;
             const type = bk.resources?.getItemByHref?.(href)?.mediaType || '';
@@ -1620,14 +1651,162 @@
             + 'height:100vh;box-sizing:border-box;overflow:hidden;margin:0;padding:0;text-indent:0}'
             + '.cwfm-ib-img{background-repeat:no-repeat;background-size:contain;background-position:center}'
             + '.cwfm-ib-spread .cwfm-ib-img.cwfm-ib-l{background-position:right center}.cwfm-ib-spread .cwfm-ib-img.cwfm-ib-r{background-position:left center}'
-            + '.cwfm-ib-start{flex-direction:column;justify-content:center !important;gap:16px;text-align:center;padding:0 24px;font-family:sans-serif;direction:ltr}'
-            + '.cwfm-ib-title{font-size:24px;font-weight:700;line-height:1.4}'
-            + '.cwfm-ib-author{font-size:16px;opacity:.75}'
-            + '.cwfm-ib-startbtn{margin-top:16px;font:inherit;font-size:16px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px;padding:8px 24px;cursor:pointer}'
-            + '.cwfm-ib-startbtn:hover{background:rgba(128,128,128,.15)}'
+            + '.cwfm-ib-spread .cwfm-ib-virtual.cwfm-ib-l{justify-content:flex-end}.cwfm-ib-spread .cwfm-ib-virtual.cwfm-ib-r{justify-content:flex-start}'
+            + '.cwfm-ib-paper{flex:0 0 auto;width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;'
+            + 'text-align:center;padding:0 24px;font-family:sans-serif;direction:ltr;overflow:hidden;'
+            + 'background:var(--cwfm-paper,transparent);color:var(--cwfm-paper-ink,inherit);border:1px solid var(--cwfm-paper-line,rgba(128,128,128,.35))}'
+            + '.cwfm-ib-paper{position:relative;gap:22px}'
+            + '.cwfm-ib-title{font-size:30px;font-weight:700;line-height:1.4;letter-spacing:.12em}'
+            + '.cwfm-ib-author{font-size:17px;letter-spacing:.2em;opacity:.8}'
+            + '.cwfm-tp-rule{display:flex;align-items:center;gap:10px;opacity:.55}.cwfm-tp-rule i{display:block;width:72px;height:0;border-top:1px solid currentColor}.cwfm-tp-rule b{font-size:9px;font-weight:400}'
+            // 書本內容會被套上兩端對齊、自訂背景色（!important），扉頁的字要強制置中；分隔線用框線畫，不用背景色
+            + '.cwfm-ib-title,.cwfm-ib-author,.cwfm-tp-pub{text-align:center !important;text-indent:0 !important}'
+            + '.cwfm-tp-pub{position:absolute;left:0;right:0;bottom:13%;font-size:14px;letter-spacing:.2em;opacity:.7}'
             + '</style></head><body>' + parts.join('') + '</body></html>';
         const url = URL.createObjectURL(new Blob([xhtml], { type: 'application/xhtml+xml' }));
         return { url, urls, xhtml };
+    }
+
+    // 虛擬頁要模擬的那一頁：圖片原始寬÷高（解碼後算一次就記住；讀不到用一般漫畫的 0.69）
+    const CWFM_IMG_DEFAULT_RATIO = 0.69;
+    const cwfmImgRatioCache = new Map();
+    async function cwfmImgDecode(blob) {
+        if (typeof createImageBitmap === 'function') {
+            try { return await createImageBitmap(blob); } catch (e) { /* 舊 Safari 對某些格式不支援，改用 Image */ }
+        }
+        const u = URL.createObjectURL(blob);
+        try {
+            const im = new Image();
+            im.src = u;
+            await (im.decode ? im.decode() : new Promise((ok, ng) => { im.onload = ok; im.onerror = ng; }));
+            return im;
+        } finally { setTimeout(() => URL.revokeObjectURL(u), 0); }
+    }
+    async function cwfmImgBlob(k) {
+        const bk = cwfmImg.book;
+        const href = cwfmImg.infos[k].href;
+        const type = bk.resources?.getItemByHref?.(href)?.mediaType || '';
+        const blob = await bk.loadBlob(href);
+        return type ? new Blob([blob], { type }) : blob;
+    }
+    function cwfmImgRatio(k) {
+        if (!(k >= 0) || !cwfmImg.infos[k]) return Promise.resolve(CWFM_IMG_DEFAULT_RATIO);
+        let p = cwfmImgRatioCache.get(k);
+        if (!p) {
+            p = cwfmImgBlob(k).then(cwfmImgDecode).then((im) => {
+                const w = im.width || im.naturalWidth, h = im.height || im.naturalHeight;
+                try { im.close?.(); } catch (e) { /* Image 沒有 close */ }
+                return w > 0 && h > 0 ? w / h : CWFM_IMG_DEFAULT_RATIO;
+            }).catch((e) => { console.error('[cwfm:imgbook] 讀圖片尺寸失敗', e); return CWFM_IMG_DEFAULT_RATIO; });
+            cwfmImgRatioCache.set(k, p);
+        }
+        return p;
+    }
+    // 虛擬頁的紙：在欄裡等比縮放到「放得進去的最大尺寸」（跟背景圖 contain 一樣），排版變了就重算
+    function cwfmImgSizePapers(doc) {
+        doc.querySelectorAll('.cwfm-ib-paper').forEach((el) => {
+            const p = el.parentElement;
+            const w = p.clientWidth, h = p.clientHeight, r = parseFloat(el.dataset.ratio) || CWFM_IMG_DEFAULT_RATIO;
+            if (!w || !h) return;
+            const W = w / h > r ? Math.round(h * r) : w;
+            const H = w / h > r ? h : Math.round(w / r);
+            el.style.width = W + 'px';
+            el.style.height = H + 'px';
+        });
+    }
+    function cwfmImgWatchPapers(doc) {
+        if (!doc || !doc.querySelector('.cwfm-ib-paper')) return;
+        cwfmImgApplyPaper(doc);
+        const RO = doc.defaultView && doc.defaultView.ResizeObserver;
+        if (!RO) { setTimeout(() => cwfmImgSizePapers(doc), 300); return; }
+        // 只觀察外層的欄（高度 100vh、寬度＝欄寬），改的是裡面的紙，不會造成觀察迴圈
+        const ro = new RO(() => { try { cwfmImgSizePapers(doc); } catch (e) { console.error('[cwfm:imgbook] 虛擬頁大小失敗', e); } });
+        doc.querySelectorAll('.cwfm-ib-virtual').forEach((el) => ro.observe(el));
+    }
+
+    // ------------------------------------------------------------
+    // 紙色：從內頁抽樣，取「最多頁一致的顏色」（眾數），不用平均——彩頁、滿版跨頁會把平均拉成哪一頁都沒有的混色。
+    // 1. 全書 10%～90% 平均抽 CWFM_PAPER_SAMPLES 頁（避開封面、前後彩頁）
+    // 2. 每頁縮成小圖，只看最外圈；顏色量化成區間，最多的那區佔外圈 ≥ CWFM_PAPER_PAGE_SHARE 才算這頁有明確紙色、投一票
+    //    （邊緣很雜的滿版彩圖不投票，等於先剔除離群值）
+    // 3. 票數最多的區間 ≥ CWFM_PAPER_MIN_VOTES 且過半 → 該區間內實際像素的平均＝紙色；否則沒有統一紙色（用閱讀器背景，靠細框表示大小）
+    // 結果存在這本書的紀錄（cwfmBookState.paperColor：'#rrggbb' 或 'none'），之後開書不重算
+    // ------------------------------------------------------------
+    const CWFM_PAPER_SAMPLES = 9;
+    const CWFM_PAPER_THUMB = 64;          // 縮圖長邊 (px)
+    const CWFM_PAPER_RING = 2;            // 取外圈幾 px
+    const CWFM_PAPER_PAGE_SHARE = 0.6;
+    const CWFM_PAPER_MIN_VOTES = 3;
+    let cwfmPaperJob = null;
+    async function cwfmImgPagePaperVote(k) {
+        const im = await cwfmImgDecode(await cwfmImgBlob(k));
+        const w0 = im.width || im.naturalWidth, h0 = im.height || im.naturalHeight;
+        const sc = CWFM_PAPER_THUMB / Math.max(w0, h0);
+        const w = Math.max(8, Math.round(w0 * sc)), h = Math.max(8, Math.round(h0 * sc));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const cx = cv.getContext('2d');
+        cx.drawImage(im, 0, 0, w, h);
+        try { im.close?.(); } catch (e) { /* Image 沒有 close */ }
+        const d = cx.getImageData(0, 0, w, h).data;
+        const bins = new Map();
+        let total = 0;
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            if (x >= CWFM_PAPER_RING && x < w - CWFM_PAPER_RING && y >= CWFM_PAPER_RING && y < h - CWFM_PAPER_RING) continue;
+            const i = (y * w + x) * 4;
+            const key = (d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4);
+            const b = bins.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+            b.n++; b.r += d[i]; b.g += d[i + 1]; b.b += d[i + 2];
+            bins.set(key, b);
+            total++;
+        }
+        let best = null, bestKey = null;
+        bins.forEach((b, key) => { if (!best || b.n > best.n) { best = b; bestKey = key; } });
+        return best && best.n / total >= CWFM_PAPER_PAGE_SHARE ? { key: bestKey, ...best } : null;
+    }
+    async function cwfmImgPaperColor() {
+        const pages = cwfmImg.infos.map((x, k) => (x ? k : -1)).filter((k) => k >= 0);
+        if (!pages.length) return 'none';
+        const lo = Math.floor(pages.length * 0.1), hi = Math.max(lo + 1, Math.ceil(pages.length * 0.9));
+        const span = pages.slice(lo, hi);
+        const n = Math.min(CWFM_PAPER_SAMPLES, span.length);
+        const pick = [...new Set(Array.from({ length: n }, (_, i) => span[Math.floor((i + 0.5) * span.length / n)]))];
+        const votes = (await Promise.all(pick.map((k) => cwfmImgPagePaperVote(k).catch(() => null)))).filter(Boolean);
+        const tally = new Map();
+        votes.forEach((v) => {
+            const t2 = tally.get(v.key) || { c: 0, n: 0, r: 0, g: 0, b: 0 };
+            t2.c++; t2.n += v.n; t2.r += v.r; t2.g += v.g; t2.b += v.b;
+            tally.set(v.key, t2);
+        });
+        let win = null;
+        tally.forEach((v) => { if (!win || v.c > win.c) win = v; });
+        cwfmDiag('PAPER', 'sampled=' + pick.join(',') + ' votes=' + votes.length + ' win=' + (win ? win.c : 0));
+        if (!win || win.c < CWFM_PAPER_MIN_VOTES || win.c * 2 <= votes.length) return 'none';
+        const hex = (x) => Math.round(x).toString(16).padStart(2, '0');
+        return '#' + hex(win.r / win.n) + hex(win.g / win.n) + hex(win.b / win.n);
+    }
+    // 只有出現虛擬頁時才算；算好存進這本書的紀錄，套到已載入的分段
+    function cwfmImgEnsurePaper() {
+        if (!cwfmImg.active || cwfmBookState.paperColor || cwfmPaperJob) return;
+        cwfmPaperJob = cwfmImgPaperColor().catch((e) => { console.error('[cwfm:imgbook] 判斷紙色失敗', e); return 'none'; }).then((c) => {
+            cwfmBookState.paperColor = c;
+            cwfmPaperJob = null;
+            try { window.__cwfm.saveBookState?.(); } catch (e) { console.error('[cwfm:imgbook] 存紙色失敗', e); }
+            (view.renderer?.getContents?.() || []).forEach((x) => cwfmImgApplyPaper(x.doc));
+        });
+    }
+    // 紙色＋依紙色亮暗選文字色、框線色（沒有統一紙色：用閱讀器背景，框線用中性灰）
+    function cwfmImgApplyPaper(doc) {
+        if (!doc || !doc.documentElement) return;
+        const c = cwfmBookState.paperColor;
+        const st = doc.documentElement.style;
+        if (!c) { cwfmImgEnsurePaper(); return; }
+        if (c === 'none') { ['--cwfm-paper', '--cwfm-paper-ink', '--cwfm-paper-line'].forEach((k) => st.removeProperty(k)); return; }
+        const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
+        const light = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
+        st.setProperty('--cwfm-paper', c);
+        st.setProperty('--cwfm-paper-ink', light ? '#222222' : '#f2f2f2');
+        st.setProperty('--cwfm-paper-line', light ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.25)');
     }
 
     // 每個章節載入時：套翻頁方向；圖片書的開始頁按鈕。
@@ -1672,15 +1851,21 @@
         const doc = e.detail?.doc;
         try { cwfmImgMarkSpread(doc); } catch (err) { console.error('[cwfm:imgbook] 判斷並排失敗', err); }
         try { cwfmApplyDocDir(doc); } catch (err) { console.error('[cwfm:dir] 套用翻頁方向失敗', err); }
-        try {
-            const btn = doc && doc.querySelector('.cwfm-ib-startbtn');
-            if (btn) btn.addEventListener('click', (ev) => { ev.stopPropagation(); view.next(); });
-        } catch (err) { console.error('[cwfm:imgbook] 開始頁按鈕失敗', err); }
+        try { cwfmTextInsertsApply(doc, e.detail?.index); } catch (err) { console.error('[cwfm:insert] 文字書插頁失敗', err); }
+        try { cwfmImgWatchPapers(doc); } catch (err) { console.error('[cwfm:imgbook] 虛擬頁失敗', err); }
     });
 
     // 重新排版目前位置（翻頁方向、分段改變後）：記下原書座標 → 讓分頁器重新載入 → 回到同一頁
-    async function cwfmReflowAtCurrent(reason) {
-        const cfi = cwfmSafe(() => cwfmPageStartCfi().cfi, null) || view.lastLocation?.cfi;
+    async function cwfmReflowAtCurrent(reason, target) {
+        // 退路用 lastLocation 的起點（收合成一個點）：範圍型 CFI 的結尾在換欄標記切過的文字節點上，
+        // 重新載入後會解析出超過長度的位移（IndexSizeError，v1.85.0 測試實際出現）
+        let cfi = target || cwfmSafe(() => cwfmPageStartCfi().cfi, null);
+        if (!cfi) cfi = cwfmSafe(() => {
+            const loc = view.lastLocation, c = (view.renderer.getContents() || [])[0];
+            if (!loc?.range || !c) return null;
+            const r = loc.range.cloneRange(); r.collapse(true);
+            return view.getCFI(c.index, r);
+        }, null);
         cwfmDiag('REFLOW', 'reason=' + reason + ' cfi=' + cfi);
         try { cwfmMarkerRemove?.('重新排版 ' + reason); } catch (e) { /* 標記功能還沒就緒 */ }
         view.renderer.cwfmInvalidate?.(view.book.dir);
@@ -1724,6 +1909,163 @@
         return r && r.index >= 0 ? r.index : -1;
     }
     window.__cwfm.imgCurrentOrigPage = cwfmImgCurrentOrigPage;
+
+    // ============================================================
+    // [cwfm] v1.85.0 文字書的插頁：全書前面補一頁（書名頁）、在這頁前插入空白頁。
+    // 跟圖片書同一組設定，但文字書是重新排版的：每章本來就從新的跨頁開始，所以補一頁只影響第一章，
+    // 空白頁只影響它所在的那一章。做法跟精準對位的換欄標記一樣：章節載入時在插入點放一個 <cwfm-ins>
+    // （break-before／break-after: column 佔滿一欄），CFI 過濾器略過它，書籤、進度不受影響。
+    // 插入點存原書 CFI（cwfmBookState.textInserts），插在那個字的正前方（必要時切開文字節點，
+    // CFI 計算本來就會合併相鄰文字節點）。
+    // ============================================================
+    const CWFM_INS_TAG = 'cwfm-ins';
+    function cwfmStartPageInner(rtl) {
+        const bk = view.book || {};
+        const title = cwfmImgMetaText(bk.metadata?.title);
+        const author = cwfmImgMetaText(bk.metadata?.author);
+        // v1.85.0（使用者定案）：古典扉頁——上下各一條「線＋◆＋線」夾住書名與作者，最下緣有出版社才放。
+        // 不放「開始閱讀 →」：加外框看起來像按鈕，容易誤會。
+        const publisher = cwfmImgMetaText(bk.metadata?.publisher);
+        const rule = '<div class="cwfm-tp-rule"><i></i><b>\u25c6</b><i></i></div>';
+        return rule + '<div class="cwfm-ib-title">' + cwfmImgEsc(title) + '</div>'
+            + (author ? '<div class="cwfm-ib-author">' + cwfmImgEsc(t('tp_by_pre') + author + t('tp_by_post')) + '</div>' : '')
+            + rule + (publisher ? '<div class="cwfm-tp-pub">' + cwfmImgEsc(publisher) + '</div>' : '');
+    }
+    function cwfmTextInsertsApply(doc, index) {
+        if (!doc || !doc.body || cwfmImg.active) return;
+        const bk = view.book;
+        if (!bk || !(index >= 0)) return;
+        const items = [];
+        if (cwfmBookState.frontInsert && index === bk.sections.findIndex((x) => x.linear !== 'no')) items.push({ type: 'start' });
+        cwfmBookState.textInserts.forEach((cfi) => {
+            const r = cwfmSafe(() => view.resolveCFI(cfi), null);
+            if (r && r.index === index) items.push({ type: 'blank', cfi, r });
+        });
+        if (!items.length) return;
+        if (!doc.getElementById('cwfm-ins-style')) {
+            const st = doc.createElement('style');
+            st.id = 'cwfm-ins-style';
+            st.textContent = CWFM_INS_TAG + '{display:block;break-before:column;-webkit-column-break-before:always;break-after:column;-webkit-column-break-after:always;margin:0;padding:0;text-indent:0}'
+                + CWFM_INS_TAG + '.cwfm-ins-blank{height:1px}'
+                + CWFM_INS_TAG + '.cwfm-ins-start{height:100vh;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 24px;font-family:sans-serif;direction:ltr}'
+                + CWFM_INS_TAG + '.cwfm-ins-start{position:relative;gap:22px}'
+                + '.cwfm-ib-title{font-size:30px;font-weight:700;line-height:1.4;letter-spacing:.12em}.cwfm-ib-author{font-size:17px;letter-spacing:.2em;opacity:.8}'
+                + '.cwfm-tp-rule{display:flex;align-items:center;gap:10px;opacity:.55}.cwfm-tp-rule i{display:block;width:72px;height:0;border-top:1px solid currentColor}.cwfm-tp-rule b{font-size:9px;font-weight:400}'
+            // 書本內容會被套上兩端對齊、自訂背景色（!important），扉頁的字要強制置中；分隔線用框線畫，不用背景色
+            + '.cwfm-ib-title,.cwfm-ib-author,.cwfm-tp-pub{text-align:center !important;text-indent:0 !important}'
+            + '.cwfm-tp-pub{position:absolute;left:0;right:0;bottom:13%;font-size:14px;letter-spacing:.2em;opacity:.7}';
+            (doc.head || doc.documentElement).appendChild(st);
+        }
+        // 先解析完全部插入點再插（插入會切開文字節點，雖然 CFI 不受影響，但已解析的 Range 會失效）
+        const points = items.filter((it) => it.type === 'blank').map((it) => {
+            const rg = cwfmSafe(() => it.r.anchor(doc), null);
+            return rg && rg.startContainer ? { cfi: it.cfi, node: rg.startContainer, offset: rg.startOffset } : null;
+        }).filter(Boolean);
+        points.forEach((pt) => {
+            const el = doc.createElement(CWFM_INS_TAG);
+            el.className = 'cwfm-ins-blank';
+            el.dataset.cfi = pt.cfi;
+            let n = pt.node;
+            if (n.nodeType === 3) {
+                if (pt.offset > 0 && pt.offset < n.length) n = n.splitText(pt.offset);
+                else if (pt.offset >= n.length) { n.parentNode.insertBefore(el, n.nextSibling); return; }
+                n.parentNode.insertBefore(el, n);
+            } else {
+                const ref = n.childNodes[pt.offset] || null;
+                n.insertBefore(el, ref);
+            }
+        });
+        if (items[0].type === 'start') {
+            const el = doc.createElement(CWFM_INS_TAG);
+            el.className = 'cwfm-ins-start';
+            el.innerHTML = cwfmStartPageInner(bk.dir === 'rtl');
+            doc.body.insertBefore(el, doc.body.firstChild);
+        }
+    }
+    // 目前畫面上有沒有空白頁（文字書）；有的話回傳它的 CFI
+    function cwfmTextInsertVisible() {
+        const c = (view.renderer?.getContents?.() || [])[0];
+        if (!c || !c.doc) return null;
+        const fr = c.doc.defaultView.frameElement.getBoundingClientRect();
+        const W = view.renderer.getBoundingClientRect();
+        for (const el of c.doc.querySelectorAll(CWFM_INS_TAG + '.cwfm-ins-blank')) {
+            const r = el.getBoundingClientRect();
+            const x = r.left + fr.left;
+            if (x >= W.left - 1 && x < W.right - 1) return el.dataset.cfi;
+        }
+        return null;
+    }
+    // 頁首 CFI 落在某個插入點上（插入點存的是元素層級，例如 /4/14；插完後頁首會是 /4/14/1:0 之類更深的路徑）
+    function cwfmTextInsertAt(cfi) {
+        if (!cfi) return null;
+        return cwfmBookState.textInserts.find((c) => {
+            const base = c.slice(0, -1);
+            return cfi === c || (cfi.startsWith(base) && '/:,)'.includes(cfi.charAt(base.length)));
+        }) || null;
+    }
+    // 插頁區塊的狀態：can＝能不能用、has＝這頁前已經插過（按鈕顯示「移除」）
+    function cwfmInsertState() {
+        if (cwfmImg.active) {
+            const k = cwfmImgCurrentOrigPage();
+            return { can: k >= 0, has: k >= 0 && cwfmBookState.insertsBefore.includes(k) };
+        }
+        // 「這頁前插過」＝畫面上看得到那張空白頁，或這頁的第一個字正好是某個插入點（插完會停在空白頁後面那頁）
+        const vis = cwfmSafe(() => cwfmTextInsertVisible(), null);
+        if (vis) return { can: true, has: true };
+        const cfi = cwfmSafe(() => cwfmPageStartCfi().cfi, null);
+        return { can: !!cfi, has: !!cwfmTextInsertAt(cfi) };
+    }
+    window.__cwfm.insertState = cwfmInsertState;
+    async function cwfmToggleInsertHere() {
+        if (cwfmImg.active) {
+            const k = cwfmImgCurrentOrigPage();
+            if (!(k >= 0)) return;
+            const i = cwfmBookState.insertsBefore.indexOf(k);
+            if (i >= 0) cwfmBookState.insertsBefore.splice(i, 1); else cwfmBookState.insertsBefore.push(k);
+            cwfmBookState.insertsBefore.sort((a, b) => a - b);
+            cwfmSaveBookState();
+            await cwfmImgRebuild('insertBefore=' + k);
+            return;
+        }
+        const vis = cwfmTextInsertVisible();
+        const cfi = cwfmSafe(() => cwfmPageStartCfi().cfi, null);
+        if (vis) cwfmBookState.textInserts = cwfmBookState.textInserts.filter((c) => c !== vis);
+        else if (cwfmTextInsertAt(cfi)) { const hit = cwfmTextInsertAt(cfi); cwfmBookState.textInserts = cwfmBookState.textInserts.filter((c) => c !== hit); }
+        else {
+            if (!cfi) return;
+            cwfmBookState.textInserts.push(cfi);
+        }
+        cwfmSaveBookState();
+        // 回到同一頁要用「第一個字」的位置：頁首 CFI 常是元素層級（例如 /4/14），元素前面插了空白頁後，
+        // Firefox 對「元素開頭」那個點算出的位置在空白頁上一頁的底部，會停錯一頁（v1.85.0 測試實際出現）
+        await cwfmReflowAtCurrent('textInsert', cwfmSafe(() => cwfmTextCfi(cfi), null) || cfi);
+    }
+    window.__cwfm.toggleInsertHere = cwfmToggleInsertHere;
+    // 元素層級的 CFI → 該元素裡第一個文字節點開頭的 CFI（在目前載入的章節裡解析）
+    function cwfmTextCfi(cfi) {
+        if (!cfi) return null;
+        const c = (view.renderer.getContents() || [])[0];
+        const r = view.resolveCFI(cfi);
+        if (!c || !r || r.index !== c.index) return null;
+        const rg = r.anchor(c.doc);
+        if (!rg || !rg.startContainer) return null;
+        let n = rg.startContainer;
+        if (n.nodeType === 3) return null; // 本來就是文字位置
+        n = n.childNodes[rg.startOffset] || n;
+        const w = c.doc.createTreeWalker(n, NodeFilter.SHOW_TEXT, { acceptNode: (x) => (x.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+        const tn = n.nodeType === 3 ? n : w.nextNode();
+        if (!tn) return null;
+        const nr = c.doc.createRange();
+        nr.setStart(tn, 0); nr.collapse(true);
+        return view.getCFI(c.index, nr);
+    }
+    async function cwfmSetFrontInsert(on) {
+        cwfmBookState.frontInsert = !!on;
+        cwfmSaveBookState();
+        if (cwfmImg.active) await cwfmImgRebuild('frontInsert=' + on);
+        else await cwfmReflowAtCurrent('frontInsert=' + on);
+    }
+    window.__cwfm.setFrontInsert = cwfmSetFrontInsert;
 
     let book;
     let cwfmRestoredCfi = null; // 開書還原到的位置；精準定位開啟時用它當初始鎖定點（見檔尾 LOCK-SET）
@@ -2524,6 +2866,15 @@
             '.cwfm-keychip-bicon { display: inline-flex; align-items: center; color: var(--cwfm-text-secondary); line-height: 0; flex-shrink: 0; cursor: pointer; }',
             '.cwfm-keychip-bicon svg { display: block; }',
             '.cwfm-keychip-selected .cwfm-keychip-bicon { color: var(--cwfm-text); }',
+            // v1.85.0：分組內的小標題、設定檔分組裡「新書開啟時套用」小區塊
+            '.cwfm-subhead { font-size: 12px; font-weight: 600; color: var(--cwfm-text-secondary); margin: 14px 0 2px; }',
+            '.cwfm-subhead-first { margin-top: 0; }',
+            '.cwfm-newbook { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cwfm-border); }',
+            '.cwfm-newbook-title { font-size: 13px; font-weight: 600; color: var(--cwfm-text); }',
+            '.cwfm-newbook-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }',
+            '.cwfm-newbook-row label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }',
+            '.cwfm-newbook-row label svg { display: block; color: var(--cwfm-text-secondary); }',
+            '.cwfm-newbook-row select { min-width: 128px; }',
             '.cwfm-keylist-sep { width: 1px; height: 20px; background: var(--cwfm-border-light); margin: 0 4px; flex: 0 0 auto; }',
             // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
             // 沒有 hover 的時候標籤保持乾淨，不會一堆小圖示擠在一起；
@@ -4012,14 +4363,17 @@
         'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
         'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
     ];
-    // 圖片書：兩欄、左右留白少、欄間距 0（兩頁貼齊書脊）；上下留白維持工具列的高度
+    // 圖片書（v1.85.0 使用者定案）：以文字書預設為底，水平垂直都改留白優先、左右留白 0、欄間距 0（兩頁貼齊書脊），
+    // 上下留白＝工具列高度（CWFM_TOOLBARS_PX 的一半，工具列預設常駐，留白 0 會蓋掉圖片上下各 48px），
+    // 欄數依畫面長寬比（cwfmImageDefaultCols）。翻頁點擊區照常顯示，就算蓋到圖片邊緣——第一次看到的人才知道有這個功能，
+    // 不想看到再自己關。
     const CWFM_IMAGE_PROFILE_OVERRIDES = {
-        flow: 'paginated', maxColumnCount: 2, horizontalSizeMode: 'margin', verticalSizeMode: 'margin',
-        leftRightPadding: 16, topBottomPadding: 48, columnGapPx: 0,
+        flow: 'paginated', horizontalSizeMode: 'margin', verticalSizeMode: 'margin',
+        leftRightPadding: 0, topBottomPadding: CWFM_TOOLBARS_PX / 2, columnGapPx: 0,
     };
     function cwfmBuiltinProfileDefaults(id) {
         const base = { ...DEFAULT_SETTINGS, ...cwfmFirstRunDefaults() };
-        if (id === 'image') Object.assign(base, CWFM_IMAGE_PROFILE_OVERRIDES);
+        if (id === 'image') Object.assign(base, CWFM_IMAGE_PROFILE_OVERRIDES, { maxColumnCount: cwfmImageDefaultCols() });
         const out = {};
         CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { out[k] = base[k]; });
         return out;
@@ -4033,15 +4387,17 @@
     }
 
     // ============================================================
-    // [cwfm] v1.84.0 設定跟著書。
-    // - 沒調整過的書：用這個瀏覽器「最後一次的設定」（文字書看全域設定；圖片書看 lastImageValues，
-    //   沒有就用內建「圖片書」）——兩種分開記，免得漫畫的兩欄、窄留白被帶到下一本小說。
-    // - 調整過（這次開書後設定有變）：settings.bookSettings[書號] = { v: 設定檔欄位, b: 書本身的屬性, t }，
-    //   之後開這本書都用它；同時更新該類書的「最後一次的設定」。
-    // - 只是打開 A 書、沒改任何東西就存檔（例如收合分組），不會把 A 書的設定寫成全域。
+    // [cwfm] 設定跟著書（v1.84.0）＋新書開啟時套用（v1.85.0）。
+    // - 調整過的書：settings.bookSettings[書號] = { v: 設定檔欄位, b: 書本身的屬性, t }，之後開這本書都用它。
+    //   「調整過」＝這次開書後設定有變才算（只是收合分組之類的存檔不算）。
+    // - 新書（沒有紀錄）：依類型套用「新書開啟時套用」指定的設定檔 settings.newBookProfile.{text,image}，
+    //   值是 'builtin:text'／'builtin:image'／'theme:<自訂設定檔 id>'；沒指定或指定的設定檔已刪除 → 內建同類型。
+    //   內建只管排版欄位；自訂設定檔套用它存的全部設定（含配色、快速鍵；使用者定案）。
+    // - 升級相容（使用者定案）：舊版開過的書沒有紀錄，一律當新書，不另外建立「升級前的設定」。
+    //   v1.84.0 的 lastImageValues 不再使用（留在資料裡無害）。
     // ============================================================
     const CWFM_BOOK_SETTINGS_MAX = 200; // 最多記幾本書（最久沒動的先丟）
-    const cwfmBookTrack = { ready: false, baseline: '', hasEntry: false, globalVals: null, image: false };
+    const cwfmBookTrack = { ready: false, baseline: '', hasEntry: false, image: false };
     function cwfmApplyValues(settings, values) {
         CWFM_THEME_FIELD_KEYS.forEach((key) => {
             const v = values[key];
@@ -4049,28 +4405,39 @@
             settings[key] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
         });
     }
-    // loadSettings 讀完全域設定後呼叫：套用這本書記住的值（或圖片書的預設），並記下比對基準
+    // 'builtin:text' 等參照 → { kind: 'builtin', id } 或 { kind: 'theme', theme }；找不到自訂的就退回內建同類型
+    function cwfmResolveNewBookProfile(settings, type) {
+        const ref = settings.newBookProfile && settings.newBookProfile[type];
+        if (typeof ref === 'string' && ref.startsWith('theme:')) {
+            const theme = (settings.savedThemes || []).find((x) => x.id === ref.slice(6));
+            if (theme) return { kind: 'theme', theme };
+        }
+        if (ref === 'builtin:text' || ref === 'builtin:image') return { kind: 'builtin', id: ref.slice(8) };
+        return { kind: 'builtin', id: type };
+    }
+    // loadSettings 讀完全域設定後呼叫：套用這本書記住的值，或新書的預設，並記下比對基準
     function cwfmApplyBookSettings(settings) {
         try {
             const id = String(BOOK_ID);
-            cwfmBookTrack.globalVals = cwfmThemeSnapshot(settings);
             cwfmBookTrack.image = !!window.__cwfm.imageBook;
             const entry = settings.bookSettings && settings.bookSettings[id];
+            let how = 'entry';
             if (entry && entry.v) {
                 cwfmApplyValues(settings, entry.v);
                 cwfmBookTrack.hasEntry = true;
-            } else if (cwfmBookTrack.image) {
-                if (settings.lastImageValues) cwfmApplyValues(settings, settings.lastImageValues);
-                else cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, 'image'));
+            } else {
+                const pr = cwfmResolveNewBookProfile(settings, cwfmBookTrack.image ? 'image' : 'text');
+                if (pr.kind === 'theme') { cwfmApplyValues(settings, pr.theme.values); how = 'theme:' + pr.theme.name; }
+                else { cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, pr.id)); how = 'builtin:' + pr.id; }
             }
             cwfmBookTrack.baseline = JSON.stringify(cwfmThemeSnapshot(settings));
             cwfmBookTrack.ready = true;
-            cwfmDiag('BOOK-SETTINGS', 'entry=' + !!entry + ' image=' + cwfmBookTrack.image + ' cols=' + settings.maxColumnCount);
+            cwfmDiag('BOOK-SETTINGS', 'from=' + how + ' image=' + cwfmBookTrack.image + ' cols=' + settings.maxColumnCount);
         } catch (e) {
             console.error('[cwfm:book-settings] 套用這本書的設定失敗', e);
         }
     }
-    // saveSettings 呼叫：回傳實際要存的物件
+    // saveSettings 呼叫：回傳實際要存的物件（同時把有調整過的書記住）
     function cwfmPrepareSettingsForSave(settings, forceBookEntry) {
         if (!cwfmBookTrack.ready) return settings;
         const snap = cwfmThemeSnapshot(settings);
@@ -4078,26 +4445,16 @@
         const changed = js !== cwfmBookTrack.baseline;
         if (changed || cwfmBookTrack.hasEntry || forceBookEntry) {
             if (!settings.bookSettings || typeof settings.bookSettings !== 'object') settings.bookSettings = {};
-            settings.bookSettings[String(BOOK_ID)] = { v: snap, b: { ...cwfmBookState, insertsBefore: cwfmBookState.insertsBefore.slice() }, t: Date.now() };
+            settings.bookSettings[String(BOOK_ID)] = { v: snap, b: { ...cwfmBookState, insertsBefore: cwfmBookState.insertsBefore.slice(), textInserts: cwfmBookState.textInserts.slice() }, t: Date.now() };
             cwfmBookTrack.hasEntry = true;
+            cwfmBookTrack.baseline = js;
             const ids = Object.keys(settings.bookSettings);
             if (ids.length > CWFM_BOOK_SETTINGS_MAX) {
                 ids.sort((a, b) => (settings.bookSettings[a].t || 0) - (settings.bookSettings[b].t || 0))
                     .slice(0, ids.length - CWFM_BOOK_SETTINGS_MAX).forEach((k) => { delete settings.bookSettings[k]; });
             }
         }
-        if (changed) {
-            if (cwfmBookTrack.image) settings.lastImageValues = snap;
-            else cwfmBookTrack.globalVals = snap;
-            cwfmBookTrack.baseline = js;
-        }
-        // 全域（文字書的最後一次設定）只在文字書調整過時才變
-        const out = { ...settings };
-        Object.keys(cwfmBookTrack.globalVals).forEach((k) => {
-            const v = cwfmBookTrack.globalVals[k];
-            out[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
-        });
-        return out;
+        return settings;
     }
     // 翻頁方向、插頁改了：這本書一定要有自己的紀錄
     function cwfmSaveBookState() {
@@ -4850,7 +5207,8 @@
     }
     view.renderer.cwfmResolveAnchor = cwfmResolveAnchor;
     // 引擎 CFI 過濾器：略過標記元素，讓 CFI 與原始文件一致（見 bundle 的 getCFI/resolveCFI）
-    window.__cwfm.cfiFilter = (n) => (n.nodeType === 1 && n.localName === CWFM_MARKER_TAG) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    // v1.85.0：文字書插頁的 <cwfm-ins> 也略過（整個子樹，書名頁裡的字不算位置）
+    window.__cwfm.cfiFilter = (n) => (n.nodeType === 1 && (n.localName === CWFM_MARKER_TAG || n.localName === CWFM_INS_TAG)) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
 
     // 使用者主動導覽（目錄、書內連結、進度條、書籤/位置跳轉）：先移除標記，恢復章節原本的排版。
     // 翻頁（view.goLeft/goRight → renderer.prev/next）不經過這兩個入口，標記保留。
@@ -5678,17 +6036,12 @@
                     });
                     wrap.appendChild(chip);
                 });
-                if (settings.savedThemes.length) {
-                    const sep = document.createElement('span');
-                    sep.className = 'cwfm-keylist-sep';
-                    sep.setAttribute('aria-hidden', 'true');
-                    wrap.appendChild(sep);
-                }
+                // v1.85.0：內建與自訂混在同一排管理（不再用分隔線隔開），內建靠前置圖示區分
                 settings.savedThemes.forEach((theme, index) => {
                     const chip = cwfmBuildChip(theme.name, {
                         onSelect: () => cwfmApplyTheme(settings, theme),
                         onRename: (newName) => { theme.name = newName; saveSettings(settings); },
-                        onRenameDone: render,
+                        onRenameDone: () => { render(); renderNewBook(); },
                         dragReorder: {
                             array: settings.savedThemes, index,
                             onReorder: () => { saveSettings(settings); render(); },
@@ -5712,6 +6065,7 @@
                             if (!confirmed) return;
                             cwfmDeleteTheme(settings, theme.id);
                             render();
+                            renderNewBook(); // 被指定為新書預設的設定檔刪掉了 → 選單退回內建
                         },
                         removeLabel: t('aria_delete_theme'),
                     });
@@ -5726,12 +6080,56 @@
                     if (!name) return;
                     cwfmSaveCurrentAsTheme(settings, name);
                     render();
+                    renderNewBook();
                 });
                 wrap.appendChild(addBtn);
             }
 
+            // v1.85.0：「新書開啟時套用」——常駐顯示，不管目前開的是哪種書都能改
+            const nb = document.createElement('div');
+            nb.className = 'cwfm-newbook';
+            field.appendChild(nb);
+            function renderNewBook() {
+                nb.innerHTML = '';
+                const title = document.createElement('div');
+                title.className = 'cwfm-newbook-title';
+                title.textContent = t('group_new_book');
+                const hint = document.createElement('div');
+                hint.className = 'cwfm-field-hint';
+                hint.textContent = t('hint_new_book');
+                nb.append(title, hint);
+                [['text', t('field_new_book_text'), 'bookOpen'], ['image', t('field_new_book_image'), 'image']].forEach(([type, labelText, icon]) => {
+                    const row = document.createElement('div');
+                    row.className = 'cwfm-newbook-row';
+                    const label = document.createElement('label');
+                    label.innerHTML = cwfmChipIcon(icon, 14);
+                    label.appendChild(document.createTextNode(labelText));
+                    const select = document.createElement('select');
+                    select.setAttribute('aria-label', t('group_new_book') + '：' + labelText);
+                    [['builtin:text', t('profile_text') + t('opt_builtin_suffix')], ['builtin:image', t('profile_image') + t('opt_builtin_suffix')]]
+                        .concat(settings.savedThemes.map((th) => ['theme:' + th.id, th.name]))
+                        .forEach(([v, txt]) => {
+                            const o = document.createElement('option');
+                            o.value = v;
+                            o.textContent = txt;
+                            select.appendChild(o);
+                        });
+                    const pr = cwfmResolveNewBookProfile(settings, type);
+                    select.value = pr.kind === 'theme' ? 'theme:' + pr.theme.id : 'builtin:' + pr.id;
+                    select.addEventListener('change', () => {
+                        if (!settings.newBookProfile || typeof settings.newBookProfile !== 'object') settings.newBookProfile = {};
+                        settings.newBookProfile[type] = select.value;
+                        saveSettings(settings);
+                    });
+                    row.append(label, select);
+                    nb.appendChild(row);
+                });
+            }
+            panelRefreshers.push(renderNewBook);
+
             panelTarget.appendChild(field);
             render();
+            renderNewBook();
         })();
 
 
@@ -6852,13 +7250,11 @@
 
         // v1.82：原本的「閱讀行為」拆成「翻頁設定」「介面隱藏」「閱讀行為」三組；快速鍵移到閱讀行為之後。
         // 順序：版面配置 → 翻頁設定 → 介面隱藏 → 閱讀行為 → 快速鍵 → 語言 → 錯誤紀錄
-        // v1.84.0：「是否插頁」放在「翻頁設定」上面。都是書本身的屬性（跟著書記住、不進設定檔），
-        // 當場生效、不用重開書；只有圖片書（分段排版）有作用。
+        // v1.84.0：「是否插頁」放在「翻頁設定」上面。都是書本身的屬性（跟著書記住、不進設定檔），當場生效、不用重開書。
+        // v1.85.0：文字書也能用（見 cwfmTextInsertsApply）。
         beginGroup(t('group_page_insert'));
         {
-            const isImg = !!window.__cwfm.imageBook;
             const bs = cwfmBookState;
-            // 全書最前面補一頁（開關）
             const field = document.createElement('div');
             field.className = 'cwfm-field cwfm-field-no-divider';
             const row = document.createElement('div');
@@ -6870,7 +7266,6 @@
             const input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = bs.frontInsert;
-            input.disabled = !isImg;
             const track = document.createElement('span');
             track.className = 'cwfm-switch-track';
             sw.append(input, track);
@@ -6878,13 +7273,11 @@
             field.appendChild(row);
             const hint = document.createElement('div');
             hint.className = 'cwfm-field-hint';
-            hint.textContent = isImg ? t('hint_front_insert') : t('hint_insert_only_image');
+            hint.textContent = t('hint_front_insert');
             field.appendChild(hint);
             panelTarget.appendChild(field);
             input.addEventListener('change', () => {
-                bs.frontInsert = input.checked;
-                cwfmSaveBookState();
-                window.__cwfm.imgRebuild?.('frontInsert=' + bs.frontInsert).catch((e) => console.error('[cwfm:imgbook] 補頁失敗', e));
+                window.__cwfm.setFrontInsert?.(input.checked).catch((e) => console.error('[cwfm:insert] 補頁失敗', e));
             });
             // 在這頁前插入／移除空白頁（按鈕文字跟著目前這頁有沒有插過）
             const f2 = document.createElement('div');
@@ -6895,25 +7288,17 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'cwfm-confirm-cancel';
-            btn.disabled = !isImg;
             row2.append(label2, btn);
             f2.appendChild(row2);
             panelTarget.appendChild(f2);
             const refreshInsertBtn = () => {
-                const k = isImg ? window.__cwfm.imgCurrentOrigPage?.() : -1;
-                const has = k >= 0 && bs.insertsBefore.includes(k);
-                label2.textContent = has ? t('field_remove_here') : t('field_insert_here');
-                btn.textContent = has ? t('btn_remove_blank') : t('btn_insert_blank');
-                btn.disabled = !isImg || k < 0;
+                const st = window.__cwfm.insertState?.() || { can: false, has: false };
+                label2.textContent = st.has ? t('field_remove_here') : t('field_insert_here');
+                btn.textContent = st.has ? t('btn_remove_blank') : t('btn_insert_blank');
+                btn.disabled = !st.can;
             };
             btn.addEventListener('click', () => {
-                const k = window.__cwfm.imgCurrentOrigPage?.();
-                if (!(k >= 0)) return;
-                const i = bs.insertsBefore.indexOf(k);
-                if (i >= 0) bs.insertsBefore.splice(i, 1); else bs.insertsBefore.push(k);
-                bs.insertsBefore.sort((a, b) => a - b);
-                cwfmSaveBookState();
-                window.__cwfm.imgRebuild?.('insertBefore=' + k).then(refreshInsertBtn).catch((e) => console.error('[cwfm:imgbook] 插頁失敗', e));
+                Promise.resolve(window.__cwfm.toggleInsertHere?.()).then(refreshInsertBtn).catch((e) => console.error('[cwfm:insert] 插頁失敗', e));
             });
             refreshInsertBtn();
             view.addEventListener('relocate', () => setTimeout(refreshInsertBtn, 0));
@@ -6921,6 +7306,14 @@
         }
 
         beginGroup(t('group_page_turn'));
+        // v1.85.0：分兩段小標題——翻頁方式（方向、反轉、精準定位）／左右點擊區（啟用、寬度、顯示、翻頁動畫）
+        function addSubhead(text, first) {
+            const h = document.createElement('div');
+            h.className = 'cwfm-subhead' + (first ? ' cwfm-subhead-first' : '');
+            h.textContent = text;
+            panelTarget.appendChild(h);
+        }
+        addSubhead(t('subhead_page_mode'), true);
         // v1.84.0：翻頁方向（書本身的屬性，跟著書記住）＋反轉點擊區，放在翻頁設定最上面
         {
             const field = document.createElement('div');
@@ -6957,6 +7350,9 @@
             hint.textContent = t('hint_reverse_tap_zones');
             rev.closest('.cwfm-field').appendChild(hint);
         }
+        // [cwfm] 翻頁精準定位（v1.85.0 從「閱讀行為」移來：管翻頁、排版變動後停在哪裡，屬於翻頁行為）
+        addCheckboxField(t('field_precise_anchor_align'), 'preciseAnchorAlign');
+        addSubhead(t('subhead_tap_zone'), false);
         // [cwfm] 左右翻頁點擊區：功能開關 → 寬度 → 顯示開關（順序調整：
         // 顯示開關移到寬度後面，因為「顯示視覺提示」開啟時會 disable 下方
         // 翻頁動畫整區，邏輯上靠近翻頁動畫比靠近寬度更合理）。
@@ -7036,11 +7432,8 @@
         cursorAutoHideCheckbox.closest('.cwfm-field').classList.add('cwfm-field-no-divider');
         addCheckboxField(t('field_auto_hide_toolbar'), 'autoHideToolbar');
 
+        // v1.85.0：「閱讀行為」改名「閱讀紀錄」（進度、雲端、書籤標示、跳轉紀錄）；翻頁精準定位移到「翻頁設定」
         beginGroup(t('group_reading_behavior'));
-        // [cwfm] 翻頁精準定位（原本叫「實驗性功能」，session-only 不存檔
-        // ——現在已經穩定到不會弄壞整個介面，改用一般的 addCheckboxField()，
-        // 跟其他設定一樣正常存檔，不用每次重新整理都要重新勾選。
-        addCheckboxField(t('field_precise_anchor_align'), 'preciseAnchorAlign');
 
         // v1.79：閱讀進度——同步開關在上、雲端紀錄優先在下（附說明）；本機一律記錄、不再有開關，
         // 也不再有「停留幾秒」的延遲（見 docs/spec-v1.79.md §1）。

@@ -42,14 +42,15 @@
 - 設定面板新增設定時，要一併加進 `CWFM_THEME_FIELD_KEYS`，否則存不進「設定檔」。
 - 標籤小按鈕、步進器等圖示一律用 `cwfmChipIcon()`（Lucide SVG、線寬 2），不要用文字符號。
 
-## 交接（2026-10-29，v1.84.0）
-- **目前版本**：v1.84.0（原「下一階段待做」A～D 全部完成）。
-  - A「上一步」存檔動畫改方案 E：箭頭放大 1.15 倍 0.3 秒＋數字位置換成「+1」（`.cwfm-nav-plus`，原地放大不飄，0.7 秒）；減少動態效果只淡入淡出。書籤鈕維持填滿動畫。
-  - B 純圖片書多欄並排（`cwfmImg*`，app-ui.js「v1.84.0 翻頁方向＋純圖片書」段落）：bundle 的 `View.open` 開書前呼叫 `window.__cwfm.transformBook`；相鄰單張圖片頁合成分段章節（`cwfm-seg-<序>-<首頁>`，每段＝欄數倍數、約 12 頁），頁面用背景圖（`<img>` 會被引擎加「欄高−留白×2」的限制）。位置只在 `view.getCFI`（出：`epubcfi(原章節!/4)`）與 `book.resolveCFI／resolveHref`（入）換算，書籤／進度／跳轉都是原書座標。欄數、插頁改變 → `cwfmImgBuildSections()` 就地換 `book.sections`＋`view.cwfmRefreshSections()`＋`renderer.cwfmInvalidate()` 重排回同一頁。前兩頁同圖略過封面；圖片書不插換欄標記、不留頁間緩衝。
-  - C 翻頁方向（左翻／右翻，`book.dir`）：右翻時文件 `<html dir=rtl>`＋`body{direction:rtl}`（根元素方向取自 body，只改 html 分欄照樣由左排起）＋`body>*{direction:ltr}`。反轉點擊區 `reverseTapZones`（點擊區與 ← → 一起對調）。快速鍵改名「往左／往右」。插頁：全書前面補一頁（顯示書名頁＋「開始閱讀」）、在這頁前插入／移除空白頁。翻頁方向與插頁存在 `settings.bookSettings[書號].b`，不進設定檔。
-  - D 內建設定檔「文字書／圖片書」（只管排版欄位 `CWFM_BUILTIN_PROFILE_KEYS`，覆蓋值存 `settings.builtinProfiles`，可恢復預設值）；內建標籤（含配色）加 Lucide 圖示、沒有刪除／改名、與自訂之間有分隔線。設定跟著書：`cwfmApplyBookSettings`／`cwfmPrepareSettingsForSave`——這次開書後設定有變才記住這本書並更新「最後一次的設定」（文字書＝全域、圖片書＝`lastImageValues` 分開記）。
-- **測試**：Docker repo `test/reader/ft184.py`（圖片書分段、原書座標、欄數變化、右翻、反轉、插頁、開始頁、記住設定、文字書不受影響、內建設定檔、動畫 E；`CWFM_EPUB` 指定圖片書，預設 `/home/claude/testbook/manga30.epub`，新對話串要請使用者重新附檔）；ft182、ft183 已同步更新。
-- **待使用者實機確認（iPad，Docker）**：動畫 E 與書籤動畫觀感、圖片書兩欄／右翻、開始頁樣式。
-- **這批沒做（之後再議）**：文字書兩欄從右頁開始時的開始頁（目前只有圖片書有插頁／開始頁）；每本書記住的設定要不要在面板上顯示「這本書有自己的設定／還原」。
+## 交接（2026-10-29，v1.85.0）
+- **目前版本**：v1.85.0（v1.84.0 的圖片書／翻頁方向／插頁／內建設定檔之上，依使用者回饋調整）。v1.84.0 內容見 git log 與知識庫草稿。
+  - **新書開啟時套用**（設定檔分組裡常駐的小區塊）：`settings.newBookProfile.{text,image}` ＝ `'builtin:text'`／`'builtin:image'`／`'theme:<id>'`；沒調整過的書（沒有 `bookSettings[書號]`）依類型套用；內建只管排版欄位、自訂設定檔套全部；指定的設定檔刪掉 → 退回內建。舊版開過的書一律當新書（使用者定案，不建「升級前的設定」）。v1.84.0 的 `lastImageValues` 不再使用。內建與自訂混在同一排（不再有分隔線）。
+  - **內建「圖片書」**：文字書預設為底，留白優先、上下左右 0、欄間距 0，欄數依可用區域長寬比（寬 ≥ 高 → 2 欄，`cwfmImageDefaultCols`）。點擊區照常顯示（蓋到也照蓋，使用者自己關）。
+  - **虛擬頁**（開始頁、插入的空白頁）：一張跟後面那頁畫出來一樣大的紙（`.cwfm-ib-paper`，ResizeObserver 依圖片長寬比算），貼書脊、細框、文字在紙的正中央；紙色＝內頁抽樣的眾數（`cwfmImgPaperColor`，邊緣雜的頁不投票），存在 `bookSettings[書號].b.paperColor`。
+  - **文字書插頁**：全書前面補一頁（書名頁）、在這頁前插入空白頁都能用：章節載入時插 `<cwfm-ins>`（CFI 過濾器略過），插入點存原書 CFI（`textInserts`）。
+  - **面板**：「閱讀行為」改名「閱讀紀錄」；翻頁精準定位移到「翻頁設定」；翻頁設定分小標題「翻頁方式」（方向、反轉、精準定位）／「左右點擊區」（啟用、寬度、顯示、翻頁動畫）。
+- **測試**：Docker repo `test/reader/ft184.py`、`ft185.py`（`CWFM_EPUB` 指定圖片書，預設 `/home/claude/testbook/manga30.epub`，新對話串要請使用者重新附檔）。
+- **待使用者實機確認（iPad，Docker）**：動畫 E、圖片書兩欄／右翻、虛擬頁、文字書書名頁。
+- **之後再議**：面板上顯示「這本書有自己的設定／還原」。
 - **NAS 更新**：`bgtsai/synology-docker-update`（見知識庫 14 號第 11 節）。
 - **知識庫**：未歸檔草稿 `_pending/20261029-1138_calibre-web-foliate-mod.md`。
