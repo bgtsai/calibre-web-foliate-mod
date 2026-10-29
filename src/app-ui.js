@@ -29,7 +29,7 @@
             field_max_column_count: '\u6700\u5927\u6b04\u6578',
             field_precise_anchor_align: '翻頁精準定位：切換全螢幕、縮放視窗或調整排版後，讓目前頁面的第一個字維持在頁首',
             field_auto_sync_enabled: "閱讀進度同步至雲端（換頁就同步，跨裝置接續閱讀）",
-            field_auto_hide_toolbar: '\u81EA\u52D5\u96B1\u85CF\u5DE5\u5177\u5217\uff083 \u79D2\u7121\u52D5\u4F5C\u5F8C\u6ED1\u5165\u908A\u7DE3\uff0c\u6ED1\u9F20\u79FB\u5230\u908A\u7DE3\u6216\u9EDE\u64CA\u539F\u4F4D\u7F6E\u55DA\u9192\uff09',
+            field_auto_hide_toolbar: '自動隱藏工具列（3 秒無動作後滑入邊緣；滑鼠移到上下邊緣，或用手指點一下上下邊緣即可喚醒）',
             field_tap_zone_enabled: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u958b\u95dc\u9ede\u64ca\u756b\u9762\u5de6\u53f3\u5074\u7ffb\u9801\u7684\u529f\u80fd',
             field_tap_zone_visible: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\uff1a\u986f\u793a\u8996\u89ba\u63d0\u793a\uff08\u95dc\u9589\u5f8c\u5340\u57df\u4ecd\u6709\u4f5c\u7528\uff0c\u53ea\u662f\u770b\u4e0d\u5230\uff09',
             field_tap_zone_width: '\u5de6\u53f3\u7ffb\u9801\u9ede\u64ca\u5340\u5bec\u5ea6',
@@ -46,21 +46,23 @@
             field_key_prev: '往左翻頁快速鍵',
             field_key_next: '往右翻頁快速鍵',
             // v1.84.0：翻頁方向、反轉點擊區、插頁、內建設定檔、圖片書
-            group_page_insert: '是否插頁',
+            group_page_insert: '插頁設定',
             tp_by_pre: '',
             tp_by_post: '　著',
             subhead_page_mode: '翻頁方式',
             subhead_tap_zone: '左右點擊區',
             group_new_book: '新書開啟時套用',
-            hint_new_book: '第一次打開、還沒調整過的書，依類型套用這裡選的設定檔。',
-            field_new_book_text: '文字書籍',
-            field_new_book_image: '圖片書籍',
+            hint_new_book: '第一次打開、還沒調整過的書，依類型套用。',
+            field_new_book_text: '文字書',
+            field_new_book_image: '圖片書',
+            field_prefer_book_dir: '優先套用書籍標示的翻頁方向',
+            hint_dir_from_book: '依書籍標示：',
             opt_builtin_suffix: '（內建）',
             field_page_direction: '翻頁方向',
             dir_ltr: '左翻（橫排書）',
             dir_rtl: '右翻（直排書、日本漫畫）',
             hint_page_direction_book: '這本書標示為：',
-            hint_page_direction_none: '這本書沒有標示，預設左翻。',
+            hint_page_direction_none: '這本書沒有標示翻頁方向。',
             field_reverse_tap_zones: '反轉點擊區',
             hint_reverse_tap_zones: '對調上一頁／下一頁的位置（← → 方向鍵一起對調）。',
             field_front_insert: '在全書最前面補一頁',
@@ -384,7 +386,7 @@
             field_max_column_count: 'Max Columns',
             field_precise_anchor_align: 'Precise Page Alignment: after toggling fullscreen, resizing the window or changing layout, keep the first character of the current page at the top',
             field_auto_sync_enabled: "Sync reading progress to the server (on every page turn, continue on other devices)",
-            field_auto_hide_toolbar: 'Auto-hide Toolbar (slides to edge after 3s idle; hover edge or click to wake)',
+            field_auto_hide_toolbar: 'Auto-hide Toolbar (slides away after 3s idle; hover or tap the top/bottom edge to wake)',
             field_tap_zone_enabled: 'Left/Right Tap Zones: enable click-to-page on screen edges',
             field_tap_zone_visible: 'Left/Right Tap Zones: show visual hint (zone still works when off, just invisible)',
             field_tap_zone_width: 'Left/Right Tap Zone Width',
@@ -406,15 +408,17 @@
             subhead_page_mode: 'Page Turning Mode',
             subhead_tap_zone: 'Tap Zones',
             group_new_book: 'Apply to New Books',
-            hint_new_book: 'Books opened for the first time (not yet adjusted) use the profile chosen here for their type.',
-            field_new_book_text: 'Text books',
-            field_new_book_image: 'Image books',
+            hint_new_book: 'Books opened for the first time use this profile by type.',
+            field_new_book_text: 'Text',
+            field_new_book_image: 'Images',
+            field_prefer_book_dir: "Prefer the book's page direction",
+            hint_dir_from_book: 'Following the book: ',
             opt_builtin_suffix: ' (built-in)',
             field_page_direction: 'Page Direction',
             dir_ltr: 'Left-to-right',
             dir_rtl: 'Right-to-left',
             hint_page_direction_book: 'This book is marked: ',
-            hint_page_direction_none: 'This book has no marking; defaults to left-to-right.',
+            hint_page_direction_none: 'This book has no page direction marking.',
             field_reverse_tap_zones: 'Reverse Tap Zones',
             hint_reverse_tap_zones: 'Swaps previous/next page sides (← → keys swap too).',
             field_front_insert: 'Add a page before the book',
@@ -889,7 +893,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.85.0', '2026-10-29'];
+    const CWFM_RELEASE = ['1.86.0', '2026-10-29'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1396,18 +1400,42 @@
         const w = window.innerWidth || 1, h = Math.max(1, (window.innerHeight || 1) - CWFM_TOOLBARS_PX);
         return w / h >= CWFM_IMG_TWO_COL_MIN_RATIO ? 2 : 1;
     }
-    // 開書前（分段大小）就要知道欄數：這本書記住的 → 「圖片書籍」新書預設指定的設定檔 → 內建圖片書（依長寬比）
-    function cwfmImgEarlyCols() {
+    // v1.86.0：內建設定檔裡開書前就要用到的值（翻頁方向、欄數）。這裡開書時就會被呼叫，比 DEFAULT_SETTINGS 的宣告早，
+    // 不能引用它（TDZ），所以另外寫一份；cwfmBuiltinProfileDefaults 也從這裡取，兩邊不會不一致。
+    const CWFM_EARLY_BUILTIN = {
+        text: { pageDirection: 'ltr', preferBookDirection: true, reverseTapZones: false },
+        image: { pageDirection: 'rtl', preferBookDirection: true, reverseTapZones: true },
+    };
+    // 開書前（設定還沒載入）讀某個設定值：這本書記住的 → 「新書開啟時套用」指定的設定檔（依類型）→ 內建設定檔
+    function cwfmEarlySetting(key, type) {
         const e = cwfmEarlyBookEntry();
         const s = INITIAL_SETTINGS || {};
-        let v = e?.v?.maxColumnCount;
-        if (v === undefined) {
-            const ref = s.newBookProfile?.image;
-            if (typeof ref === 'string' && ref.startsWith('theme:')) v = (s.savedThemes || []).find((x) => x.id === ref.slice(6))?.values?.maxColumnCount;
-            else v = s.builtinProfiles?.image?.maxColumnCount;
+        if (e?.v && e.v[key] !== undefined) return e.v[key];
+        const ref = s.newBookProfile?.[type];
+        if (typeof ref === 'string' && ref.startsWith('theme:')) {
+            const v = (s.savedThemes || []).find((x) => x.id === ref.slice(6))?.values?.[key];
+            if (v !== undefined) return v;
         }
-        if (v === undefined) v = cwfmImageDefaultCols();
-        return Math.max(1, Math.min(6, parseInt(v, 10) || 1));
+        const bid = ref === 'builtin:text' || ref === 'builtin:image' ? ref.slice(8) : type;
+        const bv = s.builtinProfiles?.[bid]?.[key];
+        if (bv !== undefined) return bv;
+        if (key === 'maxColumnCount') return bid === 'image' ? cwfmImageDefaultCols() : 1;
+        return CWFM_EARLY_BUILTIN[bid][key];
+    }
+    function cwfmImgEarlyCols() {
+        return Math.max(1, Math.min(6, parseInt(cwfmEarlySetting('maxColumnCount', 'image'), 10) || 1));
+    }
+    // v1.86.0：翻頁方向改成一般設定（pageDirection＋preferBookDirection）。v1.84～85 單獨記在書上的方向
+    // （bookSettings[書].b.pageDirection）照舊有效：當成「這本書選了這個方向、不看書的標示」。
+    function cwfmLegacyBookDir() {
+        const e = cwfmEarlyBookEntry();
+        const d = e?.b?.pageDirection;
+        return (d === 'rtl' || d === 'ltr') && e?.v?.pageDirection === undefined ? d : null;
+    }
+    // 實際生效的方向：開「優先套用書籍標示」且書有標示 → 書的；否則 → 設定的
+    function cwfmDirFor(pageDirection, preferBook) {
+        if (preferBook !== false && cwfmImg.origDir) return cwfmImg.origDir;
+        return pageDirection === 'rtl' ? 'rtl' : 'ltr';
     }
     function cwfmImgSegSizeFor(cols) { return cols * Math.ceil(CWFM_IMG_SEG_BASE / cols); }
 
@@ -1432,11 +1460,20 @@
     }
 
     async function cwfmTransformBook(bk) {
+        cwfmImg.book = bk;
+        cwfmImg.origDir = bk.dir === 'rtl' || bk.dir === 'ltr' ? bk.dir : null; // 書的標示（page-progression-direction）
+        bk.dir = 'ltr'; // 判斷完圖片書才知道套哪一類的設定，先給左翻（分段在載入時才排版，不受影響）
+        await cwfmImgDetect(bk);
         try {
-            cwfmImg.book = bk;
-            cwfmImg.origDir = bk.dir === 'rtl' || bk.dir === 'ltr' ? bk.dir : null; // 書的標示（page-progression-direction）
-            bk.dir = cwfmBookState.pageDirection || (bk.dir === 'rtl' ? 'rtl' : 'ltr');
-            cwfmDiag('IMGBOOK-DIR', 'book=' + cwfmImg.origDir + ' 記住的=' + cwfmBookState.pageDirection + ' → ' + bk.dir);
+            const type = cwfmImg.active ? 'image' : 'text';
+            const legacy = cwfmLegacyBookDir();
+            bk.dir = legacy || cwfmDirFor(cwfmEarlySetting('pageDirection', type), cwfmEarlySetting('preferBookDirection', type));
+            cwfmDiag('BOOK-DIR', 'book=' + cwfmImg.origDir + ' legacy=' + legacy + ' type=' + type + ' → ' + bk.dir);
+        } catch (e) { console.error('[cwfm:dir] 決定翻頁方向失敗', e); }
+        return bk;
+    }
+    async function cwfmImgDetect(bk) {
+        try {
             if (bk.rendition?.layout === 'pre-paginated') return bk; // 固定版面交給引擎原本的 foliate-fxl
             const secs = bk.sections;
             if (!Array.isArray(secs) || secs.length < 4) return bk;
@@ -1652,16 +1689,13 @@
             + '.cwfm-ib-img{background-repeat:no-repeat;background-size:contain;background-position:center}'
             + '.cwfm-ib-spread .cwfm-ib-img.cwfm-ib-l{background-position:right center}.cwfm-ib-spread .cwfm-ib-img.cwfm-ib-r{background-position:left center}'
             + '.cwfm-ib-spread .cwfm-ib-virtual.cwfm-ib-l{justify-content:flex-end}.cwfm-ib-spread .cwfm-ib-virtual.cwfm-ib-r{justify-content:flex-start}'
-            + '.cwfm-ib-paper{flex:0 0 auto;width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;'
-            + 'text-align:center;padding:0 24px;font-family:sans-serif;direction:ltr;overflow:hidden;'
-            + 'background:var(--cwfm-paper,transparent);color:var(--cwfm-paper-ink,inherit);border:1px solid var(--cwfm-paper-line,rgba(128,128,128,.35))}'
-            + '.cwfm-ib-paper{position:relative;gap:22px}'
-            + '.cwfm-ib-title{font-size:30px;font-weight:700;line-height:1.4;letter-spacing:.12em}'
-            + '.cwfm-ib-author{font-size:17px;letter-spacing:.2em;opacity:.8}'
-            + '.cwfm-tp-rule{display:flex;align-items:center;gap:10px;opacity:.55}.cwfm-tp-rule i{display:block;width:72px;height:0;border-top:1px solid currentColor}.cwfm-tp-rule b{font-size:9px;font-weight:400}'
-            // 書本內容會被套上兩端對齊、自訂背景色（!important），扉頁的字要強制置中；分隔線用框線畫，不用背景色
-            + '.cwfm-ib-title,.cwfm-ib-author,.cwfm-tp-pub{text-align:center !important;text-indent:0 !important}'
-            + '.cwfm-tp-pub{position:absolute;left:0;right:0;bottom:13%;font-size:14px;letter-spacing:.2em;opacity:.7}'
+            + '.cwfm-ib-paper{flex:0 0 auto;width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;font-family:sans-serif;direction:ltr;'
+            + 'border:1px solid var(--cwfm-paper-line,rgba(0,0,0,.18))}'
+            // v1.86.0：紙色、文字色要蓋過閱讀配色——配色對書本內容所有元素下 `* { color; background-color !important }`，
+            // 這裡用更具體的選擇器＋!important。沒有統一紙色（none）或還沒算好時一律白紙黑字（模擬實體書頁，不跟閱讀配色）
+            + '.cwfm-ib-paper{background-color:var(--cwfm-paper,#ffffff) !important;color:var(--cwfm-paper-ink,#222222) !important}'
+            + '.cwfm-ib-paper *{color:inherit !important;background-color:transparent !important}'
+            + CWFM_TP_CSS
             + '</style></head><body>' + parts.join('') + '</body></html>';
         const url = URL.createObjectURL(new Blob([xhtml], { type: 'application/xhtml+xml' }));
         return { url, urls, xhtml };
@@ -1712,6 +1746,7 @@
             const H = w / h > r ? h : Math.round(w / r);
             el.style.width = W + 'px';
             el.style.height = H + 'px';
+            cwfmTpScale(el);
         });
     }
     function cwfmImgWatchPapers(doc) {
@@ -1795,12 +1830,13 @@
             (view.renderer?.getContents?.() || []).forEach((x) => cwfmImgApplyPaper(x.doc));
         });
     }
-    // 紙色＋依紙色亮暗選文字色、框線色（沒有統一紙色：用閱讀器背景，框線用中性灰）
+    // 紙色＋依紙色亮暗選文字色、框線色（白色系→黑字；沒有統一紙色：白紙黑字）
     function cwfmImgApplyPaper(doc) {
         if (!doc || !doc.documentElement) return;
         const c = cwfmBookState.paperColor;
         const st = doc.documentElement.style;
         if (!c) { cwfmImgEnsurePaper(); return; }
+        // none（沒有統一紙色）：用樣式裡的預設白紙黑字（使用者定案：不跟閱讀配色）
         if (c === 'none') { ['--cwfm-paper', '--cwfm-paper-ink', '--cwfm-paper-line'].forEach((k) => st.removeProperty(k)); return; }
         const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
         const light = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
@@ -1871,18 +1907,19 @@
         view.renderer.cwfmInvalidate?.(view.book.dir);
         if (cfi) await view.goTo(cfi); else await view.renderer.next();
     }
-    // 翻頁方向：'ltr'／'rtl'／null（照書的標示）
-    async function cwfmSetPageDirection(dir) {
-        cwfmBookState.pageDirection = dir;
-        const eff = dir || (cwfmImg.origDir === 'rtl' ? 'rtl' : 'ltr');
-        if (view.book) view.book.dir = eff;
-        if (cwfmImg.active) cwfmImgBuildSections();
-        if (cwfmImg.active) await view.cwfmRefreshSections?.();
-        await cwfmReflowAtCurrent('direction=' + eff);
+    // v1.86.0：翻頁方向是一般設定；applySettings 每次呼叫這裡，實際方向變了才重排（開書時第一次套用不會變）
+    let cwfmDirJob = Promise.resolve();
+    function cwfmDirOnSettings(settings) {
+        if (!view.book) return;
+        const eff = cwfmDirFor(settings.pageDirection, settings.preferBookDirection);
+        if (eff === view.book.dir) return;
+        view.book.dir = eff;
+        cwfmDirJob = cwfmDirJob.then(async () => {
+            if (cwfmImg.active) { cwfmImgBuildSections(); await view.cwfmRefreshSections?.(); }
+            await cwfmReflowAtCurrent('direction=' + eff);
+        }).catch((e) => console.error('[cwfm:dir] 換翻頁方向失敗', e));
     }
-    window.__cwfm.setPageDirection = cwfmSetPageDirection;
-    function cwfmEffectivePageDirection() { return view.book?.dir === 'rtl' ? 'rtl' : 'ltr'; }
-    window.__cwfm.effectivePageDirection = cwfmEffectivePageDirection;
+    window.__cwfm.dirOnSettings = cwfmDirOnSettings;
     // 欄數或插頁改變：分段大小／內容跟著變，重排後回到同一頁
     async function cwfmImgRebuild(reason) {
         if (!cwfmImg.active) return;
@@ -1925,11 +1962,29 @@
         const author = cwfmImgMetaText(bk.metadata?.author);
         // v1.85.0（使用者定案）：古典扉頁——上下各一條「線＋◆＋線」夾住書名與作者，最下緣有出版社才放。
         // 不放「開始閱讀 →」：加外框看起來像按鈕，容易誤會。
+        // v1.86.0（使用者選方案甲）：分隔線＋書名＋作者＋分隔線＋出版社視為一組，整組中心放在 44%
+        // （Van de Graaf／Tschichold 版心：上留白 1/9、下留白 2/9，版心中心在頁高 4/9≈44%）。
+        // 沒有出版社時只隱藏那一行、位置照樣保留，上面整組不往下移（使用者定案）。
         const publisher = cwfmImgMetaText(bk.metadata?.publisher);
         const rule = '<div class="cwfm-tp-rule"><i></i><b>\u25c6</b><i></i></div>';
-        return rule + '<div class="cwfm-ib-title">' + cwfmImgEsc(title) + '</div>'
-            + (author ? '<div class="cwfm-ib-author">' + cwfmImgEsc(t('tp_by_pre') + author + t('tp_by_post')) + '</div>' : '')
-            + rule + (publisher ? '<div class="cwfm-tp-pub">' + cwfmImgEsc(publisher) + '</div>' : '');
+        return '<div class="cwfm-tp-grp">' + rule + '<div class="cwfm-ib-title">' + cwfmImgEsc(title) + '</div>'
+            + '<div class="cwfm-ib-author"' + (author ? '' : ' style="visibility:hidden"') + '>' + cwfmImgEsc(author ? t('tp_by_pre') + author + t('tp_by_post') : '\u3000') + '</div>'
+            + rule + '<div class="cwfm-tp-pub"' + (publisher ? '' : ' style="visibility:hidden"') + '>' + cwfmImgEsc(publisher || '\u3000') + '</div></div>';
+    }
+    // 扉頁樣式（圖片書的紙、文字書的書名頁共用）。字級以 486px 寬的紙為準（書名 60px＝使用者選的 2 倍），
+    // 依實際寬度等比縮放（--tp，cwfmTpScale 設定），iOS 15 沒有容器查詢單位，用 calc 乘變數。
+    // 書本內容會被套上兩端對齊、首行縮排（!important），扉頁的字要強制置中；分隔線用框線畫（背景色會被配色蓋掉）
+    const CWFM_TP_BASE_W = 486;
+    const CWFM_TP_CSS = '.cwfm-tp-grp{position:absolute;left:0;right:0;top:44%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;padding:0 calc(24px * var(--tp, 1))}'
+        + '.cwfm-tp-rule{display:flex;align-items:center;gap:calc(12px * var(--tp, 1));opacity:.55}'
+        + '.cwfm-tp-rule i{display:block;width:calc(110px * var(--tp, 1));height:0;border-top:1px solid currentColor}.cwfm-tp-rule b{font-size:10px;font-weight:400}'
+        + '.cwfm-ib-title{font-size:calc(60px * var(--tp, 1));font-weight:700;line-height:1.3;letter-spacing:.1em;margin:calc(28px * var(--tp, 1)) 0 calc(18px * var(--tp, 1))}'
+        + '.cwfm-ib-author{font-size:max(14px, calc(22px * var(--tp, 1)));letter-spacing:.2em;opacity:.8;margin-bottom:calc(28px * var(--tp, 1))}'
+        + '.cwfm-tp-pub{font-size:max(12px, calc(16px * var(--tp, 1)));letter-spacing:.25em;opacity:.7;margin-top:calc(56px * var(--tp, 1))}'
+        + '.cwfm-ib-title,.cwfm-ib-author,.cwfm-tp-pub{text-align:center !important;text-indent:0 !important}';
+    function cwfmTpScale(el) {
+        const w = el.clientWidth;
+        if (w > 0) el.style.setProperty('--tp', Math.max(0.5, Math.min(1.4, w / CWFM_TP_BASE_W)).toFixed(3));
     }
     function cwfmTextInsertsApply(doc, index) {
         if (!doc || !doc.body || cwfmImg.active) return;
@@ -1947,13 +2002,8 @@
             st.id = 'cwfm-ins-style';
             st.textContent = CWFM_INS_TAG + '{display:block;break-before:column;-webkit-column-break-before:always;break-after:column;-webkit-column-break-after:always;margin:0;padding:0;text-indent:0}'
                 + CWFM_INS_TAG + '.cwfm-ins-blank{height:1px}'
-                + CWFM_INS_TAG + '.cwfm-ins-start{height:100vh;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 24px;font-family:sans-serif;direction:ltr}'
-                + CWFM_INS_TAG + '.cwfm-ins-start{position:relative;gap:22px}'
-                + '.cwfm-ib-title{font-size:30px;font-weight:700;line-height:1.4;letter-spacing:.12em}.cwfm-ib-author{font-size:17px;letter-spacing:.2em;opacity:.8}'
-                + '.cwfm-tp-rule{display:flex;align-items:center;gap:10px;opacity:.55}.cwfm-tp-rule i{display:block;width:72px;height:0;border-top:1px solid currentColor}.cwfm-tp-rule b{font-size:9px;font-weight:400}'
-            // 書本內容會被套上兩端對齊、自訂背景色（!important），扉頁的字要強制置中；分隔線用框線畫，不用背景色
-            + '.cwfm-ib-title,.cwfm-ib-author,.cwfm-tp-pub{text-align:center !important;text-indent:0 !important}'
-            + '.cwfm-tp-pub{position:absolute;left:0;right:0;bottom:13%;font-size:14px;letter-spacing:.2em;opacity:.7}';
+                + CWFM_INS_TAG + '.cwfm-ins-start{height:100vh;box-sizing:border-box;position:relative;font-family:sans-serif;direction:ltr}'
+                + CWFM_TP_CSS;
             (doc.head || doc.documentElement).appendChild(st);
         }
         // 先解析完全部插入點再插（插入會切開文字節點，雖然 CFI 不受影響，但已解析的 Range 會失效）
@@ -1980,6 +2030,9 @@
             el.className = 'cwfm-ins-start';
             el.innerHTML = cwfmStartPageInner(bk.dir === 'rtl');
             doc.body.insertBefore(el, doc.body.firstChild);
+            const RO = doc.defaultView && doc.defaultView.ResizeObserver;
+            if (RO) new RO(() => { try { cwfmTpScale(el); } catch (e) { console.error('[cwfm:insert] 書名頁字級失敗', e); } }).observe(el);
+            else setTimeout(() => cwfmTpScale(el), 300);
         }
     }
     // 目前畫面上有沒有空白頁（文字書）；有的話回傳它的 CFI
@@ -2871,10 +2924,14 @@
             '.cwfm-subhead-first { margin-top: 0; }',
             '.cwfm-newbook { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cwfm-border); }',
             '.cwfm-newbook-title { font-size: 13px; font-weight: 600; color: var(--cwfm-text); }',
-            '.cwfm-newbook-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }',
-            '.cwfm-newbook-row label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }',
-            '.cwfm-newbook-row label svg { display: block; color: var(--cwfm-text-secondary); }',
-            '.cwfm-newbook-row select { min-width: 128px; }',
+            // v1.86.0（使用者選 A）：名稱一行、選單一行佔滿寬度，不跟名稱擠同一行（窄面板會把名稱擠成一字一行）；
+            // 分隔線只在兩項之間，說明文字跟第一項之間不隔開（說明屬於整個區塊）
+            '.cwfm-newbook-row { padding: 10px 0; }',
+            '.cwfm-newbook-row + .cwfm-newbook-row { border-top: 1px solid var(--cwfm-border); }',
+            // 前面加 .cwfm-panel：要蓋過 '.cwfm-panel label'（display:block、上邊距 14px），兩條優先權相同時排在後面的才贏
+            '.cwfm-panel .cwfm-newbook-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; color: var(--cwfm-text); white-space: nowrap; margin: 0 0 6px; }',
+            '.cwfm-newbook-row label svg { display: block; color: var(--cwfm-text-secondary); flex: 0 0 auto; }',
+            '.cwfm-newbook-row select { display: block; width: 100%; box-sizing: border-box; }',
             '.cwfm-keylist-sep { width: 1px; height: 20px; background: var(--cwfm-border-light); margin: 0 4px; flex: 0 0 auto; }',
             // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
             // 沒有 hover 的時候標籤保持乾淨，不會一堆小圖示擠在一起；
@@ -2942,6 +2999,8 @@
             '.cwfm-errlog-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }',
             '.cwfm-errlog-buttons button { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }',
             '.cwfm-btn-danger-outline { background: none; border: 1px solid #d04040; color: #e05555; }',
+            // v1.86.0：閱讀紀錄的〔清除〕跟錯誤紀錄的〔清除記錄〕同一個樣子（尺寸照 .cwfm-errlog-buttons button）
+            '.cwfm-checkbox-row .cwfm-btn-danger-outline { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; flex: 0 0 auto; }',
             '.cwfm-field-hint a { color: var(--cwfm-accent); word-break: break-all; }',
             '.cwfm-consent-dialog { border: 2px solid #FAC775; border-radius: 12px; }',
             '.cwfm-confirm-ok:hover { background: #c03838; }',
@@ -3568,6 +3627,9 @@
         pageFlipAnimEnabled: true,
         // v1.84.0：反轉點擊區——對調左右兩側代表的上一頁／下一頁（連 ← → 方向鍵）
         reverseTapZones: false,
+        // v1.86.0：翻頁方向改成一般設定；preferBookDirection＝書有標示（page-progression-direction）就照書的
+        pageDirection: 'ltr',
+        preferBookDirection: true,
         pageFlipAnimColor: 'AUTO',
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
@@ -4333,8 +4395,8 @@
         // 版面配置
         'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
         'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
-        // 翻頁設定（v1.84.0 加反轉點擊區；翻頁方向、插頁是書本身的屬性，另存在 bookSettings[書].b，不進設定檔）
-        'reverseTapZones', 'tapZoneEnabled', 'tapZoneWidthPx', 'tapZoneVisible', 'pageFlipAnimColor', 'pageFlipAnimEnabled',
+        // 翻頁設定（v1.84.0 加反轉點擊區；v1.86.0 翻頁方向改成一般設定；插頁、紙色是書本身的屬性，另存在 bookSettings[書].b）
+        'pageDirection', 'preferBookDirection', 'reverseTapZones', 'tapZoneEnabled', 'tapZoneWidthPx', 'tapZoneVisible', 'pageFlipAnimColor', 'pageFlipAnimEnabled',
         // 介面隱藏
         'cursorAutoHideEnabled', 'cursorAutoHideDelaySeconds', 'autoHideToolbar',
         // 閱讀行為
@@ -4362,17 +4424,22 @@
         'fontSize', 'letterSpacing', 'lineSpacing', 'justify', 'hyphenate', 'disableLigatures',
         'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
         'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
+        // v1.86.0：翻頁方向、反轉點擊區（圖片書預設右翻＋反轉）
+        'pageDirection', 'preferBookDirection', 'reverseTapZones',
     ];
     // 圖片書（v1.85.0 使用者定案）：以文字書預設為底，水平垂直都改留白優先、左右留白 0、欄間距 0（兩頁貼齊書脊），
     // 上下留白＝工具列高度（CWFM_TOOLBARS_PX 的一半，工具列預設常駐，留白 0 會蓋掉圖片上下各 48px），
     // 欄數依畫面長寬比（cwfmImageDefaultCols）。翻頁點擊區照常顯示，就算蓋到圖片邊緣——第一次看到的人才知道有這個功能，
     // 不想看到再自己關。
+    // v1.86.0（使用者定案）：上下留白也 0——圖片本身上下通常有留白，被常駐工具列蓋到沒關係；右翻＋反轉點擊區
     const CWFM_IMAGE_PROFILE_OVERRIDES = {
         flow: 'paginated', horizontalSizeMode: 'margin', verticalSizeMode: 'margin',
-        leftRightPadding: 0, topBottomPadding: CWFM_TOOLBARS_PX / 2, columnGapPx: 0,
+        leftRightPadding: 0, topBottomPadding: 0, columnGapPx: 0,
+        ...CWFM_EARLY_BUILTIN.image,
     };
     function cwfmBuiltinProfileDefaults(id) {
         const base = { ...DEFAULT_SETTINGS, ...cwfmFirstRunDefaults() };
+        Object.assign(base, CWFM_EARLY_BUILTIN.text);
         if (id === 'image') Object.assign(base, CWFM_IMAGE_PROFILE_OVERRIDES, { maxColumnCount: cwfmImageDefaultCols() });
         const out = {};
         CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { out[k] = base[k]; });
@@ -4425,9 +4492,22 @@
             if (entry && entry.v) {
                 cwfmApplyValues(settings, entry.v);
                 cwfmBookTrack.hasEntry = true;
+                // v1.86.0 以前記住的書沒有翻頁方向／反轉：照開書時決定的（舊版單獨記的方向，或該類型新書的預設）
+                const type = cwfmBookTrack.image ? 'image' : 'text';
+                const legacy = cwfmLegacyBookDir();
+                if (entry.v.pageDirection === undefined) settings.pageDirection = legacy || cwfmEarlySetting('pageDirection', type);
+                if (entry.v.preferBookDirection === undefined) settings.preferBookDirection = legacy ? false : cwfmEarlySetting('preferBookDirection', type);
+                if (entry.v.reverseTapZones === undefined) settings.reverseTapZones = cwfmEarlySetting('reverseTapZones', type);
             } else {
                 const pr = cwfmResolveNewBookProfile(settings, cwfmBookTrack.image ? 'image' : 'text');
-                if (pr.kind === 'theme') { cwfmApplyValues(settings, pr.theme.values); how = 'theme:' + pr.theme.name; }
+                if (pr.kind === 'theme') {
+                    cwfmApplyValues(settings, pr.theme.values);
+                    how = 'theme:' + pr.theme.name;
+                    // v1.86.0 以前存的設定檔沒有這幾個值：跟開書時一樣退回內建（不然開書後方向又被換掉、重排一次）
+                    ['pageDirection', 'preferBookDirection', 'reverseTapZones'].forEach((k) => {
+                        if (pr.theme.values[k] === undefined) settings[k] = cwfmEarlySetting(k, cwfmBookTrack.image ? 'image' : 'text');
+                    });
+                }
                 else { cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, pr.id)); how = 'builtin:' + pr.id; }
             }
             cwfmBookTrack.baseline = JSON.stringify(cwfmThemeSnapshot(settings));
@@ -5366,6 +5446,7 @@
         try { updateCursorAutoHide(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
         // v1.84.0：圖片書欄數改變時分段大小跟著變（每段頁數＝欄數的倍數）
         try { window.__cwfm.imgOnSettings?.(settings); } catch (e) { console.error('[cwfm:imgbook] 套用設定失敗', e); }
+        try { window.__cwfm.dirOnSettings?.(settings); } catch (e) { console.error('[cwfm:dir] 套用翻頁方向失敗', e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error(t('err_apply_font_style'), e); }
@@ -6230,6 +6311,8 @@
             return labelText + (CWFM_LOCALE === 'zh' ? '' : ' ') + '(' + unitSuffix + ')';
         }
 
+        // v1.86.0：滑桿拖動中重新排版的最短間隔 (ms)；觸控裝置（iPad 等）排一次比較久，間隔拉長
+        const CWFM_SLIDER_APPLY_MS = CWFM_TOUCH_UI ? 250 : 120;
         function addRangeField(labelText, key, min, max, step, unitSuffix, fieldOpts) {
             const integer = !!fieldOpts?.integer;
             const field = document.createElement('div');
@@ -6257,18 +6340,44 @@
             sliderRow.appendChild(valueWrap);
             field.appendChild(sliderRow);
 
-            function commit(val) {
+            function clampVal(val) {
                 // 夾在 min/max 範圍內，避免使用者手動輸入超出範圍的數字；整數欄位強制取整
                 let clamped = Math.min(max, Math.max(min, val));
                 if (integer) clamped = Math.round(clamped);
+                return clamped;
+            }
+            function commit(val) {
+                const clamped = clampVal(val);
+                clearTimeout(dragTimer); dragTimer = null; dragPending = false;
                 settings[key] = clamped;
                 slider.value = String(clamped);
                 if (parseFloat(valueInput.value) !== clamped) valueInput.value = String(clamped);
                 saveSettings(settings);
                 applySettings(settings);
             }
-
-            slider.addEventListener('input', () => commit(parseFloat(slider.value)));
+            // v1.86.0：拖動中不要每一格都重新排版——每格同步做「套用設定＋整本重排」，桌機 WebKit 量到 50～115ms／格，
+            // iPad（iOS 15）更慢，排版期間滑桿完全不能動，所以卡頓、放開時一次跳過去（滑鼠、手指都一樣）。
+            // 改成：數字立刻跟著走；重排只排最新值，拖動中最多每 CWFM_SLIDER_APPLY_MS 一次（中間值跳過）；
+            // 放開（change）時一定套用最終值並存檔。存檔也只在放開時做。
+            let dragTimer = null, dragPending = false, dragLastApply = 0;
+            function applyDragValue() {
+                dragTimer = null;
+                if (!dragPending) return;
+                dragPending = false;
+                dragLastApply = performance.now();
+                applySettings(settings);
+            }
+            slider.addEventListener('input', () => {
+                const clamped = clampVal(parseFloat(slider.value));
+                settings[key] = clamped;
+                if (parseFloat(valueInput.value) !== clamped) valueInput.value = String(clamped);
+                dragPending = true;
+                if (dragTimer) return;
+                const wait = Math.max(0, CWFM_SLIDER_APPLY_MS - (performance.now() - dragLastApply));
+                // setTimeout 而不是同步：先讓瀏覽器把滑桿畫到手指的位置，再排版
+                dragTimer = setTimeout(applyDragValue, wait);
+            });
+            slider.addEventListener('change', () => commit(parseFloat(slider.value)));
             valueInput.addEventListener('change', () => {
                 const val = parseFloat(valueInput.value);
                 if (Number.isNaN(val)) { valueInput.value = String(settings[key]); return; }
@@ -7256,7 +7365,7 @@
         {
             const bs = cwfmBookState;
             const field = document.createElement('div');
-            field.className = 'cwfm-field cwfm-field-no-divider';
+            field.className = 'cwfm-field'; // v1.86.0：跟下面「在這頁前插入空白頁」是兩件事，中間要有分隔線
             const row = document.createElement('div');
             row.className = 'cwfm-checkbox-row';
             const label = document.createElement('label');
@@ -7328,20 +7437,30 @@
                 opt.textContent = txt;
                 select.appendChild(opt);
             });
-            select.value = window.__cwfm.effectivePageDirection?.() || 'ltr';
+            // v1.86.0：一般設定（settings.pageDirection）；開「優先套用書籍標示」且書有標示時選單停用、提示照書的方向
+            select.value = settings.pageDirection === 'rtl' ? 'rtl' : 'ltr';
             field.appendChild(select);
             const hint = document.createElement('div');
             hint.className = 'cwfm-field-hint';
-            const od = window.__cwfm.imgBook?.origDir;
-            hint.textContent = od ? t('hint_page_direction_book') + t(od === 'rtl' ? 'dir_rtl' : 'dir_ltr') : t('hint_page_direction_none');
             field.appendChild(hint);
             panelTarget.appendChild(field);
             select.addEventListener('change', () => {
-                cwfmBookState.pageDirection = select.value;
-                cwfmSaveBookState();
-                window.__cwfm.setPageDirection?.(select.value).catch((e) => console.error('[cwfm:dir] 換翻頁方向失敗', e));
+                settings.pageDirection = select.value;
+                saveSettings(settings);
+                applySettings(settings);
             });
-            panelRefreshers.push(() => { select.value = window.__cwfm.effectivePageDirection?.() || 'ltr'; });
+            const prefer = addCheckboxField(t('field_prefer_book_dir'), 'preferBookDirection');
+            const refreshDir = () => {
+                const od = window.__cwfm.imgBook?.origDir;
+                const locked = settings.preferBookDirection !== false && !!od;
+                select.value = locked ? od : (settings.pageDirection === 'rtl' ? 'rtl' : 'ltr');
+                select.disabled = locked;
+                hint.textContent = locked ? t('hint_dir_from_book') + t(od === 'rtl' ? 'dir_rtl' : 'dir_ltr')
+                    : (od ? t('hint_page_direction_book') + t(od === 'rtl' ? 'dir_rtl' : 'dir_ltr') : t('hint_page_direction_none'));
+            };
+            prefer.addEventListener('change', refreshDir);
+            refreshDir();
+            panelRefreshers.push(refreshDir);
         }
         {
             const rev = addCheckboxField(t('field_reverse_tap_zones'), 'reverseTapZones');
@@ -7457,7 +7576,7 @@
             label.textContent = t('field_clear_navhist');
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'cwfm-confirm-cancel';
+            btn.className = 'cwfm-btn-danger-outline'; // v1.86.0：清除類按鈕一律紅框（同錯誤紀錄的〔清除記錄〕）
             btn.textContent = t('btn_clear_navhist');
             btn.addEventListener('click', async () => {
                 const ok = await cwfmConfirmDialog(t('field_clear_navhist'), t('dlg_clear_navhist_msg'), t('btn_clear_navhist'));

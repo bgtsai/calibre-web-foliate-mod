@@ -42,14 +42,16 @@
 - 設定面板新增設定時，要一併加進 `CWFM_THEME_FIELD_KEYS`，否則存不進「設定檔」。
 - 標籤小按鈕、步進器等圖示一律用 `cwfmChipIcon()`（Lucide SVG、線寬 2），不要用文字符號。
 
-## 交接（2026-10-29，v1.85.0）
-- **目前版本**：v1.85.0（v1.84.0 的圖片書／翻頁方向／插頁／內建設定檔之上，依使用者回饋調整）。v1.84.0 內容見 git log 與知識庫草稿。
-  - **新書開啟時套用**（設定檔分組裡常駐的小區塊）：`settings.newBookProfile.{text,image}` ＝ `'builtin:text'`／`'builtin:image'`／`'theme:<id>'`；沒調整過的書（沒有 `bookSettings[書號]`）依類型套用；內建只管排版欄位、自訂設定檔套全部；指定的設定檔刪掉 → 退回內建。舊版開過的書一律當新書（使用者定案，不建「升級前的設定」）。v1.84.0 的 `lastImageValues` 不再使用。內建與自訂混在同一排（不再有分隔線）。
-  - **內建「圖片書」**：文字書預設為底，留白優先、左右 0、上下＝工具列高度 48（工具列預設常駐，0 會蓋掉圖片）、欄間距 0，欄數依可用區域長寬比（寬 ≥ 高 → 2 欄，`cwfmImageDefaultCols`）。點擊區照常顯示（蓋到也照蓋，使用者自己關）。
-  - **虛擬頁**（開始頁、插入的空白頁）：一張跟後面那頁畫出來一樣大的紙（`.cwfm-ib-paper`，ResizeObserver 依圖片長寬比算），貼書脊、細框，內容是古典扉頁（上下「線＋◆＋線」夾書名與「作者　著」，最下緣有出版社才放；不放「開始閱讀」按鈕，像按鈕會誤會）；紙色＝內頁抽樣的眾數（`cwfmImgPaperColor`，邊緣雜的頁不投票），存在 `bookSettings[書號].b.paperColor`。
-  - **文字書插頁**：全書前面補一頁（書名頁）、在這頁前插入空白頁都能用：章節載入時插 `<cwfm-ins>`（CFI 過濾器略過），插入點存原書 CFI（`textInserts`）。
-  - **面板**：「閱讀行為」改名「閱讀紀錄」；翻頁精準定位移到「翻頁設定」；翻頁設定分小標題「翻頁方式」（方向、反轉、精準定位）／「左右點擊區」（啟用、寬度、顯示、翻頁動畫）。
-- **測試**：Docker repo `test/reader/ft184.py`、`ft185.py`（`CWFM_EPUB` 指定圖片書，預設 `/home/claude/testbook/manga30.epub`，新對話串要請使用者重新附檔）。
+## 交接（2026-10-29，v1.86.0）
+- **目前版本**：v1.86.0（v1.85.0 之上依使用者回饋）。
+  - **翻頁方向改成一般設定**：`pageDirection`＋新開關 `preferBookDirection`（優先套用書籍標示，預設開；開著且書有標示時選單停用、提示「依書籍標示」）。都進設定檔與 `CWFM_BUILTIN_PROFILE_KEYS`。開書前的值由 `cwfmEarlySetting()` 讀 INITIAL_SETTINGS（不能碰 DEFAULT_SETTINGS：TDZ），內建值在 `CWFM_EARLY_BUILTIN`；改了由 `applySettings` → `cwfmDirOnSettings` 重排。v1.84～85 記在 `bookSettings[書].b.pageDirection` 的照舊（＝不看書的標示）。
+  - **內建「圖片書」**：右翻、反轉點擊區、上下左右留白 0（工具列蓋到圖片沒關係，使用者定案）。
+  - **虛擬頁紙色**：`.cwfm-ib-paper` 用更具體的選擇器＋!important 蓋過閱讀配色的 `* { … !important }`；沒有統一紙色＝白紙黑字。
+  - **扉頁方案甲**：`.cwfm-tp-grp` 整組（含出版社）中心在 44%（版心 1/9:2/9），沒有出版社時隱藏該行、位置不變；字級以 486px 紙寬為準（書名 60px）依 `--tp` 等比（`cwfmTpScale`），`CWFM_TP_CSS` 圖片書與文字書共用。
+  - **面板**：「是否插頁」→「插頁設定」；補一頁與插入空白頁之間有分隔線；〔清除〕跳轉紀錄紅框；「新書開啟時套用」名稱一行、選單一行（只有兩項之間有分隔線）；自動隱藏工具列說明補觸控。
+  - **滑桿不卡**：拖動中數字立刻更新、重排只排最新值且最多每 `CWFM_SLIDER_APPLY_MS`（觸控 250／滑鼠 120ms）一次，放開（change）才套用最終值並存檔。原本每格同步整本重排（桌機 WebKit 50～115ms／格）。
+  - 不做：升級後保留舊全域字級（使用者自己逐本調整）。v1.85 的內容見 git log。
+- **測試**：Docker repo `test/reader/ft184.py`、`ft185.py`、`ft186.py`（`CWFM_EPUB` 指定圖片書，預設 `/home/claude/testbook/manga30.epub`，新對話串要請使用者重新附檔）。
 - **待使用者實機確認（iPad，Docker）**：動畫 E、圖片書兩欄／右翻、虛擬頁、文字書書名頁。
 - **之後再議**：面板上顯示「這本書有自己的設定／還原」。
 - **NAS 更新**：`bgtsai/synology-docker-update`（見知識庫 14 號第 11 節）。
