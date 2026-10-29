@@ -43,8 +43,33 @@
             aria_toc: '\u76EE\u9304',
             field_color_text: '\u81ea\u8a02\u6587\u5b57\u984f\u8272',
             field_color_bg: '\u81ea\u8a02\u80cc\u666f\u984f\u8272',
-            field_key_prev: '\u5F80\u524D\u7FFB\u9801\u5FEB\u901F\u9375',
-            field_key_next: '\u5F80\u5F8C\u7FFB\u9801\u5FEB\u901F\u9375',
+            field_key_prev: '往左翻頁快速鍵',
+            field_key_next: '往右翻頁快速鍵',
+            // v1.84.0：翻頁方向、反轉點擊區、插頁、內建設定檔、圖片書
+            group_page_insert: '是否插頁',
+            field_page_direction: '翻頁方向',
+            dir_ltr: '左翻（橫排書）',
+            dir_rtl: '右翻（直排書、日本漫畫）',
+            hint_page_direction_book: '這本書標示為：',
+            hint_page_direction_none: '這本書沒有標示，預設左翻。',
+            field_reverse_tap_zones: '反轉點擊區',
+            hint_reverse_tap_zones: '對調上一頁／下一頁的位置（← → 方向鍵一起對調）。',
+            field_front_insert: '在全書最前面補一頁',
+            hint_front_insert: '封面會單獨一頁，旁邊放書名頁；跨頁錯開時用。',
+            field_insert_here: '在這頁前插入空白頁',
+            btn_insert_blank: '插入',
+            btn_remove_blank: '移除',
+            field_remove_here: '移除這頁前的空白頁',
+            hint_insert_only_image: '只適用於圖片書（漫畫）。',
+            imgbook_start: '開始閱讀 →',
+            imgbook_start_rtl: '← 開始閱讀',
+            profile_text: '文字書',
+            profile_image: '圖片書',
+            aria_restore_profile: '恢復預設值',
+            dlg_restore_profile_title: '恢復預設值',
+            dlg_restore_profile_pre: '要把「',
+            dlg_restore_profile_post: '」恢復成原本的預設值嗎？',
+            txt_profile_restored_post: '」已恢復預設值。',
             field_key_bookmark: '加入書籤快速鍵',
             nav_back: '返回上一個位置',
             nav_forward: '前往下一個位置',
@@ -367,8 +392,32 @@
             aria_toc: 'Table of Contents',
             field_color_text: 'Custom Text Color',
             field_color_bg: 'Custom Background Color',
-            field_key_prev: 'Previous Page Shortcut',
-            field_key_next: 'Next Page Shortcut',
+            field_key_prev: 'Page Left Shortcut',
+            field_key_next: 'Page Right Shortcut',
+            group_page_insert: 'Page Insertion',
+            field_page_direction: 'Page Direction',
+            dir_ltr: 'Left-to-right',
+            dir_rtl: 'Right-to-left',
+            hint_page_direction_book: 'This book is marked: ',
+            hint_page_direction_none: 'This book has no marking; defaults to left-to-right.',
+            field_reverse_tap_zones: 'Reverse Tap Zones',
+            hint_reverse_tap_zones: 'Swaps previous/next page sides (← → keys swap too).',
+            field_front_insert: 'Add a page before the book',
+            hint_front_insert: 'Puts the cover on its own page next to a title page; fixes offset spreads.',
+            field_insert_here: 'Insert a blank page before this page',
+            btn_insert_blank: 'Insert',
+            btn_remove_blank: 'Remove',
+            field_remove_here: 'Remove the blank page before this page',
+            hint_insert_only_image: 'Image books (comics) only.',
+            imgbook_start: 'Start reading →',
+            imgbook_start_rtl: '← Start reading',
+            profile_text: 'Text',
+            profile_image: 'Images',
+            aria_restore_profile: 'Restore defaults',
+            dlg_restore_profile_title: 'Restore Defaults',
+            dlg_restore_profile_pre: 'Restore “',
+            dlg_restore_profile_post: '” to its default values?',
+            txt_profile_restored_post: '” has been restored to defaults.',
             field_key_bookmark: 'Add Bookmark Shortcut',
             nav_back: 'Back',
             nav_forward: 'Forward',
@@ -710,6 +759,9 @@
     // 由下往上描亮／填滿，接著放大 1.15 倍再縮回；系統開了「減少動態效果」改成原地淡入（不移動、不縮放）
     const CWFM_SAVE_ANIM_RISE_MS = 250;
     const CWFM_SAVE_ANIM_PULSE_MS = 200;
+    // v1.84.0：「上一步」存檔動畫（方案 E）——箭頭放大的時間、「+1」整段的時間 (ms)
+    const CWFM_SAVE_ANIM_NAV_PULSE_MS = 300;
+    const CWFM_SAVE_ANIM_NAV_MS = 700;
     function dlog(...args) { if (CWFM_DEBUG) console.log(...args); }
     // [cwfm] 查表小工具：key 對應不到就直接印出這個 key 本身（明顯的
     // 未翻譯標記，比空字串或英文亂猜好排查），不會讓介面整個掛掉。
@@ -825,7 +877,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.83.0', '2026-10-29'];
+    const CWFM_RELEASE = ['1.84.0', '2026-10-29'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1282,6 +1334,397 @@
         }
         return new Blob(chunks, { type: 'application/epub+zip' });
     }
+    // ============================================================
+    // [cwfm] v1.84.0 翻頁方向＋純圖片書（漫畫）多欄並排
+    // ------------------------------------------------------------
+    // 分頁引擎一次只排一個章節檔，欄數只切同一個檔；一頁一檔的圖片書因此永遠只看到一張圖。
+    // 做法：開書時（bundle 的 View.open 呼叫 window.__cwfm.transformBook）把相鄰的純圖片頁
+    // 合成「分段」虛擬章節（每頁一個 div[data-orig=原章節序號]，break-before: column），
+    // 每段頁數＝欄數的倍數（CWFM_IMG_SEG_BASE 附近），段尾預先下載下一段的圖片。
+    // 不用滑動視窗：範圍一變整段就要重新排版，畫面會閃。
+    // 位置換算只在兩個出入口：
+    //   出：view.getCFI(分段序號, range) → 原書那一頁的 CFI（epubcfi(原章節!/4)）
+    //   入：book.resolveCFI／resolveHref（原書座標）→ 分段序號＋該頁 div
+    // 書籤、閱讀進度、跳轉紀錄、預覽網址因此全部存原書座標，分段大小可以隨欄數改變。
+    // 翻頁方向、全書前面補一頁、在某頁前插空白頁「跟著書記住」（settings.bookSettings[書號].b）。
+    // ============================================================
+    const CWFM_IMG_SEG_BASE = 12;          // 每段約幾頁；實際取「欄數的倍數」中不小於它的最小值（5 欄＝15）
+    const CWFM_IMG_TEXT_MAX = 20;          // 一頁去掉空白後字數 ≤ 這個值才算「幾乎無文字」
+    const CWFM_IMG_RATIO_MIN = 0.8;        // manifest 圖片數 ÷ spine 數 的合理範圍（圖片書約 1）
+    const CWFM_IMG_RATIO_MAX = 1.25;
+    const CWFM_IMG_PAGE_SHARE = 0.8;       // 全書至少這個比例的章節是單張圖片頁，才當成圖片書
+    const cwfmImg = {
+        active: false, book: null, orig: [], infos: [], map: new Map(), segs: [], cache: new Map(),
+        skipCover: false, cols: 2, segSize: 12, origDir: null,
+        origResolveCFI: null, origResolveHref: null, origSplitTOCHref: null, origGetTOCFragment: null,
+    };
+    window.__cwfm.imgBook = cwfmImg;
+    // 這本書自己記住的值（開書前就要用：翻頁方向、插頁、圖片書欄數），直接讀 INITIAL_SETTINGS
+    function cwfmEarlyBookEntry() {
+        try { return (INITIAL_SETTINGS && INITIAL_SETTINGS.bookSettings && INITIAL_SETTINGS.bookSettings[String(BOOK_ID)]) || null; } catch (e) { return null; }
+    }
+    const cwfmBookState = (() => {
+        const b = cwfmEarlyBookEntry()?.b || {};
+        return {
+            pageDirection: b.pageDirection === 'rtl' || b.pageDirection === 'ltr' ? b.pageDirection : null, // null＝照書的標示
+            frontInsert: !!b.frontInsert,
+            insertsBefore: Array.isArray(b.insertsBefore) ? b.insertsBefore.filter((k) => Number.isInteger(k) && k >= 0) : [],
+        };
+    })();
+    window.__cwfm.bookState = cwfmBookState;
+    function cwfmImgEarlyCols() {
+        const e = cwfmEarlyBookEntry();
+        const s = INITIAL_SETTINGS || {};
+        const v = e?.v?.maxColumnCount ?? s.lastImageValues?.maxColumnCount ?? s.builtinProfiles?.image?.maxColumnCount ?? 2;
+        return Math.max(1, Math.min(6, parseInt(v, 10) || 2));
+    }
+    function cwfmImgSegSizeFor(cols) { return cols * Math.ceil(CWFM_IMG_SEG_BASE / cols); }
+
+    // 一頁是不是「只有一張圖、幾乎無文字」；是的話回傳圖片在 zip 裡的路徑
+    async function cwfmImgPageInfo(sec) {
+        try {
+            const doc = await sec.createDocument();
+            const body = doc.body || doc.querySelector('body');
+            if (!body) return null;
+            const imgs = body.querySelectorAll('img, image');
+            if (imgs.length !== 1) return null;
+            if ((body.textContent || '').replace(/\s+/g, '').length > CWFM_IMG_TEXT_MAX) return null;
+            const el = imgs[0];
+            const raw = el.getAttribute('src') || el.getAttribute('href') || el.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+            if (!raw) return null;
+            const href = decodeURI(String(sec.resolveHref ? sec.resolveHref(raw) : raw).split('#')[0]);
+            return { href };
+        } catch (e) {
+            console.error('[cwfm:imgbook] 讀頁面失敗', e);
+            return null;
+        }
+    }
+
+    async function cwfmTransformBook(bk) {
+        try {
+            cwfmImg.book = bk;
+            cwfmImg.origDir = bk.dir === 'rtl' || bk.dir === 'ltr' ? bk.dir : null; // 書的標示（page-progression-direction）
+            bk.dir = cwfmBookState.pageDirection || (bk.dir === 'rtl' ? 'rtl' : 'ltr');
+            cwfmDiag('IMGBOOK-DIR', 'book=' + cwfmImg.origDir + ' 記住的=' + cwfmBookState.pageDirection + ' → ' + bk.dir);
+            if (bk.rendition?.layout === 'pre-paginated') return bk; // 固定版面交給引擎原本的 foliate-fxl
+            const secs = bk.sections;
+            if (!Array.isArray(secs) || secs.length < 4) return bk;
+            const imgCount = (bk.resources?.manifest || []).filter((m) => /^image\//i.test(m.mediaType || '')).length;
+            const ratio = imgCount / secs.length;
+            if (ratio < CWFM_IMG_RATIO_MIN || ratio > CWFM_IMG_RATIO_MAX) return bk;
+            // 抽查頭、中、尾，不像就不必掃全書
+            const probe = [...new Set([0, 1, 2, secs.length >> 1, secs.length - 2, secs.length - 1])];
+            const probed = await Promise.all(probe.map((i) => cwfmImgPageInfo(secs[i])));
+            if (probed.filter(Boolean).length < probe.length - 2) return bk;
+            const infos = await Promise.all(secs.map((s) => cwfmImgPageInfo(s)));
+            if (infos.filter(Boolean).length < secs.length * CWFM_IMG_PAGE_SHARE) return bk;
+
+            cwfmImg.orig = secs.slice();
+            cwfmImg.infos = infos;
+            // 前兩頁同一張圖（cover.xhtml 與第一頁）→ 略過重複的封面
+            cwfmImg.skipCover = !!(infos[0] && infos[1] && infos[0].href === infos[1].href);
+            cwfmImg.origResolveCFI = bk.resolveCFI.bind(bk);
+            cwfmImg.origResolveHref = bk.resolveHref.bind(bk);
+            cwfmImg.origSplitTOCHref = bk.splitTOCHref ? bk.splitTOCHref.bind(bk) : null;
+            cwfmImg.origGetTOCFragment = bk.getTOCFragment ? bk.getTOCFragment.bind(bk) : null;
+            bk.resolveCFI = (cfi) => cwfmImgMapLoc(cwfmImg.origResolveCFI(cfi));
+            bk.resolveHref = (href) => cwfmImgMapLoc(cwfmImg.origResolveHref(href));
+            if (cwfmImg.origSplitTOCHref) {
+                bk.splitTOCHref = (href) => {
+                    const r = cwfmImg.origSplitTOCHref(href);
+                    const k = cwfmImg.orig.findIndex((s) => s.id === r?.[0]);
+                    const m = k >= 0 ? cwfmImg.map.get(k) : null;
+                    if (!m) return r;
+                    return m.seg ? [bk.sections[m.index].id, 'cwfm-p-' + m.k] : [bk.sections[m.index].id, r[1]];
+                };
+                bk.getTOCFragment = (doc, frag) => (String(frag || '').startsWith('cwfm-p-')
+                    ? doc.getElementById(frag) : cwfmImg.origGetTOCFragment(doc, frag));
+            }
+            cwfmImg.cols = cwfmImgEarlyCols();
+            cwfmImgBuildSections();
+            cwfmImg.active = true;
+            window.__cwfm.imageBook = true;
+            cwfmDiag('IMGBOOK', 'pages=' + infos.filter(Boolean).length + '/' + secs.length + ' skipCover=' + cwfmImg.skipCover
+                + ' cols=' + cwfmImg.cols + ' segSize=' + cwfmImg.segSize + ' sections=' + bk.sections.length);
+        } catch (e) {
+            console.error('[cwfm:imgbook] 圖片書判斷／分段失敗，照一般書開', e);
+        }
+        return bk;
+    }
+    window.__cwfm.transformBook = cwfmTransformBook;
+
+    // 依目前欄數、插頁設定重排分段；就地換掉 book.sections（引擎的分頁器拿的是同一個陣列）
+    function cwfmImgBuildSections() {
+        const bk = cwfmImg.book;
+        const S = cwfmImgSegSizeFor(cwfmImg.cols);
+        cwfmImg.segSize = S;
+        const out = [];
+        const map = new Map();
+        let run = [];
+        const flush = () => {
+            for (let i = 0; i < run.length; i += S) {
+                const items = run.slice(i, i + S);
+                const firstK = (items.find((it) => it.type === 'page') || {}).k;
+                const sec = cwfmImgMakeSeg(items, out.length, firstK);
+                items.forEach((it) => { if (it.type === 'page') map.set(it.k, { index: out.length, seg: true, k: it.k }); });
+                out.push(sec);
+            }
+            run = [];
+        };
+        let firstPage = true;
+        const inserts = new Set(cwfmBookState.insertsBefore);
+        cwfmImg.orig.forEach((sec, k) => {
+            if (k === 0 && cwfmImg.skipCover) return;
+            if (!cwfmImg.infos[k]) {
+                flush();
+                map.set(k, { index: out.length, seg: false, k });
+                out.push(sec);
+                return;
+            }
+            if (firstPage && cwfmBookState.frontInsert) run.push({ type: 'start' });
+            firstPage = false;
+            if (inserts.has(k)) run.push({ type: 'blank' });
+            run.push({ type: 'page', k });
+        });
+        flush();
+        if (cwfmImg.skipCover && map.has(1)) map.set(0, map.get(1));
+        cwfmImg.map = map;
+        cwfmImg.segs = out.filter((s) => s.cwfmSeg);
+        // 舊分段的圖片網址全部釋放（新分段物件不同，快取對不上）
+        cwfmImg.cache.forEach((p) => p.then((c) => cwfmImgRevoke(c)).catch(() => {}));
+        cwfmImg.cache = new Map();
+        bk.sections.splice(0, bk.sections.length, ...out);
+    }
+
+    function cwfmImgMakeSeg(items, index, firstK) {
+        const seg = {
+            id: 'cwfm-seg-' + index + '-' + firstK,
+            linear: 'yes',
+            size: items.length * 2000,
+            cfi: null,
+            cwfmSeg: { items },
+            load: () => cwfmImgSegLoad(seg),
+            unload: () => {},
+            createDocument: async () => {
+                const c = await cwfmImgSegGet(seg);
+                return new DOMParser().parseFromString(c.xhtml, 'application/xhtml+xml');
+            },
+            resolveHref: (h) => cwfmImg.orig[firstK]?.resolveHref?.(h) ?? h,
+        };
+        return seg;
+    }
+
+    function cwfmImgMapLoc(r) {
+        if (!r || !(r.index >= 0)) return r;
+        const m = cwfmImg.map.get(r.index);
+        if (!m) return r;
+        if (!m.seg) return { ...r, index: m.index };
+        return {
+            index: m.index,
+            anchor: (doc) => {
+                const el = doc.getElementById('cwfm-p-' + m.k);
+                if (!el) return 0;
+                const rg = doc.createRange();
+                rg.selectNode(el);
+                return rg;
+            },
+        };
+    }
+
+    // 分段裡某個位置屬於原書哪一頁（空白頁、開始頁算成後面那一頁；沒有就算前面那一頁）
+    function cwfmImgOrigFromNode(sec, node) {
+        let el = node && (node.nodeType === 1 ? node : node.parentElement);
+        let p = el && el.closest ? el.closest('.cwfm-ib-p') : null;
+        if (!p && el && el.ownerDocument) p = el.ownerDocument.querySelector('.cwfm-ib-p');
+        if (p && p.dataset.orig !== undefined) return parseInt(p.dataset.orig, 10);
+        for (let q = p && p.nextElementSibling; q; q = q.nextElementSibling) if (q.dataset.orig !== undefined) return parseInt(q.dataset.orig, 10);
+        for (let q = p && p.previousElementSibling; q; q = q.previousElementSibling) if (q.dataset.orig !== undefined) return parseInt(q.dataset.orig, 10);
+        const it = sec.cwfmSeg.items.find((x) => x.type === 'page');
+        return it ? it.k : 0;
+    }
+    function cwfmImgOrigCfi(k) {
+        const base = String(cwfmImg.orig[k]?.cfi || '');
+        const m = /^epubcfi\((.*)\)$/.exec(base);
+        return 'epubcfi(' + (m ? m[1] : base) + '!/4)';
+    }
+    {
+        const _getCFI = view.getCFI.bind(view);
+        view.getCFI = function (index, range) {
+            const sec = cwfmImg.active ? this.book?.sections?.[index] : null;
+            if (!sec || !sec.cwfmSeg) return _getCFI(index, range);
+            const k = cwfmImgOrigFromNode(sec, range && range.startContainer);
+            return range ? cwfmImgOrigCfi(k) : cwfmImg.orig[k]?.cfi;
+        };
+    }
+
+    function cwfmImgRevoke(c) { try { (c.urls || []).forEach((u) => URL.revokeObjectURL(u)); if (c.url) URL.revokeObjectURL(c.url); } catch (e) { /* 已釋放 */ } }
+    function cwfmImgSegGet(seg) {
+        let p = cwfmImg.cache.get(seg);
+        if (!p) { p = cwfmImgSegBuild(seg); cwfmImg.cache.set(seg, p); }
+        return p;
+    }
+    async function cwfmImgSegLoad(seg) {
+        const idx = cwfmImg.segs.indexOf(seg);
+        // 只留前一段、這一段、下一段
+        cwfmImg.cache.forEach((p, s) => {
+            const i = cwfmImg.segs.indexOf(s);
+            if (i < idx - 1 || i > idx + 1) { cwfmImg.cache.delete(s); p.then(cwfmImgRevoke).catch(() => {}); }
+        });
+        const c = await cwfmImgSegGet(seg);
+        // 段尾預先下載下一段（解壓縮＋解碼圖片），翻到下一段時不用等
+        const nx = cwfmImg.segs[idx + 1];
+        if (nx && !cwfmImg.cache.has(nx)) {
+            cwfmImgSegGet(nx).then((n) => n.urls.forEach((u) => { const im = new Image(); im.src = u; im.decode?.().catch(() => {}); }))
+                .catch((e) => console.error('[cwfm:imgbook] 預先下載下一段失敗', e));
+        }
+        return c.url;
+    }
+    function cwfmImgEsc(s) { return String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
+    function cwfmImgMetaText(v) {
+        if (!v) return '';
+        if (typeof v === 'string') return v;
+        if (Array.isArray(v)) return v.map(cwfmImgMetaText).filter(Boolean).join('、');
+        if (typeof v === 'object') return cwfmImgMetaText(v.name ?? Object.values(v)[0]);
+        return String(v);
+    }
+    async function cwfmImgSegBuild(seg) {
+        const bk = cwfmImg.book;
+        const urls = [];
+        const rtl = bk.dir === 'rtl';
+        const two = cwfmImg.cols === 2;
+        const parts = await Promise.all(seg.cwfmSeg.items.map(async (it, i) => {
+            // 兩欄時圖片靠向書脊（左頁靠右、右頁靠左），中間不留縫；畫面實際只排一欄時置中（cwfmImgMarkSpread 切換 .cwfm-ib-spread）
+            const side = !two ? '' : ((i % 2 === 0) !== rtl ? ' cwfm-ib-l' : ' cwfm-ib-r');
+            if (it.type === 'blank') return '<div class="cwfm-ib-p cwfm-ib-blank' + side + '"></div>';
+            if (it.type === 'start') {
+                const title = cwfmImgMetaText(bk.metadata?.title);
+                const author = cwfmImgMetaText(bk.metadata?.author);
+                return '<div class="cwfm-ib-p cwfm-ib-start' + side + '"><div class="cwfm-ib-title">' + cwfmImgEsc(title) + '</div>'
+                    + (author ? '<div class="cwfm-ib-author">' + cwfmImgEsc(author) + '</div>' : '')
+                    + '<button type="button" class="cwfm-ib-startbtn">' + cwfmImgEsc(t(rtl ? 'imgbook_start_rtl' : 'imgbook_start')) + '</button></div>';
+            }
+            const href = cwfmImg.infos[it.k].href;
+            const type = bk.resources?.getItemByHref?.(href)?.mediaType || '';
+            const blob = await bk.loadBlob(href);
+            const u = URL.createObjectURL(type ? new Blob([blob], { type }) : blob);
+            urls.push(u);
+            // 圖片用背景圖（background-size: contain），不用 <img>：引擎會給每張 <img> 加上
+            // 「高度＝欄高 − 上下留白×2」的 inline !important 限制（文字書插圖用），圖片書會因此上下多空一截
+            return '<div class="cwfm-ib-p cwfm-ib-img' + side + '" id="cwfm-p-' + it.k + '" data-orig="' + it.k + '" style="background-image:url(&quot;' + u + '&quot;)"></div>';
+        }));
+        const lang = cwfmImgMetaText(bk.metadata?.language) || '';
+        const xhtml = '<?xml version="1.0" encoding="UTF-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml"' + (lang ? ' lang="' + cwfmImgEsc(lang) + '"' : '') + '><head><title></title><style>'
+            + 'html,body{margin:0;padding:0}'
+            // 每頁佔滿一欄：break-before 讓每頁從新的一欄開始；高度 100vh＝分頁器給的欄高
+            + '.cwfm-ib-p{break-before:column;-webkit-column-break-before:always;break-inside:avoid;display:flex;align-items:center;justify-content:center;'
+            + 'height:100vh;box-sizing:border-box;overflow:hidden;margin:0;padding:0;text-indent:0}'
+            + '.cwfm-ib-img{background-repeat:no-repeat;background-size:contain;background-position:center}'
+            + '.cwfm-ib-spread .cwfm-ib-img.cwfm-ib-l{background-position:right center}.cwfm-ib-spread .cwfm-ib-img.cwfm-ib-r{background-position:left center}'
+            + '.cwfm-ib-start{flex-direction:column;justify-content:center !important;gap:16px;text-align:center;padding:0 24px;font-family:sans-serif;direction:ltr}'
+            + '.cwfm-ib-title{font-size:24px;font-weight:700;line-height:1.4}'
+            + '.cwfm-ib-author{font-size:16px;opacity:.75}'
+            + '.cwfm-ib-startbtn{margin-top:16px;font:inherit;font-size:16px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px;padding:8px 24px;cursor:pointer}'
+            + '.cwfm-ib-startbtn:hover{background:rgba(128,128,128,.15)}'
+            + '</style></head><body>' + parts.join('') + '</body></html>';
+        const url = URL.createObjectURL(new Blob([xhtml], { type: 'application/xhtml+xml' }));
+        return { url, urls, xhtml };
+    }
+
+    // 每個章節載入時：套翻頁方向；圖片書的開始頁按鈕。
+    // 掛在 view.open 之前，第一章也一定會經過這裡（不用另外補掛）。
+    function cwfmApplyDocDir(doc) {
+        const de = doc && doc.documentElement;
+        if (!de || !doc.body) return;
+        if (de.dataset.cwfmOrigDir === undefined) de.dataset.cwfmOrigDir = de.getAttribute('dir') || '';
+        const orig = de.dataset.cwfmOrigDir;
+        let st = doc.getElementById('cwfm-dir-style');
+        const cs = doc.defaultView.getComputedStyle(doc.body);
+        // 直排書本身就是右翻，不動；書的文字本來就是由右至左（阿拉伯文等）也不動
+        if (/vertical/.test(cs.writingMode || '') || orig === 'rtl' || doc.body.getAttribute('dir') === 'rtl') return;
+        if (view.book?.dir === 'rtl') {
+            // 版面由右至左（分欄從右邊排起），文字本身維持由左至右。
+            // body 也要 rtl：CSS 規定根元素用的 direction 取自 body（principal writing mode），
+            // 只改 <html> 的話分欄照樣由左排起（Chromium 實測）。文字改由 body 底下每個區塊自己設回 ltr。
+            de.setAttribute('dir', 'rtl');
+            if (!st) {
+                st = doc.createElement('style');
+                st.id = 'cwfm-dir-style';
+                st.textContent = 'body{direction:rtl !important}body>*{direction:ltr}';
+                (doc.head || de).appendChild(st);
+            }
+        } else {
+            if (orig) de.setAttribute('dir', orig); else de.removeAttribute('dir');
+            if (st) st.remove();
+        }
+    }
+    // 實際並排的欄數（同引擎的算法：min(最大欄數, ceil(寬 ÷ 每欄上限))）＝2 時，圖片才靠書脊
+    function cwfmImgMarkSpread(doc) {
+        if (!doc || !doc.querySelector('.cwfm-ib-p')) return;
+        const r = view.renderer;
+        const w = r.getBoundingClientRect().width || 1;
+        const mis = parseFloat(r.getAttribute('max-inline-size')) || w;
+        const cols = Math.min(cwfmImg.cols, Math.ceil(w / mis));
+        doc.documentElement.classList.toggle('cwfm-ib-spread', cols === 2);
+    }
+    window.addEventListener('resize', () => { try { (view.renderer?.getContents?.() || []).forEach((c) => cwfmImgMarkSpread(c.doc)); } catch (e) { /* 還沒開書 */ } });
+    view.addEventListener('relocate', () => { try { (view.renderer?.getContents?.() || []).forEach((c) => cwfmImgMarkSpread(c.doc)); } catch (e) { /* 還沒開書 */ } });
+    view.addEventListener('load', (e) => {
+        const doc = e.detail?.doc;
+        try { cwfmImgMarkSpread(doc); } catch (err) { console.error('[cwfm:imgbook] 判斷並排失敗', err); }
+        try { cwfmApplyDocDir(doc); } catch (err) { console.error('[cwfm:dir] 套用翻頁方向失敗', err); }
+        try {
+            const btn = doc && doc.querySelector('.cwfm-ib-startbtn');
+            if (btn) btn.addEventListener('click', (ev) => { ev.stopPropagation(); view.next(); });
+        } catch (err) { console.error('[cwfm:imgbook] 開始頁按鈕失敗', err); }
+    });
+
+    // 重新排版目前位置（翻頁方向、分段改變後）：記下原書座標 → 讓分頁器重新載入 → 回到同一頁
+    async function cwfmReflowAtCurrent(reason) {
+        const cfi = cwfmSafe(() => cwfmPageStartCfi().cfi, null) || view.lastLocation?.cfi;
+        cwfmDiag('REFLOW', 'reason=' + reason + ' cfi=' + cfi);
+        try { cwfmMarkerRemove?.('重新排版 ' + reason); } catch (e) { /* 標記功能還沒就緒 */ }
+        view.renderer.cwfmInvalidate?.(view.book.dir);
+        if (cfi) await view.goTo(cfi); else await view.renderer.next();
+    }
+    // 翻頁方向：'ltr'／'rtl'／null（照書的標示）
+    async function cwfmSetPageDirection(dir) {
+        cwfmBookState.pageDirection = dir;
+        const eff = dir || (cwfmImg.origDir === 'rtl' ? 'rtl' : 'ltr');
+        if (view.book) view.book.dir = eff;
+        if (cwfmImg.active) cwfmImgBuildSections();
+        if (cwfmImg.active) await view.cwfmRefreshSections?.();
+        await cwfmReflowAtCurrent('direction=' + eff);
+    }
+    window.__cwfm.setPageDirection = cwfmSetPageDirection;
+    function cwfmEffectivePageDirection() { return view.book?.dir === 'rtl' ? 'rtl' : 'ltr'; }
+    window.__cwfm.effectivePageDirection = cwfmEffectivePageDirection;
+    // 欄數或插頁改變：分段大小／內容跟著變，重排後回到同一頁
+    async function cwfmImgRebuild(reason) {
+        if (!cwfmImg.active) return;
+        cwfmImgBuildSections();
+        await view.cwfmRefreshSections?.();
+        await cwfmReflowAtCurrent(reason);
+    }
+    window.__cwfm.imgRebuild = cwfmImgRebuild;
+    function cwfmImgOnSettings(settings) {
+        if (!cwfmImg.active || !view.book) return;
+        const cols = Math.max(1, Math.min(6, parseInt(settings.maxColumnCount, 10) || 1));
+        if (cols === cwfmImg.cols) return;
+        cwfmImg.cols = cols;
+        cwfmImgRebuild('cols=' + cols).catch((e) => console.error('[cwfm:imgbook] 欄數改變後重排失敗', e));
+    }
+    window.__cwfm.imgOnSettings = cwfmImgOnSettings;
+    // 「這頁」＝畫面上第一頁（閱讀順序）在原書的序號；不是圖片書回傳 -1
+    function cwfmImgCurrentOrigPage() {
+        if (!cwfmImg.active) return -1;
+        const loc = cwfmSafe(() => cwfmPageStartCfi(), null);
+        const cfi = loc && loc.cfi;
+        if (!cfi) return -1;
+        const r = cwfmSafe(() => cwfmImg.origResolveCFI(cfi), null);
+        return r && r.index >= 0 ? r.index : -1;
+    }
+    window.__cwfm.imgCurrentOrigPage = cwfmImgCurrentOrigPage;
+
     let book;
     let cwfmRestoredCfi = null; // 開書還原到的位置；精準定位開啟時用它當初始鎖定點（見檔尾 LOCK-SET）
     // v1.79：書籤／跳轉紀錄跟書檔同時下載；在還原位置之前等它讀好（這時還沒有掛任何 relocate 監聽器，
@@ -1821,9 +2264,19 @@
             '@keyframes cwfm-anim-rise { from { transform: translateY(24px); } to { transform: translateY(0); } }',
             '@keyframes cwfm-anim-pulse { 50% { transform: scale(1.15); } }',
             '@keyframes cwfm-anim-glow { from { opacity: 0; } to { opacity: 1; } }',
+            // v1.84.0：「上一步」方案 E。「+1」疊在數字的位置（同 top／right），以自己的中心放大
+            '.cwfm-nav-plus { position: absolute; top: 1px; right: 1px; font-size: 9px; line-height: 1; font-weight: 700; font-family: sans-serif; white-space: nowrap; opacity: 0; pointer-events: none; transform-origin: 50% 50%; }',
+            '[data-cwfm-anim-nav] > svg { animation: cwfm-anim-pulse ' + CWFM_SAVE_ANIM_NAV_PULSE_MS + 'ms ease-out; transform-origin: 50% 50%; overflow: visible; }',
+            '[data-cwfm-anim-nav] > .cwfm-nav-count { animation: cwfm-anim-count-out ' + CWFM_SAVE_ANIM_NAV_MS + 'ms linear both; }',
+            '[data-cwfm-anim-nav] > .cwfm-nav-plus { animation: cwfm-anim-plus ' + CWFM_SAVE_ANIM_NAV_MS + 'ms ease-out both; }',
+            '@keyframes cwfm-anim-count-out { 0% { opacity: 1; } 15% { opacity: 0; } 75% { opacity: 0; } 100% { opacity: 1; } }',
+            '@keyframes cwfm-anim-plus { 0% { opacity: 0; transform: scale(1); } 15% { opacity: 1; transform: scale(1.6); } 40% { opacity: 1; transform: scale(1.3); } 75% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(1.3); } }',
+            '@keyframes cwfm-anim-plus-fade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }',
             '@media (prefers-reduced-motion: reduce) {',
             '  [data-cwfm-anim] .cwfm-anim-rise { animation: none; }',
             '  [data-cwfm-anim] > svg { animation: none; }',
+            '  [data-cwfm-anim-nav] > svg { animation: none; }',
+            '  [data-cwfm-anim-nav] > .cwfm-nav-plus { animation-name: cwfm-anim-plus-fade; }',
             '  [data-cwfm-anim] .cwfm-anim-top { animation: cwfm-anim-glow ' + CWFM_SAVE_ANIM_RISE_MS + 'ms ease-out both; }',
             '}',
             '.cwfm-nav-group-bottom { margin-right: 14px; }',
@@ -2067,6 +2520,11 @@
             '  line-height: 0; margin-right: 2px; flex-shrink: 0;',
             '}',
             '.cwfm-keychip-text { cursor: pointer; }',
+            // v1.84.0：內建標籤（設定檔、配色）的前置圖示＋內建與自訂之間的細分隔線
+            '.cwfm-keychip-bicon { display: inline-flex; align-items: center; color: var(--cwfm-text-secondary); line-height: 0; flex-shrink: 0; cursor: pointer; }',
+            '.cwfm-keychip-bicon svg { display: block; }',
+            '.cwfm-keychip-selected .cwfm-keychip-bicon { color: var(--cwfm-text); }',
+            '.cwfm-keylist-sep { width: 1px; height: 20px; background: var(--cwfm-border-light); margin: 0 4px; flex: 0 0 auto; }',
             // [cwfm] 改名圖示平常隱藏，滑鼠移到整個標籤上面才淡入顯示——
             // 沒有 hover 的時候標籤保持乾淨，不會一堆小圖示擠在一起；
             // 位置排在文字後面、叉叉前面（業界常見清單項目「編輯」「刪除」
@@ -2757,6 +3215,8 @@
         tapZoneVisible: true,
         tapZoneWidthPx: 120,  // 每側感應區固定寬度(px)；最小值由 CWFM_PAGE_ANIM_SIZE 動態算出（約 104px）
         pageFlipAnimEnabled: true,
+        // v1.84.0：反轉點擊區——對調左右兩側代表的上一頁／下一頁（連 ← → 方向鍵）
+        reverseTapZones: false,
         pageFlipAnimColor: 'AUTO',
         autoHideToolbar: false,    // 工具列/進度條自動隱藏開關（3 秒無動作後滑出畫面）
         // [cwfm] 翻頁快速鍵：每個方向可以錄製不只一組（陣列），支援組合鍵
@@ -3002,10 +3462,12 @@
                 dlog(t('log_no_saved2'));
                 const fresh = { ...DEFAULT_SETTINGS, ...cwfmFirstRunDefaults() };
                 cwfmMigrateColorSettings(fresh, null);
+                cwfmApplyBookSettings(fresh);
                 return fresh;
             }
             const parsed = { ...DEFAULT_SETTINGS, ...INITIAL_SETTINGS };
             cwfmMigrateColorSettings(parsed, INITIAL_SETTINGS);
+            cwfmApplyBookSettings(parsed);
             dlog(t('log_read2'), parsed);
             return parsed;
         } catch (e) {
@@ -3016,7 +3478,8 @@
 
     function saveSettings(settings) {
         try {
-            gmSet(STORAGE_KEY, settings);
+            // v1.84.0：設定跟著書（見 cwfmPrepareSettingsForSave）
+            gmSet(STORAGE_KEY, cwfmPrepareSettingsForSave(settings, false));
             dlog(t('log_write_sent2'), settings);
         } catch (e) {
             console.error(t('err_save2'), e);
@@ -3381,6 +3844,15 @@
         minus: '<path d="M5 12h14"/>',
         plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
         arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+        // v1.84.0：內建標籤的前置圖示（Lucide：book-open、image、sun-moon、sun、moon、coffee、lamp）與恢復預設值（rotate-ccw）
+        bookOpen: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+        image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+        sunMoon: '<path d="M12 8a2.83 2.83 0 0 0 4 4 4 4 0 1 1-4-4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+        moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        coffee: '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>',
+        lamp: '<path d="M8 2h8l4 10H4L8 2Z"/><path d="M12 12v6"/><path d="M8 22v-2c0-1.1.9-2 2-2h4a2 2 0 0 1 2 2v2H8Z"/>',
+        rotateCcw: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
     };
     function cwfmChipIcon(name, size = 11) {
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="' + size + '" height="' + size + '" aria-hidden="true">' + CWFM_CHIP_ICON_PATHS[name] + '</svg>';
@@ -3393,6 +3865,14 @@
             icon.className = 'cwfm-keychip-icon';
             icon.innerHTML = cwfmChipIcon(opts.icon, 10);
             chip.appendChild(icon);
+        }
+        if (opts.leadIcon) {
+            // v1.84.0：內建標籤的前置圖示（跟上傳字型的圓底徽章分開：這個只是灰色線條圖示）
+            const lead = document.createElement('span');
+            lead.className = 'cwfm-keychip-bicon';
+            lead.innerHTML = cwfmChipIcon(opts.leadIcon, 12);
+            if (opts.onSelect) lead.addEventListener('click', opts.onSelect);
+            chip.appendChild(lead);
         }
         const textEl = document.createElement('span');
         textEl.className = 'cwfm-keychip-text';
@@ -3432,13 +3912,27 @@
             chip.appendChild(updateBtn);
         }
 
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'cwfm-keychip-remove';
-        removeBtn.innerHTML = cwfmChipIcon('x');
-        if (opts.removeLabel) removeBtn.setAttribute('aria-label', opts.removeLabel);
-        removeBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRemove(); });
-        chip.appendChild(removeBtn);
+        if (opts.onRestore) {
+            // v1.84.0：內建設定檔被覆蓋過才出現「恢復預設值」
+            const restoreBtn = document.createElement('button');
+            restoreBtn.type = 'button';
+            restoreBtn.className = 'cwfm-keychip-rename';
+            restoreBtn.innerHTML = cwfmChipIcon('rotateCcw');
+            if (opts.restoreLabel) { restoreBtn.setAttribute('aria-label', opts.restoreLabel); restoreBtn.title = opts.restoreLabel; }
+            restoreBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRestore(); });
+            chip.appendChild(restoreBtn);
+        }
+
+        // v1.84.0：內建標籤不能刪，沒有 onRemove 就不放叉叉
+        if (opts.onRemove) {
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'cwfm-keychip-remove';
+            removeBtn.innerHTML = cwfmChipIcon('x');
+            if (opts.removeLabel) removeBtn.setAttribute('aria-label', opts.removeLabel);
+            removeBtn.addEventListener('click', (e) => { e.stopPropagation(); opts.onRemove(); });
+            chip.appendChild(removeBtn);
+        }
 
         if (opts.dragReorder) {
             // [cwfm] 拖曳排序：用原生 HTML5 drag-and-drop API，不用額外
@@ -3488,8 +3982,8 @@
         // 版面配置
         'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
         'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
-        // 翻頁設定
-        'tapZoneEnabled', 'tapZoneWidthPx', 'tapZoneVisible', 'pageFlipAnimColor', 'pageFlipAnimEnabled',
+        // 翻頁設定（v1.84.0 加反轉點擊區；翻頁方向、插頁是書本身的屬性，另存在 bookSettings[書].b，不進設定檔）
+        'reverseTapZones', 'tapZoneEnabled', 'tapZoneWidthPx', 'tapZoneVisible', 'pageFlipAnimColor', 'pageFlipAnimEnabled',
         // 介面隱藏
         'cursorAutoHideEnabled', 'cursorAutoHideDelaySeconds', 'autoHideToolbar',
         // 閱讀行為
@@ -3507,6 +4001,112 @@
         });
         return values;
     }
+    // ============================================================
+    // [cwfm] v1.84.0 內建設定檔「文字書」「圖片書」：不能刪、不能改名，可覆蓋更新＋恢復預設值，排最前面。
+    // 只管排版（字級、文字排版、版面配置、欄數），不動配色、快速鍵、閱讀行為——
+    // 圖片書第一次開書會自動套用，不能因此把使用者的配色或快速鍵改掉。
+    // 覆蓋過的值存在 settings.builtinProfiles[id]，null＝用預設值。
+    // ============================================================
+    const CWFM_BUILTIN_PROFILE_KEYS = [
+        'fontSize', 'letterSpacing', 'lineSpacing', 'justify', 'hyphenate', 'disableLigatures',
+        'flow', 'horizontalSizeMode', 'verticalSizeMode', 'topBottomPadding', 'leftRightPadding',
+        'targetContentWidthPx', 'targetContentHeightPx', 'maxColumnCount', 'columnGapPx',
+    ];
+    // 圖片書：兩欄、左右留白少、欄間距 0（兩頁貼齊書脊）；上下留白維持工具列的高度
+    const CWFM_IMAGE_PROFILE_OVERRIDES = {
+        flow: 'paginated', maxColumnCount: 2, horizontalSizeMode: 'margin', verticalSizeMode: 'margin',
+        leftRightPadding: 16, topBottomPadding: 48, columnGapPx: 0,
+    };
+    function cwfmBuiltinProfileDefaults(id) {
+        const base = { ...DEFAULT_SETTINGS, ...cwfmFirstRunDefaults() };
+        if (id === 'image') Object.assign(base, CWFM_IMAGE_PROFILE_OVERRIDES);
+        const out = {};
+        CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { out[k] = base[k]; });
+        return out;
+    }
+    function cwfmBuiltinProfileValues(settings, id) {
+        const saved = settings.builtinProfiles && settings.builtinProfiles[id];
+        return { ...cwfmBuiltinProfileDefaults(id), ...(saved || {}) };
+    }
+    function cwfmApplyBuiltinValues(settings, values) {
+        CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { if (values[k] !== undefined) settings[k] = values[k]; });
+    }
+
+    // ============================================================
+    // [cwfm] v1.84.0 設定跟著書。
+    // - 沒調整過的書：用這個瀏覽器「最後一次的設定」（文字書看全域設定；圖片書看 lastImageValues，
+    //   沒有就用內建「圖片書」）——兩種分開記，免得漫畫的兩欄、窄留白被帶到下一本小說。
+    // - 調整過（這次開書後設定有變）：settings.bookSettings[書號] = { v: 設定檔欄位, b: 書本身的屬性, t }，
+    //   之後開這本書都用它；同時更新該類書的「最後一次的設定」。
+    // - 只是打開 A 書、沒改任何東西就存檔（例如收合分組），不會把 A 書的設定寫成全域。
+    // ============================================================
+    const CWFM_BOOK_SETTINGS_MAX = 200; // 最多記幾本書（最久沒動的先丟）
+    const cwfmBookTrack = { ready: false, baseline: '', hasEntry: false, globalVals: null, image: false };
+    function cwfmApplyValues(settings, values) {
+        CWFM_THEME_FIELD_KEYS.forEach((key) => {
+            const v = values[key];
+            if (v === undefined) return;
+            settings[key] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+        });
+    }
+    // loadSettings 讀完全域設定後呼叫：套用這本書記住的值（或圖片書的預設），並記下比對基準
+    function cwfmApplyBookSettings(settings) {
+        try {
+            const id = String(BOOK_ID);
+            cwfmBookTrack.globalVals = cwfmThemeSnapshot(settings);
+            cwfmBookTrack.image = !!window.__cwfm.imageBook;
+            const entry = settings.bookSettings && settings.bookSettings[id];
+            if (entry && entry.v) {
+                cwfmApplyValues(settings, entry.v);
+                cwfmBookTrack.hasEntry = true;
+            } else if (cwfmBookTrack.image) {
+                if (settings.lastImageValues) cwfmApplyValues(settings, settings.lastImageValues);
+                else cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, 'image'));
+            }
+            cwfmBookTrack.baseline = JSON.stringify(cwfmThemeSnapshot(settings));
+            cwfmBookTrack.ready = true;
+            cwfmDiag('BOOK-SETTINGS', 'entry=' + !!entry + ' image=' + cwfmBookTrack.image + ' cols=' + settings.maxColumnCount);
+        } catch (e) {
+            console.error('[cwfm:book-settings] 套用這本書的設定失敗', e);
+        }
+    }
+    // saveSettings 呼叫：回傳實際要存的物件
+    function cwfmPrepareSettingsForSave(settings, forceBookEntry) {
+        if (!cwfmBookTrack.ready) return settings;
+        const snap = cwfmThemeSnapshot(settings);
+        const js = JSON.stringify(snap);
+        const changed = js !== cwfmBookTrack.baseline;
+        if (changed || cwfmBookTrack.hasEntry || forceBookEntry) {
+            if (!settings.bookSettings || typeof settings.bookSettings !== 'object') settings.bookSettings = {};
+            settings.bookSettings[String(BOOK_ID)] = { v: snap, b: { ...cwfmBookState, insertsBefore: cwfmBookState.insertsBefore.slice() }, t: Date.now() };
+            cwfmBookTrack.hasEntry = true;
+            const ids = Object.keys(settings.bookSettings);
+            if (ids.length > CWFM_BOOK_SETTINGS_MAX) {
+                ids.sort((a, b) => (settings.bookSettings[a].t || 0) - (settings.bookSettings[b].t || 0))
+                    .slice(0, ids.length - CWFM_BOOK_SETTINGS_MAX).forEach((k) => { delete settings.bookSettings[k]; });
+            }
+        }
+        if (changed) {
+            if (cwfmBookTrack.image) settings.lastImageValues = snap;
+            else cwfmBookTrack.globalVals = snap;
+            cwfmBookTrack.baseline = js;
+        }
+        // 全域（文字書的最後一次設定）只在文字書調整過時才變
+        const out = { ...settings };
+        Object.keys(cwfmBookTrack.globalVals).forEach((k) => {
+            const v = cwfmBookTrack.globalVals[k];
+            out[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+        });
+        return out;
+    }
+    // 翻頁方向、插頁改了：這本書一定要有自己的紀錄
+    function cwfmSaveBookState() {
+        const s = window.__cwfm.settings;
+        if (!s) return;
+        try { gmSet(STORAGE_KEY, cwfmPrepareSettingsForSave(s, true)); } catch (e) { console.error(t('err_save2'), e); }
+    }
+    window.__cwfm.saveBookState = cwfmSaveBookState;
+
     function cwfmSaveCurrentAsTheme(settings, name) {
         const values = cwfmThemeSnapshot(settings);
         // [cwfm] 存主題的當下，順便記一個布林值：目前這個字型名稱，是不
@@ -3858,6 +4458,8 @@
     // 字形凸出（如「——」）或某行超出欄寬時，會直接畫進隔壁頁。字寬取設定字級換算值與
     // 目前章節實際量到的內文字級中較大者，無條件進位成整數。
     function cwfmPageBufferPx(settings) {
+        // v1.84.0：圖片書每頁是一張圖、不會有字跨頁，不需要頁間緩衝（兩頁才能貼齊書脊）
+        if (window.__cwfm.imageBook) return 0;
         let px = 16 * (settings.fontSize || 100) / 100;
         try {
             const doc = getBookIframeDocument();
@@ -4210,6 +4812,8 @@
             cwfmMarkerRemove('重新對位#' + id);
             if (!window.__cwfm.settings?.preciseAnchorAlign) return null;
             if (window.__cwfm.settings?.flow === 'scrolled') return null;
+            // v1.84.0：圖片書分段不插換欄標記（每頁本來就從新的一欄開始），交給引擎原本的錨點
+            if (cur && view.book?.sections?.[cur.index]?.cwfmSeg) return null;
             if (!cur || !cwfmLockedAnchorCfi) { cwfmDiag('ALIGN-SKIP', '#' + id + ' 原因=' + (!cur ? '沒有載入的章節' : '沒有鎖定值')); return null; }
             const resolved = view.resolveCFI(cwfmLockedAnchorCfi);
             if (!resolved || resolved.index !== cur.index) { cwfmDiag('ALIGN-SKIP', '#' + id + ' 原因=鎖定值不在目前章節 resolvedIndex=' + resolved?.index + ' currentIndex=' + cur.index); return null; }
@@ -4267,13 +4871,15 @@
         cwfmNewCorr('NAV');
         cwfmDiag('NAV-LEFT', 'from=' + cwfmStack() + ' || ' + cwfmSnap());
         cwfmTriggerPageAnim('left');
-        await view.goLeft();
+        // v1.84.0：反轉點擊區——只對調左右兩側代表的上一頁／下一頁（← → 方向鍵、點擊區都走這裡，一起對調）；
+        // 左右本身的意義（右翻書左邊是下一頁）由引擎依 book.dir 決定
+        await (window.__cwfm.settings?.reverseTapZones ? view.goRight() : view.goLeft());
     }
     async function cwfmGoRight() {
         cwfmNewCorr('NAV');
         cwfmDiag('NAV-RIGHT', 'from=' + cwfmStack() + ' || ' + cwfmSnap());
         cwfmTriggerPageAnim('right');
-        await view.goRight();
+        await (window.__cwfm.settings?.reverseTapZones ? view.goLeft() : view.goRight());
     }
 
     // ============================================================
@@ -4400,6 +5006,8 @@
         cwfmUpdatePanelScheme(settings);
         try { cwfmApplyTapZoneSettings(settings); } catch (e) { console.error(t('err_tapzone_apply'), e); }
         try { updateCursorAutoHide(settings); } catch (e) { console.error(t('err_apply_cursor'), e); }
+        // v1.84.0：圖片書欄數改變時分段大小跟著變（每段頁數＝欄數的倍數）
+        try { window.__cwfm.imgOnSettings?.(settings); } catch (e) { console.error('[cwfm:imgbook] 套用設定失敗', e); }
         try {
             view.renderer.setStyles?.(getTypographyCSS(settings));
         } catch (e) { console.error(t('err_apply_font_style'), e); }
@@ -5026,6 +5634,56 @@
 
             function render() {
                 wrap.innerHTML = '';
+                // v1.84.0：內建「文字書」「圖片書」排最前面，跟自訂的用細分隔線隔開
+                [['text', t('profile_text'), 'bookOpen'], ['image', t('profile_image'), 'image']].forEach(([id, name, icon]) => {
+                    const overridden = !!(settings.builtinProfiles && settings.builtinProfiles[id]);
+                    const chip = cwfmBuildChip(name, {
+                        extraClass: 'cwfm-keychip-builtin',
+                        leadIcon: icon,
+                        onSelect: () => {
+                            cwfmApplyBuiltinValues(settings, cwfmBuiltinProfileValues(settings, id));
+                            saveSettings(settings);
+                            applySettings(settings);
+                            try { window.__cwfm?.refreshSettingsPanel?.(); } catch (e) { console.error('[cwfm:profile] refresh panel failed', e); }
+                        },
+                        onUpdate: async () => {
+                            const confirmed = await cwfmConfirmDialog(
+                                t('dlg_overwrite_theme_title'),
+                                t('dlg_overwrite_theme_pre') + name + t('dlg_overwrite_theme_post'),
+                                t('dlg_overwrite_confirm')
+                            );
+                            if (!confirmed) return;
+                            if (!settings.builtinProfiles || typeof settings.builtinProfiles !== 'object') settings.builtinProfiles = {};
+                            const values = {};
+                            CWFM_BUILTIN_PROFILE_KEYS.forEach((k) => { values[k] = settings[k]; });
+                            settings.builtinProfiles[id] = values;
+                            saveSettings(settings);
+                            render();
+                            await cwfmAlertDialog(t('alert_updated'), '\u300c' + name + t('txt_theme_updated_post'));
+                        },
+                        updateLabel: t('aria_overwrite_theme'),
+                        onRestore: !overridden ? null : async () => {
+                            const confirmed = await cwfmConfirmDialog(
+                                t('dlg_restore_profile_title'),
+                                t('dlg_restore_profile_pre') + name + t('dlg_restore_profile_post'),
+                                t('aria_restore_profile')
+                            );
+                            if (!confirmed) return;
+                            settings.builtinProfiles[id] = null;
+                            saveSettings(settings);
+                            render();
+                            await cwfmAlertDialog(t('alert_updated'), '\u300c' + name + t('txt_profile_restored_post'));
+                        },
+                        restoreLabel: t('aria_restore_profile'),
+                    });
+                    wrap.appendChild(chip);
+                });
+                if (settings.savedThemes.length) {
+                    const sep = document.createElement('span');
+                    sep.className = 'cwfm-keylist-sep';
+                    sep.setAttribute('aria-hidden', 'true');
+                    wrap.appendChild(sep);
+                }
                 settings.savedThemes.forEach((theme, index) => {
                     const chip = cwfmBuildChip(theme.name, {
                         onSelect: () => cwfmApplyTheme(settings, theme),
@@ -5740,14 +6398,28 @@
 
             function render() {
                 wrap.innerHTML = '';
+                // v1.84.0：內建配色加前置圖示、跟自訂之間加細分隔線（跟設定檔同一套）
+                const builtinIcons = { auto: 'sunMoon', light: 'sun', dark: 'moon', sepia: 'coffee', old_gold: 'lamp' };
                 builtinOptions.forEach(([value, labelText]) => {
                     const chip = document.createElement('span');
-                    chip.className = 'cwfm-keychip cwfm-keychip-option'
+                    chip.className = 'cwfm-keychip cwfm-keychip-option cwfm-keychip-builtin'
                         + (settings.activeColorTheme === value ? ' cwfm-keychip-selected' : '');
-                    chip.textContent = labelText;
+                    const lead = document.createElement('span');
+                    lead.className = 'cwfm-keychip-bicon';
+                    lead.innerHTML = cwfmChipIcon(builtinIcons[value] || 'sun', 12);
+                    const txt = document.createElement('span');
+                    txt.textContent = labelText;
+                    chip.append(lead, txt);
+                    chip.style.paddingRight = '8px';
                     chip.addEventListener('click', () => applyBuiltin(value));
                     wrap.appendChild(chip);
                 });
+                if ((settings.savedColorSchemes || []).length) {
+                    const sep = document.createElement('span');
+                    sep.className = 'cwfm-keylist-sep';
+                    sep.setAttribute('aria-hidden', 'true');
+                    wrap.appendChild(sep);
+                }
                 (settings.savedColorSchemes || []).forEach((scheme, index) => {
                     const isActive = settings.activeColorTheme === 'scheme:' + scheme.id;
                     const chip = cwfmBuildChip(scheme.name, {
@@ -6180,7 +6852,111 @@
 
         // v1.82：原本的「閱讀行為」拆成「翻頁設定」「介面隱藏」「閱讀行為」三組；快速鍵移到閱讀行為之後。
         // 順序：版面配置 → 翻頁設定 → 介面隱藏 → 閱讀行為 → 快速鍵 → 語言 → 錯誤紀錄
+        // v1.84.0：「是否插頁」放在「翻頁設定」上面。都是書本身的屬性（跟著書記住、不進設定檔），
+        // 當場生效、不用重開書；只有圖片書（分段排版）有作用。
+        beginGroup(t('group_page_insert'));
+        {
+            const isImg = !!window.__cwfm.imageBook;
+            const bs = cwfmBookState;
+            // 全書最前面補一頁（開關）
+            const field = document.createElement('div');
+            field.className = 'cwfm-field cwfm-field-no-divider';
+            const row = document.createElement('div');
+            row.className = 'cwfm-checkbox-row';
+            const label = document.createElement('label');
+            label.textContent = t('field_front_insert');
+            const sw = document.createElement('label');
+            sw.className = 'cwfm-switch';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = bs.frontInsert;
+            input.disabled = !isImg;
+            const track = document.createElement('span');
+            track.className = 'cwfm-switch-track';
+            sw.append(input, track);
+            row.append(label, sw);
+            field.appendChild(row);
+            const hint = document.createElement('div');
+            hint.className = 'cwfm-field-hint';
+            hint.textContent = isImg ? t('hint_front_insert') : t('hint_insert_only_image');
+            field.appendChild(hint);
+            panelTarget.appendChild(field);
+            input.addEventListener('change', () => {
+                bs.frontInsert = input.checked;
+                cwfmSaveBookState();
+                window.__cwfm.imgRebuild?.('frontInsert=' + bs.frontInsert).catch((e) => console.error('[cwfm:imgbook] 補頁失敗', e));
+            });
+            // 在這頁前插入／移除空白頁（按鈕文字跟著目前這頁有沒有插過）
+            const f2 = document.createElement('div');
+            f2.className = 'cwfm-field';
+            const row2 = document.createElement('div');
+            row2.className = 'cwfm-checkbox-row';
+            const label2 = document.createElement('label');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cwfm-confirm-cancel';
+            btn.disabled = !isImg;
+            row2.append(label2, btn);
+            f2.appendChild(row2);
+            panelTarget.appendChild(f2);
+            const refreshInsertBtn = () => {
+                const k = isImg ? window.__cwfm.imgCurrentOrigPage?.() : -1;
+                const has = k >= 0 && bs.insertsBefore.includes(k);
+                label2.textContent = has ? t('field_remove_here') : t('field_insert_here');
+                btn.textContent = has ? t('btn_remove_blank') : t('btn_insert_blank');
+                btn.disabled = !isImg || k < 0;
+            };
+            btn.addEventListener('click', () => {
+                const k = window.__cwfm.imgCurrentOrigPage?.();
+                if (!(k >= 0)) return;
+                const i = bs.insertsBefore.indexOf(k);
+                if (i >= 0) bs.insertsBefore.splice(i, 1); else bs.insertsBefore.push(k);
+                bs.insertsBefore.sort((a, b) => a - b);
+                cwfmSaveBookState();
+                window.__cwfm.imgRebuild?.('insertBefore=' + k).then(refreshInsertBtn).catch((e) => console.error('[cwfm:imgbook] 插頁失敗', e));
+            });
+            refreshInsertBtn();
+            view.addEventListener('relocate', () => setTimeout(refreshInsertBtn, 0));
+            panelRefreshers.push(() => { input.checked = bs.frontInsert; refreshInsertBtn(); });
+        }
+
         beginGroup(t('group_page_turn'));
+        // v1.84.0：翻頁方向（書本身的屬性，跟著書記住）＋反轉點擊區，放在翻頁設定最上面
+        {
+            const field = document.createElement('div');
+            field.className = 'cwfm-field';
+            const label = document.createElement('label');
+            label.textContent = t('field_page_direction');
+            field.appendChild(label);
+            const select = document.createElement('select');
+            [['ltr', t('dir_ltr')], ['rtl', t('dir_rtl')]].forEach(([v, txt]) => {
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = txt;
+                select.appendChild(opt);
+            });
+            select.value = window.__cwfm.effectivePageDirection?.() || 'ltr';
+            field.appendChild(select);
+            const hint = document.createElement('div');
+            hint.className = 'cwfm-field-hint';
+            const od = window.__cwfm.imgBook?.origDir;
+            hint.textContent = od ? t('hint_page_direction_book') + t(od === 'rtl' ? 'dir_rtl' : 'dir_ltr') : t('hint_page_direction_none');
+            field.appendChild(hint);
+            panelTarget.appendChild(field);
+            select.addEventListener('change', () => {
+                cwfmBookState.pageDirection = select.value;
+                cwfmSaveBookState();
+                window.__cwfm.setPageDirection?.(select.value).catch((e) => console.error('[cwfm:dir] 換翻頁方向失敗', e));
+            });
+            panelRefreshers.push(() => { select.value = window.__cwfm.effectivePageDirection?.() || 'ltr'; });
+        }
+        {
+            const rev = addCheckboxField(t('field_reverse_tap_zones'), 'reverseTapZones');
+            const hint = document.createElement('div');
+            hint.className = 'cwfm-field-hint';
+            hint.textContent = t('hint_reverse_tap_zones');
+            rev.closest('.cwfm-field').appendChild(hint);
+        }
         // [cwfm] 左右翻頁點擊區：功能開關 → 寬度 → 顯示開關（順序調整：
         // 顯示開關移到寬度後面，因為「顯示視覺提示」開啟時會 disable 下方
         // 翻頁動畫整區，邏輯上靠近翻頁動畫比靠近寬度更合理）。
@@ -7279,20 +8055,37 @@
     }
     // v1.83.0：存檔回饋動畫。動畫也當成一種狀態（03 第⑬節）：播放期間把按鈕裡的 svg 整張換成動畫專用圖示，
     // 播完再換回該狀態的圖示——不在同一個 svg 疊層開關（Chrome 不一定因 clipPath 內部變化重畫）。
-    // kind：'nav'＝上一步箭頭（線條圖示，淡色底＋由下往上描亮）；'bookmark'＝書籤（外框＋紅色由下往上填滿）
+    // kind：'nav'＝上一步箭頭（v1.84.0 方案 E：放大＋數字位置換成「+1」）；'bookmark'＝書籤（外框＋紅色由下往上填滿）
     let cwfmSaveAnimSeq = 0;
     function cwfmPlaySaveAnim(btn, kind) {
         if (!btn || !btn.isConnected) return;
         const old = btn.querySelector(':scope > svg');
         if (!old) return;
+        if (kind === 'nav') {
+            // v1.84.0：方案 E——箭頭放大 1.15 倍（CWFM_SAVE_ANIM_NAV_PULSE_MS）＋數字位置短暫換成「+1」（CWFM_SAVE_ANIM_NAV_MS）。
+            // v1.83.0 的「由下往上描亮」在實際大小（32px 鈕、20px 圖示、線寬 2）看不出來，有效的只有縮放。
+            // 「+1」原地放大、不往上飄：往上會壓到數字，工具列貼頂時還會飄出畫面。99+ 時一樣出現「+1」。
+            let plus = btn.querySelector(':scope > .cwfm-nav-plus');
+            if (!plus) {
+                plus = document.createElement('span');
+                plus.className = 'cwfm-nav-plus';
+                plus.textContent = '+1';
+                plus.setAttribute('aria-hidden', 'true');
+                btn.appendChild(plus);
+            }
+            // 連續記錄時重播：先拿掉狀態、強制重排，再加回去
+            delete btn.dataset.cwfmAnimNav;
+            void btn.offsetWidth;
+            btn.dataset.cwfmAnimNav = '1';
+            clearTimeout(btn.__cwfmAnimTimer);
+            btn.__cwfmAnimTimer = setTimeout(() => { delete btn.dataset.cwfmAnimNav; }, CWFM_SAVE_ANIM_NAV_MS + 20);
+            return;
+        }
         const id = 'cwfm-rise-' + (++cwfmSaveAnimSeq);
         const BM = 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z';
-        const NAV = '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'; // 照抄 ICONS.navBack
         const attrs = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
         const clip = '<defs><clipPath id="' + id + '"><rect class="cwfm-anim-rise" y="-1" width="24" height="26"/></clipPath></defs>';
-        const html = kind === 'bookmark'
-            ? '<svg ' + attrs + '>' + clip + '<path d="' + BM + '"/><path class="cwfm-anim-top" d="' + BM + '" fill="#E24B4A" stroke="#E24B4A" clip-path="url(#' + id + ')"/></svg>'
-            : '<svg ' + attrs + '>' + clip + '<g opacity=".35">' + NAV + '</g><g class="cwfm-anim-top" clip-path="url(#' + id + ')">' + NAV + '</g></svg>';
+        const html = '<svg ' + attrs + '>' + clip + '<path d="' + BM + '"/><path class="cwfm-anim-top" d="' + BM + '" fill="#E24B4A" stroke="#E24B4A" clip-path="url(#' + id + ')"/></svg>';
         const tpl = document.createElement('template');
         tpl.innerHTML = html;
         old.replaceWith(tpl.content.firstChild);
@@ -7302,9 +8095,7 @@
             delete btn.dataset.cwfmAnim;
             const cur = btn.querySelector(':scope > svg');
             if (!cur) return;
-            const normal = kind === 'bookmark'
-                ? (btn.dataset.filled === 'true' ? ICONS.bookmarkFilled : ICONS.bookmarkOutline)
-                : ICONS.navBack;
+            const normal = btn.dataset.filled === 'true' ? ICONS.bookmarkFilled : ICONS.bookmarkOutline;
             tpl.innerHTML = normal;
             cur.replaceWith(tpl.content.firstChild);
         }, CWFM_SAVE_ANIM_RISE_MS + CWFM_SAVE_ANIM_PULSE_MS + 20);

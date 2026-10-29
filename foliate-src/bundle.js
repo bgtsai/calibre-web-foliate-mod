@@ -799,6 +799,8 @@ let W = class extends HTMLElement {
     if (
       (("string" == typeof t || "function" == typeof t.arrayBuffer || t.isDirectory) &&
         (t = await H(t)),
+      // [cwfm] v1.84.0：開書前讓 app 改寫 book 物件（純圖片書把相鄰圖片頁合成分段章節，見 app 的 cwfmImgBook）
+      (t = (await globalThis.__cwfm?.transformBook?.(t)) ?? t),
       (this.book = t),
       (this.language = ((t) => {
         if (!t) return {};
@@ -860,6 +862,19 @@ let W = class extends HTMLElement {
           const t = s?.deref();
           t && (t.classList.remove(e), i && t.ownerDocument.documentElement.classList.remove(i));
         }));
+    }
+  }
+  // [cwfm] v1.84.0：book.sections 被 app 就地換過（圖片書分段大小改變）後，重建進度與目錄的對照表
+  async cwfmRefreshSections() {
+    const t = this.book;
+    if (((this.#h = new _(t.sections, 1500, 1600)), t.splitTOCHref && t.getTOCFragment)) {
+      const e = t.sections.map((t) => t.id),
+        i = t.splitTOCHref.bind(t),
+        s = t.getTOCFragment.bind(t);
+      ((this.#d = new E()),
+        await this.#d.init({ toc: t.toc ?? [], ids: e, splitHref: i, getFragment: s }),
+        (this.#u = new E()),
+        await this.#u.init({ toc: t.pageList ?? [], ids: e, splitHref: i, getFragment: s }));
     }
   }
   close() {
@@ -26497,6 +26512,10 @@ class md extends HTMLElement {
         (i.size = 1 / (e - 2)));
     }
     this.dispatchEvent(new CustomEvent("relocate", { detail: i }));
+  }
+  // [cwfm] v1.84.0：讓下一次 goTo 一定重新載入目前章節（翻頁方向、圖片書分段改變後要重新排版）
+  cwfmInvalidate(t) {
+    ((this.#l = -1), t && (this.bookDir = t));
   }
   async #nu(t) {
     const { index: e, src: i, anchor: s, onLoad: n, select: r } = await t;
