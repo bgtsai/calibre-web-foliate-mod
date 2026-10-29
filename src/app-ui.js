@@ -887,7 +887,7 @@
     // ============================================================
     const CWFM_VERSION = "__CWFM_VERSION__";
     // v1.81.1：發布日期由 tools/pack.py 在版本改變時自動寫入（台北時間），不要手改
-    const CWFM_RELEASE = ['1.87.0', '2026-10-29'];
+    const CWFM_RELEASE = ['1.87.1', '2026-10-29'];
     let cwfmDiagSeq = 0;
     let cwfmCorr = 'BOOT';
     const cwfmCorrCounters = {};
@@ -1460,6 +1460,18 @@
         cwfmImg.origDir = bk.dir === 'rtl' || bk.dir === 'ltr' ? bk.dir : null; // 書的標示（page-progression-direction）
         bk.dir = 'ltr'; // 判斷完圖片書才知道套哪一類的設定，先給左翻（分段在載入時才排版，不受影響）
         await cwfmImgDetect(bk);
+        if (!cwfmImg.active && typeof bk.resolveCFI === 'function') {
+            // v1.87.0：文字書插空白頁會在插入點切開文字節點；CFI 的偏移剛好落在切口時，引擎（有 cfiFilter）解析成
+            // 「前半段的結尾」＝空白頁前面那一頁的底部。Firefox 依這個位置跳頁會停在前一頁（字級 120% 插在段落中間時重現，
+            // v1.86 就有）。解析結果落在切口時，改成空白頁後面那段文字的開頭。
+            const origResolve = bk.resolveCFI.bind(bk);
+            bk.resolveCFI = (cfi) => {
+                const r = origResolve(cfi);
+                if (!r || typeof r.anchor !== 'function') return r;
+                const anchor = r.anchor;
+                return { ...r, anchor: (doc) => cwfmSkipInsertAtCut(anchor(doc)) };
+            };
+        }
         try {
             const type = cwfmImg.active ? 'image' : 'text';
             const legacy = cwfmLegacyBookDir();
@@ -2035,6 +2047,22 @@
             if (RO) new RO(() => { try { cwfmTpScale(el); } catch (e) { console.error('[cwfm:insert] 書名頁字級失敗', e); } }).observe(el);
             else setTimeout(() => cwfmTpScale(el), 300);
         }
+    }
+    // 範圍起點剛好在「空白頁前面那段文字的結尾」→ 移到空白頁後面那段文字的開頭（見 cwfmTransformBook 的 resolveCFI 包裝）
+    function cwfmSkipInsertAtCut(rg) {
+        try {
+            if (!rg || typeof rg.setStart !== 'function') return rg;
+            const n = rg.startContainer;
+            if (!n || n.nodeType !== 3 || rg.startOffset !== n.length) return rg;
+            const ins = n.nextSibling;
+            if (!ins || ins.nodeType !== 1 || ins.localName !== CWFM_INS_TAG || !ins.classList.contains('cwfm-ins-blank')) return rg;
+            const next = ins.nextSibling;
+            const collapsed = rg.collapsed;
+            if (next && next.nodeType === 3) rg.setStart(next, 0); else rg.setStartAfter(ins);
+            if (collapsed) rg.collapse(true);
+            cwfmDiag('INS-CUT', 'CFI 落在空白頁切口，改到空白頁後面');
+        } catch (e) { console.error('[cwfm:insert] 調整切口位置失敗', e); }
+        return rg;
     }
     // 目前畫面上有沒有空白頁（文字書）；有的話回傳它的 CFI
     function cwfmTextInsertVisible() {

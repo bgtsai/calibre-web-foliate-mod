@@ -42,8 +42,9 @@
 - 設定面板新增設定時，要一併加進 `CWFM_THEME_FIELD_KEYS`，否則存不進「設定檔」。
 - 標籤小按鈕、步進器等圖示一律用 `cwfmChipIcon()`（Lucide SVG、線寬 2），不要用文字符號。
 
-## 交接（2026-10-29 晚，v1.87.0）
-- **目前版本**：v1.87.0——設定檔改成「目前使用中的那一組，調整自動存回」（類似瀏覽器使用者設定檔）。
+## 交接（2026-10-29 晚，v1.87.1）
+- **v1.87.1**：文字書在段落中間插空白頁，CFI 偏移落在文字節點切口時解析成「前半段結尾」（空白頁前一頁底部），Firefox 跳頁／重開停在前一頁（v1.86 就有）。`cwfmTransformBook` 包 `bk.resolveCFI`，切口位置改到空白頁後面（`cwfmSkipInsertAtCut`）。ft185 加「重開回到插入點那頁」。
+- **v1.87.0**：設定檔改成「目前使用中的那一組，調整自動存回」（類似瀏覽器使用者設定檔）。
   - **自動儲存**：`cwfmPrepareSettingsForSave` 跟 `cwfmBookTrack.baseline` 比對，有差就寫回 `cwfmBookTrack.ref` 指的設定檔。磁碟（覆蓋更新）鈕、內建的恢復預設值都拿掉。
   - **內建唯讀、內容完整**：`cwfmBuiltinProfileValues(id)` 每次重算全部 `CWFM_THEME_FIELD_KEYS`（DEFAULT_SETTINGS＋首次預設＋跟隨系統配色＋內建排版；圖片書另加 `CWFM_IMAGE_PROFILE_OVERRIDES`，含動畫黑色 `#000000`）。選中內建時第一次調整 → 自動建「〈內建名〉（已調整）」（重名「（已調整 2）」…）並切過去。`settings.builtinProfiles` 開書與存檔時刪掉。
   - **書指向設定檔**：`bookSettings[書] = { profile, b, t }`，同一個設定檔的書共用調整；舊的 `v` 直接丟掉（使用者定案，這些書回到「新書開啟時套用」）。指向的設定檔被刪 → 退回新書預設；刪的是使用中的 → 當場切到新書預設（`cwfmDeleteTheme`）。
