@@ -58,7 +58,7 @@
 - **知識庫**：v1.84～v1.86 已歸檔（03 v1.46 第 ⑰ 節、29 v1.11 第 ㉕～㉗ 節、31 v1.18），沒有未歸檔草稿。
 
 ## 下一階段待做（2026-10-29 晚，使用者已全部定案：照做到完，卡住或發現會改變預期才問）
-一個版本一起做（**v1.87.0**），全部改完、三瀏覽器測過後 **Tampermonkey 與 Docker 同時推送**。測試用純圖片 EPUB 在知識庫的 **handoff 分支**（日本兄弟修剪版，不要放公開 repo）：`mkdir -p /home/claude/testbook && git -C /home/claude/claude-knowledge-base fetch --depth 1 origin handoff && git -C /home/claude/claude-knowledge-base show origin/handoff:handoff/20261029_cwfm/manga30.epub > /home/claude/testbook/manga30.epub`。
+一個版本一起做（**v1.87.0**），全部改完、三瀏覽器測過後 **Tampermonkey 與 Docker 同時推送**。測試用純圖片 EPUB 在知識庫的 **handoff 分支**（日本兄弟修剪版，不要放公開 repo）：`mkdir -p /home/claude/testbook && git -C /home/claude/claude-knowledge-base fetch --depth 1 origin handoff:refs/remotes/origin/handoff && git -C /home/claude/claude-knowledge-base show origin/handoff:handoff/20261029_cwfm/manga30.epub > /home/claude/testbook/manga30.epub`。
 
 **設定檔改成「目前使用中的那一組，調整自動存回」**（類似瀏覽器使用者設定檔）
 1. **自動儲存**：選中的設定檔，面板上任何調整直接存回該設定檔；標籤上的磁碟（覆蓋更新）鈕全部拿掉（內建與自訂都拿）。`cwfmUpdateTheme`／內建的 `onUpdate`、`onRestore`（恢復預設值）、`builtinProfiles` 相關 UI 一併移除。
